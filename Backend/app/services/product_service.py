@@ -45,7 +45,7 @@ async def get_product_by_id_service(product_id: str):
         raise HTTPException(status_code=400, detail="Invalid Product ID format")
     
     # 2. Find the product
-    product = await products_collection.find_one({"_id": ObjectId(product_id)})
+    product = await products_collection().find_one({"_id": ObjectId(product_id)})
     
     # 3. Convert _id to string for the frontend
     if product:
