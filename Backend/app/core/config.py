@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     MONGO_URL: str = Field(..., env="MONGO_URL")
-    DB_NAME: str = Field(..., env="Anozon_E-Commernce_db")
+    DB_NAME: str = Field(..., env="DB_NAME")
     JWT_SECRET: str = Field(..., env="JWT_SECRET")
     JWT_ALGORITHM: str = Field("HS256", env="JWT_ALGORITHM")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(15, env="ACCESS_TOKEN_EXPIRE_MINUTES")

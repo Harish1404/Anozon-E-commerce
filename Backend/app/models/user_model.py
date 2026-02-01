@@ -27,8 +27,8 @@ class UserInDB(UserBase):
     hashed_password: str
     role: str = "user"  # Default to user if missing
     refresh_token_hashed: Optional[str] = None
-    favorite_products: Optional[list[str]] = []
-    cart: Optional[list[CartItem]] = []
+    favorite_products: list[PyObjectId] = Field(default_factory=list)
+    cart: list[CartItem] = Field(default_factory=list)
     
     # Optional: Timestamps (Good for auditing)
     # created_at: datetime = Field(default_factory=datetime.utcnow)

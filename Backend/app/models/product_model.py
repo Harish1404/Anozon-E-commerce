@@ -12,7 +12,7 @@ class ProductBase(BaseModel):
     price: float = Field(..., gt=0) # Changed to float for cents (e.g. 10.99)
     stock_quantity: int = Field(..., ge=0) # Cannot be negative
     image_url: HttpUrl # Validates it is a real URL
-    liked_by: Optional[list[PyObjectId]] = [] # List of User IDs who liked the product
+    liked_by: list[PyObjectId] = Field(default_factory=list) # List of User IDs who liked the product
 
 # --- CREATE MODEL (Input) ---
 class ProductCreate(ProductBase):
