@@ -1,0 +1,140 @@
+@baseUrl = http://localhost:8000
+
+# ==========================================
+# 1. AUTHENTICATION (The Gate)
+# ==========================================
+
+### 1. Register Admin (Run this once, then you might need to change email)
+# ⚠️ ACTION: After running this, go to MongoDB Atlas and manually set "role": "admin" for this user!
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+    "username": "admin_boss",
+    "email": "admin@test.com",
+    "password": "secretpassword"
+}
+
+### 2. Login Admin (Captures Token Automatically)
+# @name adminLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=admin@test.com
+&password=secretpassword
+
+### Store the Admin Token variable
+@adminToken = {{adminLogin.response.body.access_token}}
+
+### logout admin (optional)
+# @name adminLogout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{adminToken}}
+### Store logout response
+@adminLogoutResponse = {{adminLogout.response.body.message}}
+
+
+
+### 3. Register Normal User
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+    "username": "shopper_dave",
+    "email": "dave@test.com",
+    "password": "password123"
+}
+
+### 4. Login Normal User
+# @name userLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=dave@test.com
+&password=password123
+
+### Store User Token variable
+@userToken = {{userLogin.response.body.access_token}}
+
+
+# ==========================================
+# 2. ADMIN FEATURES (Inventory & Products)
+# ==========================================
+
+### 5. Create Product (Requires Admin Token)
+# @name createProduct
+POST {{baseUrl}}/admin/products/create_products
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "name": "Cloud DevOps Hoodie",
+    "category": "Clothing",
+    "description": "Premium cotton hoodie for late night deployments.",
+    "price": 49.99,
+    "stock_quantity": 100,
+    "image_url": "https://placehold.co/600x400?text=Hoodie"
+}
+
+### Store Product ID
+@productId = {{createProduct.response.body._id}}
+
+### 6. Delete Product (Test if it works, then re-create it)
+DELETE {{baseUrl}}/admin/product/delete_product/{{productId}}
+Authorization: Bearer {{adminToken}}
+
+### 6.1 Update Product (Partial - PATCH)
+# @name updateProduct
+PATCH {{baseUrl}}/admin/product/update_product/{{productId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "price": 35.99,
+    "stock_quantity": 80
+}
+
+### 6.2 Full Update (PUT) - Optional
+PUT {{baseUrl}}/admin/product/replace_product/{{productId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "name": "Cloud DevOps Hoodie (V2)",
+    "category": "Clothing",
+    "description": "Updated version with thicker fabric.",
+    "price": 55.00,
+    "stock_quantity": 150,
+    "image_url": "https://placehold.co/600x400?text=HoodieV2"
+}
+
+
+# ==========================================
+# 3. USER FEATURES (Shopping)
+# ==========================================
+
+### 7. View All Products (Public)
+GET {{baseUrl}}/products
+
+### 8. Add to Cart (User Token)
+POST {{baseUrl}}/users/cart
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+    "product_id": "{{productId}}",
+    "quantity": 2
+}
+
+### 9. View Cart
+GET {{baseUrl}}/users/cart
+Authorization: Bearer {{userToken}}
+
+### 10. Toggle Favorite (Like)
+POST {{baseUrl}}/users/favorites/toggle
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+    "product_id": "{{productId}}"
+}

@@ -1,31 +1,47 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from pydantic import BaseModel, Field, HttpUrl, BeforeValidator
+from typing import Optional, Annotated
 
-class Product(BaseModel):
-    name: str = Field(..., min_length=3, max_length=15)
-    category: str = Field(..., min_length=3, max_length=15)
-    description: str = Field(..., min_length=5, max_length=50)
-    price: int
-    url: str
-    likes: Optional[str]
-    stock_quantity: int
+# 1. Helper to handle MongoDB ObjectId -> String conversion
+PyObjectId = Annotated[str, BeforeValidator(str)]
 
-class ResponseProduct(BaseModel):
-    id: Optional[str]
-    name: Optional[str]
-    price: Optional[int]
-    message: Optional[str]
+# --- BASE MODEL (Shared Rules) ---
+class ProductBase(BaseModel):
+    name: str = Field(..., min_length=3, max_length=100) # Increased to 100
+    category: str = Field(..., min_length=3, max_length=50) # Increased to 50
+    description: str = Field(..., min_length=10, max_length=1000) # Increased to 1000
+    price: float = Field(..., gt=0) # Changed to float for cents (e.g. 10.99)
+    stock_quantity: int = Field(..., ge=0) # Cannot be negative
+    image_url: HttpUrl # Validates it is a real URL
+    liked_by: Optional[list[PyObjectId]] = [] # List of User IDs who liked the product
 
-class UpdateProduct(BaseModel):
-    name: str = Field(..., min_length=3, max_length=15)
-    category: str = Field(..., min_length=3, max_length=15)
-    price: int
-    stock_quantity: int
+# --- CREATE MODEL (Input) ---
+class ProductCreate(ProductBase):
+    pass # Inherits everything from Base
 
-class PartialUpdate(BaseModel):
-    name: Optional[str] 
-    category: Optional[str]
-    price: Optional[int]
-    stock_quantity: Optional[int]
-    updated_at: Optional[str]
+# --- UPDATE MODEL (For PUT/PATCH) ---
+class ProductUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=3, max_length=100)
+    category: Optional[str] = Field(None, min_length=3, max_length=50)
+    description: Optional[str] = Field(None, min_length=10, max_length=1000)
+    price: Optional[float] = Field(None, gt=0)
+    stock_quantity: Optional[int] = Field(None, ge=0)
+    image_url: Optional[HttpUrl] = None
 
+# --- RESPONSE MODEL (Output to Frontend) ---
+class ProductResponse(ProductBase):
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    likes_count: int = 0 # Better to return a count
+    
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "name": "Cloud Hoodie",
+                "category": "Clothing",
+                "description": "A warm hoodie for late night deployments.",
+                "price": 49.99,
+                "stock_quantity": 100,
+                "image_url": "https://example.com/hoodie.jpg",
+                "likes_count": 5
+            }
+        }

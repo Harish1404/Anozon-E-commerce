@@ -1,14 +1,19 @@
-from dotenv import load_dotenv
-import os
+from pydantic import  Field
+from pydantic_settings import BaseSettings
 
-load_dotenv()
 
-class Settings:
-    MONGO_URL: str = os.getenv("MONGO_URL")
-    DB_NAME: str = os.getenv("DB_NAME")
-    JWT_SECRET: str = os.getenv("JWT_SECRET")
-    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM")
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
-    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
+class Settings(BaseSettings):
+    MONGO_URL: str = Field(..., env="MONGO_URL")
+    DB_NAME: str = Field(..., env="Anozon_E-Commernce_db")
+    JWT_SECRET: str = Field(..., env="JWT_SECRET")
+    JWT_ALGORITHM: str = Field("HS256", env="JWT_ALGORITHM")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(15, env="ACCESS_TOKEN_EXPIRE_MINUTES")
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(7, env="REFRESH_TOKEN_EXPIRE_DAYS")
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra='ignore'
+
 
 settings = Settings()

@@ -1,15 +1,17 @@
-from fastapi import APIRouter, HTTPException,status, Query
+from fastapi import APIRouter, Depends, HTTPException,status, Query, Path
 from app.services.product_service import *
+from app.deps.auth import get_current_user
 from app.db.mongodb import products_collection
 from app.models.product_model import *
 from bson import ObjectId
 from datetime import datetime
 
-router = APIRouter()
+router = APIRouter(tags=["public product routes"])
 
 @router.get("/")
 def landing_page():
-    return {"Message": "Hi Harish"}
+
+    return {"Message": "Hi Harish Here is your Product Management API!"}
 
 @router.get("/products")
 async def get_products(
@@ -23,81 +25,15 @@ async def get_products(
 ):
     return await get_products_service(category, min_price, max_price, sort_by, sort_order, page, limit)
 
-@router.post("/products/create_products", response_model=ResponseProduct, status_code=status.HTTP_201_CREATED)
-async def create_product(product: Product):
-    try:
-        new_product = product.dict()
-        new_product["created_at"] = datetime.now().strftime("%d-%m-%Y %H:%M:%P")
 
-        result = await products_collection.insert_one(new_product)
-
-        return {
-            "id": str(result.inserted_id),
-            "name": product.name,
-            "price": product.price,
-            "message": "Product created successfully"
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
-@router.put("/product/replace_product/{product_id}", status_code=status.HTTP_200_OK)
-async def replace_product(product_id: str, product: UpdateProduct):
-    if not ObjectId.is_valid(product_id):
-        raise HTTPException(status_code=400, detail="Invalid product ID format")
-
-    update_data = product.dict()
-    update_data["updated_at"] = datetime.now().strftime("%d-%m-%Y %H:%M %p")
-
-    result = await products_collection.update_one(
-        {"_id": ObjectId(product_id)},
-        {"$set": update_data}
-    )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Product not found!!")
-    
-    updated_product = await products_collection.find_one({"_id": ObjectId(product_id)})
-    updated_product["_id"] = str(updated_product["_id"]) 
-    
-    return {
-        "message": "Product updated successfully",
-        "product": updated_product
-    }
-
-@router.patch("/product/update_product/{product_id}", status_code=status.HTTP_200_OK)
-async def update_product(product_id: str, product: PartialUpdate):
-    if not ObjectId.is_valid(product_id):
-        raise HTTPException(status_code=400, detail="Invalid product ID format")
-
-    update_data = {k: v for k, v in product.dict(exclude_unset=True).items() if v is not None}
-    
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No fields provided for update")
-
-    update_data["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    result = await products_collection.update_one(
-        {"_id": ObjectId(product_id)},
-        {"$set": update_data}
-    )
-    
-    if result.matched_count == 0:
+@router.get("/products/{product_id}")
+async def get_product_details(
+    product_id: str = Path(..., description="The ID of the product to view")
+):
+    product = await get_product_by_id_service(product_id)
+    if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
-    return {"message": "Product updated successfully"}
-
-@router.delete("/product/delete_product/{product_id}", status_code=status.HTTP_200_OK)
-async def delete_product(product_id: str):
-    if not ObjectId.is_valid(product_id):
-        raise HTTPException(status_code=400, detail="Invalid product ID format")
-
-    result = await products_collection.delete_one({"_id": ObjectId(product_id)})
-    
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Product not found")
-    
-    return {"message": "Product deleted successfully"}
+    return product
 
 
 
