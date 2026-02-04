@@ -6,24 +6,24 @@ starlette==0.27.0
 # Database
 motor==3.3.2
 pymongo==4.6.0
-bson==0.5.10
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 cryptography==41.0.7
 python-multipart==0.0.6
+pytz
 
 # Data Validation
 pydantic==2.5.0
 pydantic[email]==2.5.0
+pydantic-settings==2.1.0
 email-validator==2.1.0
 
 # Environment Variables
 python-dotenv==1.0.0
 
 # Email
-secure-smtplib==0.1.1
 
 # Utilities
 typing-extensions==4.8.0
