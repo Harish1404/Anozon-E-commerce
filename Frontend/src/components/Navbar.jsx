@@ -23,7 +23,7 @@ const Navbar = () => {
   
   const products = Girls; 
   const navigate = useNavigate();
-  const { logout, user, isAuth } = useAuth();
+  const { logout, user, isAuth, isAdmin } = useAuth();
 
   const filteredProducts = useMemo(() => {
     if (!query) return [];
@@ -200,6 +200,20 @@ const Navbar = () => {
                           {user?.email || 'User'}
                         </p>
                       </div>
+                      {isAdmin() && (
+                        <button
+                          onClick={() => {
+                            navigate('/admin');
+                            setShowUserMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-3 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors font-semibold flex items-center gap-2 border-b border-gray-100 dark:border-slate-700"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                          </svg>
+                          Admin Dashboard
+                        </button>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold flex items-center gap-2"

@@ -19,6 +19,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAuth, setIsAuth] = useState(false);
+  const [role, setRole] = useState(null);
 
   // Initialize auth state from token
   useEffect(() => {
@@ -29,10 +30,20 @@ export const AuthProvider = ({ children }) => {
 
         if (isAuthenticated()) {
           setIsAuth(true);
+          // Get role from localStorage
+          const userRole = tokenManager.getRole();
+          if (userRole) {
+            setRole(userRole);
+          }
           // Try to fetch current user info from API
           const userData = await getCurrentUser();
           if (userData) {
             setUser(userData);
+            // Update role if it comes from API
+            if (userData.role) {
+              setRole(userData.role);
+              tokenManager.setRole(userData.role);
+            }
           } else {
             // Fallback to token payload
             const tokenUser = getUserFromToken();
@@ -41,11 +52,13 @@ export const AuthProvider = ({ children }) => {
         } else {
           setIsAuth(false);
           setUser(null);
+          setRole(null);
         }
       } catch (err) {
         console.error("Auth initialization error:", err);
         setIsAuth(false);
         setUser(null);
+        setRole(null);
       } finally {
         setIsLoading(false);
       }
@@ -60,8 +73,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
-      const response = await signupAPI(username, email, password);
-      return response;
+      return await signupAPI(username, email, password);
     } catch (err) {
       const errorMsg = err.message || "Signup failed";
       setError(errorMsg);
@@ -83,6 +95,10 @@ export const AuthProvider = ({ children }) => {
       setIsAuth(true);
       const tokenUser = getUserFromToken();
       setUser(tokenUser);
+      // Set role from login response
+      if (response.role) {
+        setRole(response.role);
+      }
 
       return response;
     } catch (err) {
@@ -90,6 +106,7 @@ export const AuthProvider = ({ children }) => {
       setError(errorMsg);
       setIsAuth(false);
       setUser(null);
+      setRole(null);
       throw err;
     } finally {
       setIsLoading(false);
@@ -107,11 +124,13 @@ export const AuthProvider = ({ children }) => {
       // Clear auth state
       setIsAuth(false);
       setUser(null);
+      setRole(null);
     } catch (err) {
       console.error("Logout error:", err);
       // Still clear state even if logout API fails
       setIsAuth(false);
       setUser(null);
+      setRole(null);
     } finally {
       setIsLoading(false);
     }
@@ -124,11 +143,17 @@ export const AuthProvider = ({ children }) => {
       const tokenUser = getUserFromToken();
       setUser(tokenUser);
       setIsAuth(true);
+      // Update role from response if available
+      if (response.role) {
+        setRole(response.role);
+        tokenManager.setRole(response.role);
+      }
       return response;
     } catch (err) {
       console.error("Token refresh error:", err);
       setIsAuth(false);
       setUser(null);
+      setRole(null);
       throw err;
     }
   }, []);
@@ -153,12 +178,18 @@ export const AuthProvider = ({ children }) => {
     return tokenManager.getAccessToken();
   }, []);
 
+  // Check if user is admin
+  const isAdmin = useCallback(() => {
+    return role === "admin";
+  }, [role]);
+
   // Context value
   const value = {
     user,
     isAuth,
     isLoading,
     error,
+    role,
     signup,
     login,
     logout,
@@ -167,6 +198,7 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     hasValidToken,
     getAccessToken,
+    isAdmin,
     tokenManager,
   };
 

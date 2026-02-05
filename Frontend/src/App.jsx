@@ -7,6 +7,7 @@ import ProductList from './pages/ProductList'
 import Cart from './pages/Cart'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import AdminDashboard from './pages/AdminDashboard'
 import { useAuth } from './context/AuthContext'
 
 import './App.css'
@@ -28,6 +29,32 @@ const ProtectedRoute = ({ children }) => {
 
   if (!isAuth) {
     return <Navigate to='/login' replace />
+  }
+
+  return children
+}
+
+// Admin Route Component (requires authentication and admin role)
+const AdminRoute = ({ children }) => {
+  const { isAuth, isLoading, isAdmin } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-screen'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'></div>
+          <p className='text-gray-600 dark:text-gray-400'>Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuth) {
+    return <Navigate to='/login' replace />
+  }
+
+  if (!isAdmin()) {
+    return <Navigate to='/' replace />
   }
 
   return children
@@ -111,6 +138,16 @@ function App() {
               <ProtectedRoute>
                 <Cart />
               </ProtectedRoute>
+            }
+          />
+
+          {/* Admin Routes (require admin role) */}
+          <Route
+            path='/admin'
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
             }
           />
 

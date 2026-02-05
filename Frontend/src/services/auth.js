@@ -73,6 +73,10 @@ export const login = async (email, password) => {
 
     const data = await response.json();
     tokenManager.setTokens(data.access_token, data.refresh_token);
+    // Store the role from the login response
+    if (data.role) {
+      tokenManager.setRole(data.role);
+    }
     return data;
   } catch (error) {
     console.error("Login error:", error);
@@ -121,6 +125,7 @@ export const logout = async () => {
     const accessToken = tokenManager.getAccessToken();
     if (!accessToken) {
       tokenManager.clearTokens();
+      tokenManager.clearRole();
       return;
     }
 
@@ -134,6 +139,7 @@ export const logout = async () => {
     console.error("Logout error:", error);
   } finally {
     tokenManager.clearTokens();
+    tokenManager.clearRole();
   }
 };
 
@@ -208,6 +214,19 @@ export const getUserFromToken = () => {
     return null;
   }
 };
+
+// Store and retrieve role
+const ROLE_KEY = import.meta.env.VITE_ROLE_STORAGE_KEY || "user_role";
+
+export const tokenManager_extended = {
+  ...tokenManager,
+  getRole: () => localStorage.getItem(ROLE_KEY),
+  setRole: (role) => localStorage.setItem(ROLE_KEY, role || "user"),
+  clearRole: () => localStorage.removeItem(ROLE_KEY),
+};
+
+// Update tokenManager export to include role methods
+Object.assign(tokenManager, tokenManager_extended);
 
 // Get current authenticated user from API
 export const getCurrentUser = async () => {
