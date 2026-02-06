@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiRequest } from '../services/auth'
 
 const AdminDashboard = () => {
+
   const { isAdmin, isLoading } = useAuth()
   const navigate = useNavigate()
   const [products, setProducts] = useState([])
@@ -89,11 +90,20 @@ const AdminDashboard = () => {
       
       const method = editingProduct ? 'PUT' : 'POST'
       
+      const payload = {
+      name: formData.name,
+      description: formData.description,
+      category: formData.category,
+      image_url: formData.image_url,
+      price: Number(formData.price),
+      stock_quantity: Number(formData.stock),
+    }
       const response = await apiRequest(url, {
         method,
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
         headers: { 'Content-Type': 'application/json' },
       })
+
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -109,12 +119,15 @@ const AdminDashboard = () => {
         image_url: '',
         stock: '',
       })
+
       setEditingProduct(null)
       setShowForm(false)
       await fetchProducts()
+
     } catch (err) {
       setError(err.message)
       console.error('Error saving product:', err)
+
     } finally {
       setLoading(false)
     }

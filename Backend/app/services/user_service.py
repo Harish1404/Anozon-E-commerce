@@ -48,9 +48,7 @@ class UserService:
             raise HTTPException(status_code=400, detail="Invalid ID")
 
         # 1. Check if item already exists in cart
-        user = await collection.find_one(
-            {"_id": ObjectId(user_id), "cart.product_id": product_id}
-        )
+        user = await collection.find_one({"_id": ObjectId(user_id), "cart.product_id": product_id})
 
         if user:
             # OPTION A: Item exists -> Increase Quantity

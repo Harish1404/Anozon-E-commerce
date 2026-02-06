@@ -40,22 +40,53 @@ export const fetchProductById = async (productId) => {
     throw new Error(err.detail || 'Failed to fetch product')
   }
   const p = await response.json()
-  return {
-    id: p._id || p.id || null,
-    _id: p._id || p.id || null,
-    name: p.name || '',
-    description: p.description || '',
-    price: typeof p.price === 'string' ? parseFloat(p.price) : p.price || 0,
-    category: p.category || '',
-    url: p.image_url || p.url || '',
-    image_url: p.image_url || p.url || '',
-    stock: p.stock || p.stock_quantity || 0,
-    likes: p.likes || p.likes_count || (Array.isArray(p.liked_by) ? p.liked_by.length : 0),
-    raw: p,
+  return normalizeProduct(p)
+}
+
+// Enrich cart items with product details
+export const enrichCartItems = async (cartItems) => {
+  try {
+    const enrichedItems = await Promise.all(
+      cartItems.map(async (item) => {
+        try {
+          const product = await fetchProductById(item.product_id)
+          return {
+            ...item,
+            product,
+          }
+        } catch (error) {
+          console.error(`Failed to fetch product ${item.product_id}:`, error)
+          // Return cart item with empty product details if fetch fails
+          return {
+            ...item,
+            product: null,
+          }
+        }
+      })
+    )
+    return enrichedItems
+  } catch (error) {
+    console.error('Error enriching cart items:', error)
+    return cartItems
   }
 }
+
+const normalizeProduct = (p) => ({
+  id: p._id || p.id || null,
+  _id: p._id || p.id || null,
+  name: p.name || '',
+  description: p.description || '',
+  price: typeof p.price === 'string' ? parseFloat(p.price) : p.price || 0,
+  category: p.category || '',
+  url: p.image_url || p.url || '',
+  image_url: p.image_url || p.url || '',
+  stock: p.stock || p.stock_quantity || 0,
+  likes: p.likes || p.likes_count || (Array.isArray(p.liked_by) ? p.liked_by.length : 0),
+  raw: p,
+})
 
 export default {
   fetchProducts,
   fetchProductById,
+  enrichCartItems,
 }

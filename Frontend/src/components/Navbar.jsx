@@ -1,10 +1,11 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { navlinks } from '../services/Navbar';
 import NavComp from './NavComp';
 import { Girls } from '../services/Girls';
 import DarkModeToggle from './DarkMode';
 import { useAuth } from '../context/AuthContext';
+import { CartContext } from '../context/CartContext';
 
 // Icons
 const SearchIcon = () => (
@@ -15,7 +16,22 @@ const CloseIcon = () => (
   <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
 );
 
+const CartIcon = ({ count }) => (
+  
+  <div className="relative cursor-pointer">
+    <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 8m10 0l2 8m-12 0h12" />
+    </svg>
+    {count > 0 && (
+      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+        {count > 99 ? '99+' : count}
+      </span>
+    )}
+  </div>
+);
+
 const Navbar = () => {
+
   const [query, setQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [activeId, setActiveId] = useState(null);
@@ -24,6 +40,8 @@ const Navbar = () => {
   const products = Girls; 
   const navigate = useNavigate();
   const { logout, user, isAuth, isAdmin } = useAuth();
+  const { cart, getCartCount } = useContext(CartContext);
+  const cartCount = getCartCount();
 
   const filteredProducts = useMemo(() => {
     if (!query) return [];
@@ -161,6 +179,17 @@ const Navbar = () => {
             <div className="transform hover:scale-105 transition-transform">
               <DarkModeToggle />
             </div>
+
+            {/* Cart Icon */}
+            {isAuth && (
+              <button
+                onClick={() => navigate('/cart')}
+                className="transform hover:scale-110 transition-transform relative"
+                title="View Cart"
+              >
+                <CartIcon count={cartCount} />
+              </button>
+            )}
 
             {/* User Profile & Logout */}
             {isAuth ? (
