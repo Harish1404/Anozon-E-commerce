@@ -41,6 +41,9 @@ class UserService:
         """
         Adds item to cart. If exists, increases quantity.
         """
+        if quantity <= 0:
+            raise HTTPException(status_code=400, detail="Quantity must be positive")
+        
         if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
             raise HTTPException(status_code=400, detail="Invalid ID")
 
@@ -90,6 +93,34 @@ class UserService:
             raise HTTPException(status_code=404, detail="Product not found in cart")
             
         return {"message": "Item removed from cart"}
+    
+    @staticmethod
+    async def update_cart_quantity(user_id: str,product_id: str,quantity: int,collection):
+        if quantity <= 0:
+            raise HTTPException(status_code=400,detail="Quantity must be greater than zero")
+
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid ID")
+
+        result = await collection.update_one(
+            {
+                "_id": ObjectId(user_id),
+                "cart.product_id": product_id
+            },
+            {
+                "$set": {
+                    "cart.$.quantity": quantity
+                }
+            }
+        )
+
+        if result.modified_count == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Product not found in cart"
+            )
+
+        return {"message": "Cart quantity updated"}
 
     @staticmethod
     async def get_cart(user_id: str, collection):
@@ -102,8 +133,25 @@ class UserService:
         if not ObjectId.is_valid(user_id):
             raise HTTPException(status_code=400, detail="Invalid user ID")
         
-        user = await collection.find_one({"_id": ObjectId(user_id)})
+        user = await collection.find_one({"_id": ObjectId(user_id)},{"cart": 1, "_id": 0})
+
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
         return user.get("cart", [])
+    
+    @staticmethod
+    async def clear_cart(user_id: str, collection):
+        
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+
+        result = await collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"cart": []}}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return {"message": "Cart cleared successfully"}

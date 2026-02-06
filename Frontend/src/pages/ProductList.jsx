@@ -1,7 +1,7 @@
 import{ useEffect, useState , useContext}  from 'react'
 import ProductCard from '../components/ProductCard'
-import { Girls } from '../services/Girls'
 import { CartContext } from '../context/CartContext'
+import { fetchProducts } from '../services/products'
 
 
 const ProductList = () => {
@@ -15,15 +15,15 @@ const ProductList = () => {
     useEffect(()=>{
 
         setTimeout(()=>{
-            fetchProducts();
+            load()
         },500)
 
     }, [] )
 
-    async function fetchProducts() {
+    async function load(){
         try{
-            setProducts(Girls)
-
+            const items = await fetchProducts()
+            setProducts(items)
         } catch (error){
             console.error(error)
         }

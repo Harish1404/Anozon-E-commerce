@@ -5,7 +5,6 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from app.models.user_model import *
 from app.db.mongodb import get_users_collection
 from app.core.security import (hash_password, verify_password,create_access_token, create_refresh_token, verify_token)
-from app.services.user_service import UserService
 from pymongo.errors import PyMongoError
 
 logger = logging.getLogger("uvicorn.error")

@@ -32,15 +32,31 @@ const AdminDashboard = () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await apiRequest('/products/list')
+      const response = await apiRequest('/products')
+
       if (!response.ok) throw new Error('Failed to fetch products')
       const data = await response.json()
-      setProducts(data.products || [])
+
+      // backend may return an array or an object { products: [...] }
+      const items = Array.isArray(data) ? data : data.products || []
+
+      // normalize basic fields used by this dashboard
+      const normalized = items.map((p) => ({
+        ...p,
+        _id: p._id || p.id,
+        price: typeof p.price === 'string' ? parseFloat(p.price) : p.price || 0,
+        stock: p.stock || p.stock_quantity || 0,
+      }))
+
+      setProducts(normalized)
+
     } catch (err) {
       setError(err.message)
       console.error('Error fetching products:', err)
+
     } finally {
       setLoading(false)
+
     }
   }
 

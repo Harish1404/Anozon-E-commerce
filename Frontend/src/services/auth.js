@@ -23,6 +23,18 @@ const tokenManager = {
       return true;
     }
   },
+  // Decode role from JWT access token payload
+  getRoleFromToken: (token = null) => {
+    const accessToken = token || tokenManager.getAccessToken();
+    if (!accessToken) return null;
+    try {
+      const payload = JSON.parse(atob(accessToken.split(".")[1]));
+      // try common claim names
+      return payload.role || payload.roles || payload.scope || null;
+    } catch {
+      return null;
+    }
+  },
 };
 
 // Signup
@@ -73,10 +85,6 @@ export const login = async (email, password) => {
 
     const data = await response.json();
     tokenManager.setTokens(data.access_token, data.refresh_token);
-    // Store the role from the login response
-    if (data.role) {
-      tokenManager.setRole(data.role);
-    }
     return data;
   } catch (error) {
     console.error("Login error:", error);
@@ -125,7 +133,6 @@ export const logout = async () => {
     const accessToken = tokenManager.getAccessToken();
     if (!accessToken) {
       tokenManager.clearTokens();
-      tokenManager.clearRole();
       return;
     }
 
@@ -139,7 +146,6 @@ export const logout = async () => {
     console.error("Logout error:", error);
   } finally {
     tokenManager.clearTokens();
-    tokenManager.clearRole();
   }
 };
 
@@ -157,7 +163,6 @@ export const getAuthHeaders = () => {
 // API request with automatic token refresh
 export const apiRequest = async (url, options = {}) => {
   let accessToken = tokenManager.getAccessToken();
-
   // Check if token is expired and refresh if needed
   if (accessToken && tokenManager.isTokenExpired(accessToken)) {
     try {
@@ -215,18 +220,6 @@ export const getUserFromToken = () => {
   }
 };
 
-// Store and retrieve role
-const ROLE_KEY = import.meta.env.VITE_ROLE_STORAGE_KEY || "user_role";
-
-export const tokenManager_extended = {
-  ...tokenManager,
-  getRole: () => localStorage.getItem(ROLE_KEY),
-  setRole: (role) => localStorage.setItem(ROLE_KEY, role || "user"),
-  clearRole: () => localStorage.removeItem(ROLE_KEY),
-};
-
-// Update tokenManager export to include role methods
-Object.assign(tokenManager, tokenManager_extended);
 
 // Get current authenticated user from API
 export const getCurrentUser = async () => {
