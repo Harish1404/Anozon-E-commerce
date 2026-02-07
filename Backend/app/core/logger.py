@@ -3,7 +3,7 @@ import sys
 from app.core.config import settings
 
 # Create a custom logger
-logger = logging.getLogger("fastapi_app")
+logger = logging.getLogger("anozon_logger")
 
 # Set level (DEBUG for dev, INFO for prod)
 logger.setLevel(logging.DEBUG)

@@ -38,6 +38,11 @@ export const AuthProvider = ({ children }) => {
             const tokenUser = getUserFromToken();
             setUser(tokenUser);
           }
+          } else if(tokenManager.getRefreshToken()){
+              await refreshToken();   // call refresh
+              setIsAuth(true);
+              const userData = await getCurrentUser();
+              setUser(userData || getUserFromToken());
         } else {
           setIsAuth(false);
           setUser(null);
@@ -60,8 +65,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
-      const response = await signupAPI(username, email, password);
-      return response;
+      return await signupAPI(username, email, password);
     } catch (err) {
       const errorMsg = err.message || "Signup failed";
       setError(errorMsg);
@@ -153,12 +157,27 @@ export const AuthProvider = ({ children }) => {
     return tokenManager.getAccessToken();
   }, []);
 
+
+  // Check if user is admin by decoding role from token
+  const isAdmin = useCallback(() => {
+    const role = tokenManager.getRoleFromToken();
+    if (!role) return false;
+    // If role is an array or space/comma-separated string, handle accordingly
+    if (Array.isArray(role)) return role.includes("admin");
+    if (typeof role === "string") {
+      return role === "admin" || role.split(/[ ,]+/).includes("admin");
+    }
+    return false;
+  }, []);
+
   // Context value
   const value = {
     user,
     isAuth,
     isLoading,
     error,
+    // expose helper
+    isAdmin,
     signup,
     login,
     logout,

@@ -23,6 +23,18 @@ const tokenManager = {
       return true;
     }
   },
+  // Decode role from JWT access token payload
+  getRoleFromToken: (token = null) => {
+    const accessToken = token || tokenManager.getAccessToken();
+    if (!accessToken) return null;
+    try {
+      const payload = JSON.parse(atob(accessToken.split(".")[1]));
+      // try common claim names
+      return payload.role || payload.roles || payload.scope || null;
+    } catch {
+      return null;
+    }
+  },
 };
 
 // Signup
@@ -106,6 +118,7 @@ export const refreshAccessToken = async () => {
 
     const data = await response.json();
     tokenManager.setTokens(data.access_token, data.refresh_token);
+    console.log("Refresh Token triggered")
     return data;
   } catch (error) {
     console.error("Token refresh error:", error);
@@ -151,7 +164,6 @@ export const getAuthHeaders = () => {
 // API request with automatic token refresh
 export const apiRequest = async (url, options = {}) => {
   let accessToken = tokenManager.getAccessToken();
-
   // Check if token is expired and refresh if needed
   if (accessToken && tokenManager.isTokenExpired(accessToken)) {
     try {

@@ -1,10 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException,status, Query, Path
-from app.services.product_service import *
-from app.deps.auth import get_current_user
-from app.db.mongodb import products_collection
+from fastapi import APIRouter, HTTPException, Query, Path
+from app.services.product_service import ProductService
 from app.models.product_model import *
-from bson import ObjectId
-from datetime import datetime
 
 router = APIRouter(tags=["public product routes"])
 
@@ -23,17 +19,16 @@ async def get_products(
     page: int = Query(1, description="Page number"),
     limit: int = Query(30, description="Number of products per page")
 ):
-    return await get_products_service(category, min_price, max_price, sort_by, sort_order, page, limit)
-
+    return await ProductService.get_products(category, min_price, max_price, sort_by, sort_order, page, limit)
 
 @router.get("/products/{product_id}")
-async def get_product_details(
-    product_id: str = Path(..., description="The ID of the product to view")
-):
-    product = await get_product_by_id_service(product_id)
+async def get_product_details(product_id: str = Path(..., description="The ID of the product to view")):
+
+    product = await ProductService.get_product_by_id(product_id)
+
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    
     return product
-
 
 

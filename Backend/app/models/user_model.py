@@ -27,7 +27,7 @@ class UserInDB(UserBase):
     hashed_password: str
     role: str = "user"  # Default to user if missing
     refresh_token_hashed: Optional[str] = None
-    favorite_products: list[PyObjectId] = Field(default_factory=list)
+    favorites: list[PyObjectId] = Field(default_factory=list)
     cart: list[CartItem] = Field(default_factory=list)
     
     # Optional: Timestamps (Good for auditing)
@@ -60,3 +60,6 @@ class CartRequest(BaseModel):
 
 class FavoriteRequest(BaseModel):
     product_id: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str

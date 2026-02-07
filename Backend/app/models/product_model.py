@@ -9,7 +9,7 @@ class ProductBase(BaseModel):
     name: str = Field(..., min_length=3, max_length=100) # Increased to 100
     category: str = Field(..., min_length=3, max_length=50) # Increased to 50
     description: str = Field(..., min_length=10, max_length=1000) # Increased to 1000
-    price: float = Field(..., gt=0) # Changed to float for cents (e.g. 10.99)
+    price: int = Field(..., gt=0) # Changed to float for cents (e.g. 10.99)
     stock_quantity: int = Field(..., ge=0) # Cannot be negative
     image_url: HttpUrl # Validates it is a real URL
     liked_by: list[PyObjectId] = Field(default_factory=list) # List of User IDs who liked the product
