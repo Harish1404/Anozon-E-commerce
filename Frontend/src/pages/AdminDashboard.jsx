@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { apiRequest } from '../services/auth'
@@ -201,6 +201,7 @@ const AdminDashboard = () => {
   return (
     <div className='min-h-screen bg-gray-200 dark:bg-gray-800 p-8'>
       <div className='max-w-7xl mx-auto'>
+
         {/* Header */}
         <div className='mb-8 flex justify-between items-center'>
           <div>
@@ -340,7 +341,7 @@ const AdminDashboard = () => {
                     <tr key={product._id} className='border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors'>
                       <td className='px-6 py-4 text-sm text-gray-800 dark:text-gray-200'>{product.name}</td>
                       <td className='px-6 py-4 text-sm text-gray-800 dark:text-gray-200'>{product.category}</td>
-                      <td className='px-6 py-4 text-sm text-gray-800 dark:text-gray-200'>${product.price.toFixed(2)}</td>
+                      <td className='px-6 py-4 text-sm text-gray-800 dark:text-gray-200'>${product.price}</td>
                       <td className='px-6 py-4 text-sm text-gray-800 dark:text-gray-200'>{product.stock}</td>
                       <td className='px-6 py-4 text-sm space-x-2 flex'>
                         <button

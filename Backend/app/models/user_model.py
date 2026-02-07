@@ -60,3 +60,6 @@ class CartRequest(BaseModel):
 
 class FavoriteRequest(BaseModel):
     product_id: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str

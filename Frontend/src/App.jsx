@@ -1,16 +1,14 @@
-import React from 'react'
 import { Route, Routes, Navigate } from 'react-router-dom'
-import DarkModeToggle from './components/DarkMode'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ProductList from './pages/ProductList'
+import ProductDetails from './pages/ProductDetails'
 import Cart from './pages/Cart'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import AdminDashboard from './pages/AdminDashboard'
 import { useAuth } from './context/AuthContext'
 
-import './App.css'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -137,6 +135,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Cart />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path='/products/:id'
+            element={
+              <ProtectedRoute>
+                <ProductDetails />
               </ProtectedRoute>
             }
           />

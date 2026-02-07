@@ -20,9 +20,12 @@ const ProductList = () => {
   }, []);
 
   async function load() {
+
     try {
+
       const items = await fetchProducts();
       setProducts(items);
+      
     } catch (error) {
       console.error(error);
     } finally {
@@ -54,10 +57,10 @@ const ProductList = () => {
 
   return (
     <>
-      <div className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-8 mb-8">
+      <div className="w-full bg-gradient-to-r from-gray-700 to-gray-750 text-gray-300 py-8 mb-8">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">Featured Products</h1>
-          <p className="text-blue-100">
+          <p className="text-blue-300">
             Discover our amazing collection of products
           </p>
         </div>
@@ -80,6 +83,7 @@ const ProductList = () => {
                 key={item._id || item.id}
                 product={item}
                 click={() => addToCart(item.name, item)}
+                onView={() => navigate(`/products/${item._id || item.id}`)}
               />
             ))
           )}

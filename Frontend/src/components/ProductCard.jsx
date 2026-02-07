@@ -5,7 +5,7 @@ import { faHeart as faHeartEmpty } from "@fortawesome/free-regular-svg-icons";
 import { FavoritesContext } from "../context/FavoritesContext";
 import { useAuth } from "../context/AuthContext";
 
-const ProductCard = ({ product, click }) => {
+const ProductCard = ({ product, click, onView }) => {
 
   const { isFavorited, toggleFav } = useContext(FavoritesContext);
   const { isAuth } = useAuth();
@@ -34,7 +34,8 @@ const ProductCard = ({ product, click }) => {
   };
 
   return (
-    <div className="relative rounded-2xl overflow-hidden shadow-lg group">
+    <div className="relative rounded-2xl overflow-hidden shadow-lg group"
+      onClick={onView}>
       {/* Product Image */}
       <img
         className="object-cover h-80 w-full transform group-hover:scale-105 transition-transform duration-500"
@@ -78,7 +79,10 @@ const ProductCard = ({ product, click }) => {
           {product.stock > 0 ? (
             <button
               className="bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-black font-semibold px-4 py-2 rounded-xl text-sm md:text-base transition-colors"
-              onClick={click}
+              onClick={(e) => {
+                e.stopPropagation();
+                click && click();
+              }}
             >
               Add to cart
             </button>

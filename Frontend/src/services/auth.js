@@ -118,6 +118,7 @@ export const refreshAccessToken = async () => {
 
     const data = await response.json();
     tokenManager.setTokens(data.access_token, data.refresh_token);
+    console.log("Refresh Token triggered")
     return data;
   } catch (error) {
     console.error("Token refresh error:", error);
@@ -219,7 +220,6 @@ export const getUserFromToken = () => {
     return null;
   }
 };
-
 
 // Get current authenticated user from API
 export const getCurrentUser = async () => {

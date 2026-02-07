@@ -38,6 +38,11 @@ export const AuthProvider = ({ children }) => {
             const tokenUser = getUserFromToken();
             setUser(tokenUser);
           }
+          } else if(tokenManager.getRefreshToken()){
+              await refreshToken();   // call refresh
+              setIsAuth(true);
+              const userData = await getCurrentUser();
+              setUser(userData || getUserFromToken());
         } else {
           setIsAuth(false);
           setUser(null);
@@ -151,6 +156,7 @@ export const AuthProvider = ({ children }) => {
   const getAccessToken = useCallback(() => {
     return tokenManager.getAccessToken();
   }, []);
+
 
   // Check if user is admin by decoding role from token
   const isAdmin = useCallback(() => {

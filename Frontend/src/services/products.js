@@ -46,25 +46,24 @@ export const fetchProductById = async (productId) => {
 // Enrich cart items with product details
 export const enrichCartItems = async (cartItems) => {
   try {
-    const enrichedItems = await Promise.all(
-      cartItems.map(async (item) => {
-        try {
-          const product = await fetchProductById(item.product_id)
-          return {
-            ...item,
-            product,
-          }
-        } catch (error) {
-          console.error(`Failed to fetch product ${item.product_id}:`, error)
-          // Return cart item with empty product details if fetch fails
-          return {
-            ...item,
-            product: null,
-          }
-        }
-      })
-    )
-    return enrichedItems
+    return await Promise.all(
+          cartItems.map(async (item) => {
+            try {
+              const product = await fetchProductById(item.product_id)
+              return {
+                ...item,
+                product,
+              }
+            } catch (error) {
+              console.error(`Failed to fetch product ${item.product_id}:`, error)
+              // Return cart item with empty product details if fetch fails
+              return {
+                ...item,
+                product: null,
+              }
+            }
+          })
+        );
   } catch (error) {
     console.error('Error enriching cart items:', error)
     return cartItems

@@ -85,7 +85,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), users_col=Depe
 
 # REFRESH — exchange refresh token for a new access token
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_token: str = Body(...), users_col=Depends(get_users_collection)):
+async def refresh_token(token: RefreshTokenRequest , users_col=Depends(get_users_collection)):
+    refresh_token = token.refresh_token
 
     payload = verify_token(refresh_token)
     if not payload:
