@@ -24,7 +24,6 @@ const CartIcon = ({ count }) => (
 
 const Navbar = () => {
 
-  const [activeId, setActiveId] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   
   const products = Girls; 
@@ -121,6 +120,7 @@ const Navbar = () => {
                 title="View Cart"
               >
                 <CartIcon count={cartCount} />
+                
               </button>
             )}
 
