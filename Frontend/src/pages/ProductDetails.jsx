@@ -1,12 +1,9 @@
 import { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchProductById } from "../services/products";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import AddToCartButton from "../components/AddToCartButton";
 import Favourites from "../components/Favouites";
-import { faHeart as faHeartSolid } from "@fortawesome/free-solid-svg-icons";
-import { useAuth } from "../context/AuthContext";
-import { CartContext } from "../context/CartContext";
+
 
 const ProductDetails = () => {
   const { id } = useParams(); // /products/:id
@@ -16,8 +13,7 @@ const ProductDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const { isAuth } = useAuth();
-  const { addCart } = useContext(CartContext);
+
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -36,21 +32,6 @@ const ProductDetails = () => {
     fetchProduct();
   }, [id]);
 
-  const handleAddToCart = async () => {
-    if (!isAuth) {
-      alert("Please login to add items to cart");
-      navigate("/login");
-      return;
-    }
-
-    try {
-      await addCart(product, 1);
-      alert(`${product.name} added to cart`);
-    } catch (err) {
-      console.error("Failed to add to cart:", err);
-      alert("Failed to add item to cart");
-    }
-  };
 
   if (loading)
     return (
@@ -115,7 +96,7 @@ const ProductDetails = () => {
 
           {/* Buttons */}
           <div className="flex items-center gap-4 pt-4">
-            
+
             {/* ADD TO CART */}
 
             <div className="flex-1">
