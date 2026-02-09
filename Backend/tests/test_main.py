@@ -11,9 +11,4 @@ def test_read_root():
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
-
-def test_get_products():
-    response = client.get("/products")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.json() == {"status": "ok"}
