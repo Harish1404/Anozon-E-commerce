@@ -1,12 +1,25 @@
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser
+
+# Copy and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy application code
 COPY . .
+
+# Change ownership to appuser
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 EXPOSE 8000
 
+# Use exec form to handle signals properly
 CMD ["python", "server.py"]

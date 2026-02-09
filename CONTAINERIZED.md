@@ -15,7 +15,7 @@ Your FastAPI Product Shop is now running in Docker containers:
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **Frontend** | http://localhost | Your React application |
+| **Frontend** | http://localhost:3000 | Your React application |
 | **Backend API** | http://localhost:8000 | FastAPI backend |
 | **API Docs** | http://localhost:8000/docs | Swagger UI documentation |
 | **MongoDB** | localhost:27017 | Database connection |
@@ -97,14 +97,14 @@ JWT_SECRET=your_super_secret_key_change_in_production
 ```
 
 ### MongoDB Data
-Data is persisted in Docker volume: `fastapiproject_mongodb_data`
+Data is persisted in Docker volume: `mongodb_data`
 
 ---
 
 ## 🎯 Next Steps
 
 1. **Test the Application**
-   - Open http://localhost in your browser
+   - Open http://localhost:3000 in your browser
    - Browse products without login
    - Sign up and test authentication
    - Try admin features (create admin user in MongoDB)
@@ -113,6 +113,7 @@ Data is persisted in Docker volume: `fastapiproject_mongodb_data`
    - Update JWT_SECRET in `.env`
    - Modify docker-compose.yml for your needs
    - Scale services: `docker-compose up -d --scale backend=3`
+   - Change frontend port if 3000 is already in use
 
 3. **Deploy to Production**
    - Push images to Docker Hub or AWS ECR
@@ -156,21 +157,24 @@ docker-compose up -d --build
 ## 📊 Container Details
 
 ### Backend Container
-- **Base Image:** python:3.10-slim
+- **Base Image:** python:3.11-slim
 - **Port:** 8000
-- **User:** appuser (non-root)
+- **User:** appuser (non-root, UID 1000)
 - **Health Check:** Checks /docs endpoint every 30s
+- **Signal Handling:** Proper exec form for graceful shutdown
 
 ### Frontend Container  
-- **Base Image:** node:20-alpine (build), nginx:alpine (runtime)
+- **Base Image:** node:18-alpine (build), nginx:alpine (runtime)
 - **Port:** 80
-- **Features:** Gzip compression, React Router support, caching
+- **Features:** Gzip compression, React Router support, security headers, caching
+- **Health Check:** Checks root path every 30s
 
 ### MongoDB Container
 - **Image:** mongo:7.0
 - **Port:** 27017
-- **Volume:** Persistent data storage
+- **Volume:** Persistent data storage (mongodb_data)
 - **Health Check:** MongoDB ping command
+- **Database:** product_shop_db
 
 ---
 

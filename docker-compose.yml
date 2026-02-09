@@ -20,7 +20,7 @@ services:
 
   # Backend API
   backend:
-    image: ghcr.io/${GITHUB_REPOSITORY:-local/product-shop}-backend:latest
+    image: product-shop-backend:latest
     build:
       context: ./Backend
       dockerfile: dockerfile
@@ -42,7 +42,7 @@ services:
     networks:
       - product-shop-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      test: ["CMD-SHELL", "python -c \"import http.client; conn = http.client.HTTPConnection('localhost', 8000); conn.request('GET', '/docs'); exit(0 if conn.getresponse().status == 200 else 1)\" || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -50,7 +50,7 @@ services:
 
   # Frontend
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY:-local/product-shop}-frontend:latest
+    image: product-shop-frontend:latest
     build:
       context: ./Frontend
       dockerfile: dockerfile
@@ -59,7 +59,7 @@ services:
     container_name: product-shop-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "3000:80"
     depends_on:
       - backend
     networks:
@@ -69,9 +69,8 @@ services:
         limits:
           memory: 512M
           cpus: "0.5"
-
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
