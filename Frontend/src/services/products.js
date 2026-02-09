@@ -1,10 +1,12 @@
 import { apiRequest } from './auth'
 
+const PRODUCTS_ENDPOINT = import.meta.env.VITE_PRODUCTS_GET || '/products'
+
 // Fetch all products with optional query params (category, page, limit, etc.)
 export const fetchProducts = async (params = {}) => {
     
   const query = new URLSearchParams(params).toString()
-  const path = '/products' + (query ? `?${query}` : '')
+  const path = PRODUCTS_ENDPOINT + (query ? `?${query}` : '')
 
   const response = await apiRequest(path)
   if (!response.ok) {
@@ -34,7 +36,7 @@ export const fetchProducts = async (params = {}) => {
 }
 
 export const fetchProductById = async (productId) => {
-  const response = await apiRequest(`/products/${productId}`)
+  const response = await apiRequest(`${PRODUCTS_ENDPOINT}/${productId}`)
   if (!response.ok) {
     const err = await response.json().catch(() => ({}))
     throw new Error(err.detail || 'Failed to fetch product')

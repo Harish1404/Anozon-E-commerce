@@ -1,52 +1,12 @@
-# Base Image: Use a lightweight Python version
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-ENV ENVIRONMENT = production
-
-# Set environment variables to optimize Python runtime
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Install system dependencies for security and health checks
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create a non-root user for security best practices
-RUN groupadd -r appuser && \
-    useradd -r -g appuser appuser
-
-# Set the working directory inside the container
 WORKDIR /app
 
-# Copy requirements first for better Docker layer caching
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Upgrade pip and install application dependencies
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application code
 COPY . .
 
-# Change ownership of app directory to non-root user
-RUN chown -R appuser:appuser /app
-
-# Switch to non-root user for improved security
-USER appuser
-
-# Configure health check for container orchestration
-HEALTHCHECK --interval=30s \
-    --timeout=10s \
-    --start-period=40s \
-    --retries=3 \
-    CMD curl -f http://localhost:8000/docs || exit 1
-
-# Expose the port where the application runs
 EXPOSE 8000
 
-# Start the application
 CMD ["python", "server.py"]

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "echo \"No tests specified\" && exit 0",
+    "test:ci": "npm run build"
   },
   "dependencies": {
     "@fortawesome/free-brands-svg-icons": "^7.0.0",

@@ -1,6 +1,6 @@
 import { apiRequest } from "./auth";
 
-const CART_ENDPOINT = "/users/cart";
+const CART_ENDPOINT = import.meta.env.VITE_CART_ENDPOINT || "/users/cart";
 
 // Fetch current user's cart
 export const fetchCart = async () => {

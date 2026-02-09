@@ -21,6 +21,12 @@ const AdminDashboard = () => {
     stock: '',
   })
 
+  // API Endpoints from environment variables
+  const PRODUCTS_ENDPOINT = import.meta.env.VITE_PRODUCTS_GET || '/products'
+  const CREATE_ENDPOINT = import.meta.env.VITE_PRODUCTS_CREATE || '/admin/products/create_products'
+  const UPDATE_ENDPOINT = import.meta.env.VITE_PRODUCTS_REPLACE || '/admin/product/replace_product'
+  const DELETE_ENDPOINT = import.meta.env.VITE_PRODUCTS_DELETE || '/admin/product/delete_product'
+
   // Redirect non-admin users
   useEffect(() => {
     if (!isLoading && !isAdmin()) {
@@ -33,7 +39,7 @@ const AdminDashboard = () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await apiRequest('/products')
+      const response = await apiRequest(PRODUCTS_ENDPOINT)
 
       if (!response.ok) throw new Error('Failed to fetch products')
       const data = await response.json()
@@ -85,8 +91,8 @@ const AdminDashboard = () => {
       setError(null)
 
       const url = editingProduct 
-        ? `/admin/product/replace_product/${editingProduct._id}`
-        : '/admin/products/create_products'
+        ? `${UPDATE_ENDPOINT}/${editingProduct._id}`
+        : CREATE_ENDPOINT
       
       const method = editingProduct ? 'PUT' : 'POST'
       
@@ -155,7 +161,7 @@ const AdminDashboard = () => {
       setLoading(true)
       setError(null)
 
-      const response = await apiRequest(`/admin/product/delete_product/${productId}`, {
+      const response = await apiRequest(`${DELETE_ENDPOINT}/${productId}`, {
         method: 'DELETE',
       })
 

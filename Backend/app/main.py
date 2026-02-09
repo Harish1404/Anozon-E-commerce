@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from h11 import Request
-from app.routes import auth_user, product_routes,protected, bacground_email, admin_routes, user_routes
+from app.routes import auth_user, product_routes,protected, admin_routes, user_routes
+# from app.routes import bacground_email  # Email not implemented yet
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 from app.db.mongodb import connect_to_mongo, close_mongo_connection
@@ -28,13 +29,16 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"message": "Internal Server Error. Our team has been notified."}
     )
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 app.include_router(auth_user.router)
 app.include_router(user_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(product_routes.router)
 app.include_router(protected.router)
-app.include_router(bacground_email.router)
+# app.include_router(bacground_email.router)  # Email not implemented yet
 
 app.add_middleware(
     CORSMiddleware,

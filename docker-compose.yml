@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: product-shop-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: product_shop_db
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - product-shop-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY:-local/product-shop}-backend:latest
+    build:
+      context: ./Backend
+      dockerfile: dockerfile
+    container_name: product-shop-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      MONGO_URL: mongodb://mongodb:27017
+      DB_NAME: product_shop_db
+      JWT_SECRET: ${JWT_SECRET:-your_super_secret_key_change_in_production}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      ENVIRONMENT: production
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - product-shop-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend
+  frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY:-local/product-shop}-frontend:latest
+    build:
+      context: ./Frontend
+      dockerfile: dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
+    container_name: product-shop-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - product-shop-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  product-shop-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
