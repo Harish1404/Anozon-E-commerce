@@ -109,7 +109,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cloud-setup'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Cloud-Setup '
     environment: production
     
     steps:
