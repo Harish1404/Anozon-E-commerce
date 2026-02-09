@@ -29,6 +29,9 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"message": "Internal Server Error. Our team has been notified."}
     )
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 app.include_router(auth_user.router)
 app.include_router(user_routes.router)
