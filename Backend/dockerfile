@@ -1,7 +1,7 @@
 # Base Image: Use a lightweight Python version
 FROM python:3.10-slim
 
-ENV ENVIRONMENT = production
+ENV ENVIRONMENT=production
 
 # Set environment variables to optimize Python runtime
 ENV PYTHONUNBUFFERED=1 \

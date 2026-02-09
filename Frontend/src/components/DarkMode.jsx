@@ -1,38 +1,29 @@
 import React, { useEffect, useState } from "react";
 
 const DarkModeToggle = () => {
-  const [darkMode, setDarkMode] = useState(false);
-
-  // Initialize dark mode from localStorage
-  useEffect(() => {
+  // Initialize dark mode from localStorage or system preference immediately
+  const [darkMode, setDarkMode] = useState(() => {
     const savedMode = localStorage.getItem("darkMode");
-    if (savedMode) {
-      const isDark = JSON.parse(savedMode);
-      setDarkMode(isDark);
-      if (isDark) {
-        document.documentElement.classList.add("dark");
-      }
-    } else {
-      // Check system preference
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setDarkMode(prefersDark);
-      if (prefersDark) {
-        document.documentElement.classList.add("dark");
-      }
+    if (savedMode !== null) {
+      return JSON.parse(savedMode);
     }
-  }, []);
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  // Apply dark mode class on mount and when darkMode changes
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
 
   // Update dark mode and save to localStorage
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
     localStorage.setItem("darkMode", JSON.stringify(newMode));
-
-    if (newMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
   };
 
   return (

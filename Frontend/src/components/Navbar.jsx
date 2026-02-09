@@ -68,7 +68,7 @@ const Navbar = () => {
             </span>
           </div>
 
-          <SearchBar products={products} />
+        {isAuth &&  <SearchBar products={products} /> }
 
           {/* RIGHT: LINKS + DARK MODE */}
           <div className="hidden md:flex items-center gap-6">
