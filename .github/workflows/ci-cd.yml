@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, cloud-setup ]
+    branches: [ main, feature ]
   pull_request:
-    branches: [ main, cloud-setup ]
+    branches: [ main ]
 
 env:
   REGISTRY: ghcr.io
@@ -73,7 +73,7 @@ jobs:
   build-and-push:
     needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cloud-setup'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature'
     permissions:
       contents: read
       packages: write
@@ -109,7 +109,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Cloud-Setup '
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature '
     environment: production
     
     steps:

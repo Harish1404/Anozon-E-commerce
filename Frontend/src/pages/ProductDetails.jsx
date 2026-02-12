@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchProductById } from "../services/products";
 import AddToCartButton from "../components/AddToCartButton";

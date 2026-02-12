@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { apiRequest } from '../services/auth'
+import withAdmin from '../hoc/withAdmin'
 
 const AdminDashboard = () => {
 
   const { isAdmin, isLoading } = useAuth()
-  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -28,11 +28,6 @@ const AdminDashboard = () => {
   const DELETE_ENDPOINT = import.meta.env.VITE_PRODUCTS_DELETE || '/admin/product/delete_product'
 
   // Redirect non-admin users
-  useEffect(() => {
-    if (!isLoading && !isAdmin()) {
-      navigate('/')
-    }
-  }, [isAdmin, isLoading, navigate])
 
   // Fetch products
   const fetchProducts = async () => {
@@ -69,10 +64,8 @@ const AdminDashboard = () => {
 
   // Load products on mount
   useEffect(() => {
-    if (!isLoading && isAdmin()) {
-      fetchProducts()
-    }
-  }, [isLoading, isAdmin])
+    fetchProducts()
+  }, [])
 
   // Handle form input
   const handleInputChange = (e) => {
@@ -375,4 +368,4 @@ const AdminDashboard = () => {
   )
 }
 
-export default AdminDashboard
+export default withAdmin(AdminDashboard)

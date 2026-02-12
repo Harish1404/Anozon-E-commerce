@@ -73,7 +73,7 @@ const SearchBar = ({ products }) => {
 
       {showResults && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setShowResults(false)} />
+          <div className="fixed inset-0 z-10" />
 
           <div className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 
                           rounded-xl shadow-2xl border z-20 max-h-[400px] overflow-y-auto">

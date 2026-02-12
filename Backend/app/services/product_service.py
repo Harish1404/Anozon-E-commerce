@@ -57,3 +57,63 @@ class ProductService:
             return product
 
         return None
+
+    @staticmethod
+    async def like_product(product_id: str, user_id: str):
+        result = await products_collection().update_one(
+            {"_id": ObjectId(product_id)},
+            {"$addToSet": {"liked_by": user_id}}
+        )
+
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        await products_collection().update_one(
+            {"_id": ObjectId(product_id)},
+            {"$inc": {"likes": 1}}
+        )
+
+    @staticmethod
+    async def get_product_by_category(category: str, page: int = 1, limit: int = 30):
+    # Create case-insensitive regex pattern for exact category match
+        category_pattern = {"$regex": f"^{re.escape(category)}$", "$options": "i"}
+
+        # Calculate skip value for pagination
+        skip = (page - 1) * limit
+
+        # Use aggregation pipeline for better performance and flexibility
+        pipeline = [
+            {"$match": {"category": category_pattern}},
+            {"$sort": {"likes": -1}},  # Sort by likes in descending order
+            {"$skip": skip},
+            {"$limit": limit},
+            {"$project": {
+                "_id": {"$toString": "$_id"},  # Convert ObjectId to string in query
+                "name": 1,
+                "category": 1,
+                "price": 1,
+                "likes": 1,
+                "description": 1,
+                "image_url": 1,
+                "created_at": 1
+            }}
+        ]
+
+        # Execute aggregation pipeline
+        products_cursor = products_collection().aggregate(pipeline)
+        return await products_cursor.to_list(length=limit)
+
+@staticmethod
+async def get_categories():
+    # Get distinct categories efficiently
+    categories = await products_collection().distinct("category")
+    return sorted(categories, key=str.lower)  # Return alphabetically sorted categories
+
+@staticmethod
+async def get_category_count(category: str):
+    # Get count of products in a specific category
+    category_pattern = {"$regex": f"^{re.escape(category)}$", "$options": "i"}
+    return await products_collection().count_documents(
+        {"category": category_pattern}
+    )      
+
