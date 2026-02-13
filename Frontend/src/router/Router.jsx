@@ -27,14 +27,17 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const AdminRoute = ({ children }) => {
+
   const { isAuth, isLoading, isAdmin } = useAuth();
   if (isLoading) return <LoadingSpinner />;
   if (!isAuth) return <Navigate to='/login' replace />;
   if (!isAdmin()) return <Navigate to='/' replace />;
+
   return children;
 };
 
 const PublicRoute = ({ children }) => {
+  
   const { isAuth, isLoading } = useAuth();
   if (isLoading) return <LoadingSpinner />;
   return isAuth ? <Navigate to='/' replace /> : children;
@@ -53,14 +56,14 @@ const AppRouter = () => {
       <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route path='/' element={<ProductList />} />
         <Route path='/cart' element={<Cart />} />
-        <Route path='/product/:id' element={<ProductDetails />} />
+        <Route path='/products/:id' element={<ProductDetails />} />
       </Route>
 
       <Route element={<AdminRoute><MainLayout /></AdminRoute>}>
         <Route path='/admin' element={<AdminDashboard />} />
       </Route>
 
-      <Route path='*' element={<Navigate to={isAuth ? '/' : '/login'} replace />} />
+    <Route path='*' element={<Navigate to={isAuth ? '/' : '/login'} replace />} />
     </Routes>
   );
 };
