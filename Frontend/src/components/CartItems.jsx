@@ -5,7 +5,7 @@ const CartItems = ({ cart, onRemoveItem }) => {
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 bg-gray-200 dark:bg-gradient-to-br from-slate-800 to-slate-900">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
           Items ({cart.length})
         </h2>
@@ -25,19 +25,20 @@ const CartItems = ({ cart, onRemoveItem }) => {
               <div className="flex gap-4">
                 <div 
                   className="flex-shrink-0 cursor-pointer"
-                  onClick={() => navigate(`/products/${item.product_id}`)}
+                  
                 >
                   <img
                     src={item.product?.image_url || item.image_url}
                     alt={item.product?.name || item.name}
                     className="w-24 h-24 object-cover rounded-lg hover:opacity-80 transition-opacity"
+                    onClick={() => navigate(`/products/${item.product_id}`)}
                   />
                 </div>
 
-                <div className="flex-grow" onClick={() => navigate(`/products/${item.product_id}`)} style={{ cursor: "pointer" }}>
+                <div className="flex-grow">
                   <h3 
                     className="text-lg font-bold text-gray-900 dark:text-white cursor-pointer hover:text-blue-600 dark:hover:text-amber-400 transition-colors"
-                    
+                    onClick={() => navigate(`/products/${item.product_id}`)}
                   >
                     {item.product?.name || item.name}
                   </h3>
@@ -60,7 +61,7 @@ const CartItems = ({ cart, onRemoveItem }) => {
 
                     <button
                       onClick={() => onRemoveItem(item.product_id)}
-                      className="ml-4 px-4 py-2 bg-red-500 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
+                      className="ml-4 px-4 py-2 bg-red-500 hover:bg-red-700 hover:cursor-pointer text-white font-semibold rounded-lg transition-colors"
                     >
                       Remove
                     </button>

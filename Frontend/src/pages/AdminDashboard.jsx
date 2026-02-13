@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
 import { apiRequest } from '../services/auth'
 import withAdmin from '../hoc/withAdmin'
 
 const AdminDashboard = () => {
 
-  const { isAdmin, isLoading } = useAuth()
+  const {isLoading } = useAuth()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)

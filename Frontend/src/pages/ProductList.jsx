@@ -19,6 +19,7 @@ const ProductList = () => {
     }, 500);
   }, []);
 
+// sourcery skip: avoid-function-declarations-in-blocks
   async function load() {
 
     try {
@@ -49,7 +50,7 @@ const ProductList = () => {
       <div className="text-center p-10">
         <div className="flex items-center justify-center gap-2">
           <div className="w-5 h-5 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <h1 className="text-2xl">Loading...</h1>
+          <h1 className="text-xl dark:text-white">Loading...</h1>
         </div>
       </div>
     );
@@ -57,10 +58,11 @@ const ProductList = () => {
 
   return (
     <>
-      <div className="w-full bg-gradient-to-r from-gray-700 to-gray-750 text-gray-300 py-8 mb-8">
+      <div className="w-full dark:bg-gradient-to-r dark:from-gray-800 dark:to-gray-900 dark:text-gray-300 
+                        bg-gradient-to-br from-blue-50 to-blue-100 py-8 mb-8">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">Featured Products</h1>
-          <p className="text-blue-300">
+          <p className="dark:text-blue-300 text-gray-500">
             Discover our amazing collection of products
           </p>
         </div>

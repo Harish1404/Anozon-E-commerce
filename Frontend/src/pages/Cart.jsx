@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { CartContext } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import withAuth from "../hoc/withAuth";
@@ -7,8 +7,8 @@ import CartSummary from "../components/CartSummary";
 
 const Cart = () => {
   const { cart, removeCart, calculateTotal, cartLoading, cartError } = useContext(CartContext);
+ 
   const navigate = useNavigate();
-
   const total = calculateTotal();
 
   const handleRemoveItem = async (productId) => {

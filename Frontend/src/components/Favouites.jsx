@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as faHeartFilled } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faHeartEmpty } from "@fortawesome/free-regular-svg-icons";
 import { FavoritesContext } from "../context/FavoritesContext";
-import { useAuth } from "../context/AuthContext";
+import withAuth from "../hoc/withAuth";
 
 const Favourites = ({
   productId,
@@ -12,18 +12,12 @@ const Favourites = ({
   stopPropagation = true,
 }) => {
   const { isFavorited, toggleFav } = useContext(FavoritesContext);
-  const { isAuth } = useAuth();
 
   const [isFav, setIsFav] = useState(isFavorited(productId));
   const [isToggling, setIsToggling] = useState(false);
 
   const handleClick = async (e) => {
     if (stopPropagation) e.stopPropagation();
-
-    if (!isAuth) {
-      alert("Please login to add to favorites");
-      return;
-    }
 
     try {
       setIsToggling(true);
@@ -71,4 +65,4 @@ const Favourites = ({
   );
 };
 
-export default Favourites;
+export default withAuth(Favourites);

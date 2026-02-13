@@ -19,8 +19,7 @@ const CartSummary = ({ cart, total }) => {
     }else if(couponCode === "ANO1404"){
         setDiscount(total)
         alert("Congratulations! You've unlocked a 100% discount with the ANO1404 coupon code! Your entire order is now free. Enjoy your shopping!");
-    }
-     else {
+    }else {
       alert("Invalid coupon code");
       setDiscount(0);
     }
