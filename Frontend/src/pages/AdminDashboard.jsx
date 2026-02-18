@@ -17,6 +17,7 @@ const AdminDashboard = () => {
     price: '',
     category: '',
     image_url: '',
+    likes: '',
     stock: '',
   })
 
@@ -94,6 +95,7 @@ const AdminDashboard = () => {
       category: formData.category,
       image_url: formData.image_url,
       price: Number(formData.price),
+      likes: Number(formData.likes),
       stock_quantity: Number(formData.stock),
     }
       const response = await apiRequest(url, {
@@ -115,6 +117,7 @@ const AdminDashboard = () => {
         price: '',
         category: '',
         image_url: '',
+        likes: '',
         stock: '',
       })
 
@@ -140,6 +143,7 @@ const AdminDashboard = () => {
       price: product.price || '',
       category: product.category || '',
       image_url: product.image_url || '',
+      likes: product.likes || '',
       stock: product.stock || '',
     })
     setShowForm(true)
@@ -181,6 +185,7 @@ const AdminDashboard = () => {
       price: '',
       category: '',
       image_url: '',
+      likes: '',
       stock: '',
     })
   }
@@ -280,7 +285,16 @@ const AdminDashboard = () => {
                   onChange={handleInputChange}
                   className='w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
-                
+
+                <input 
+                  type = 'number'
+                  name='likes'
+                  placeholder='Likes'
+                  value={formData.likes}
+                  onChange={handleInputChange}
+                  className='w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
+                />
+
                 <input
                   type='number'
                   name='stock'

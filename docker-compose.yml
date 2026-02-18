@@ -83,3 +83,9 @@ networks:
 volumes:
   mongodb_data:
     driver: local
+
+logging:
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
