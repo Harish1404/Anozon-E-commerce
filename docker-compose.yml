@@ -76,6 +76,12 @@ services:
       timeout: 10s
       retries: 3
 
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  
 networks:
   product-shop-network:
     driver: bridge
@@ -84,8 +90,3 @@ volumes:
   mongodb_data:
     driver: local
 
-logging:
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "3"

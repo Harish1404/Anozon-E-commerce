@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import MainLayout from '../layouts/mainLayout';
-import AuthLayout from '../layouts/authLayout';
+import MainLayout from '../layouts/MainLayout';
+import AuthLayout from '../layouts/AuthLayout';
 import ProductList from '../pages/ProductList';
 import ProductDetails from '../pages/ProductDetails';
 import Cart from '../pages/Cart';
