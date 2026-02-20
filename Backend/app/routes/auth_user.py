@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from app.models.user_model import *
 from app.db.mongodb import get_users_collection
 from app.core.security import (hash_password, verify_password,create_access_token, create_refresh_token, verify_token)
+from app.core.time_utils import now_ist
 from pymongo.errors import PyMongoError
 
 logger = logging.getLogger("uvicorn.error")
@@ -40,7 +41,10 @@ async def signup(user: UserRegister, users_col=Depends(get_users_collection)):
         "email": user.email, 
         "hashed_password": hashed, 
         "refresh_token_hashed": None,
-        "role": "user" # Explicitly setting default role is safer
+        "role": "user", # Explicitly setting default role is safer
+        "cart": [], # Initialize cart to an empty list
+        "favorites": [], # Initialize favorites to an empty list
+        "created_at": now_ist("%I-%M-%S %p").lower() # Store creation time for auditing
     }
     
     # 4. Safe Database Insertion
