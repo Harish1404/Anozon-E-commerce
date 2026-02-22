@@ -31,4 +31,19 @@ async def get_product_details(product_id: str = Path(..., description="The ID of
     
     return product
 
+@router.get("/categories")
+async def get_categories():
+    """Get all available product categories"""
+    return await ProductService.get_categories()
 
+@router.get("/categories/{category}")
+async def get_products_by_category(
+    category: str = Path(..., description="Category name"),
+    page: int = Query(1, description="Page number"),
+    limit: int = Query(30, description="Number of products per page")
+):
+    """Get products by specific category"""
+    products = await ProductService.get_product_by_category(category, page, limit)
+    if not products:
+        raise HTTPException(status_code=404, detail=f"No products found in category: {category}")
+    return products

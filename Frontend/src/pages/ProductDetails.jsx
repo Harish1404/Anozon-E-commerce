@@ -20,6 +20,7 @@ const ProductDetails = () => {
       try {
         // fetchProductById already returns a normalized product object
         const data = await fetchProductById(id);
+        document.title = `Anozon - ${data.name}`;
         setProduct(data);
       } catch (err) {
         console.error("Error fetching product:", err);

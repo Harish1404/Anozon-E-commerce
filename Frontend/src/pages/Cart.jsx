@@ -15,6 +15,10 @@ const Cart = () => {
     await removeCart(productId);
   };
 
+  useEffect(() => {
+    document.title = "Anozon - My Cart";
+  }, []);
+
   if (cartLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">

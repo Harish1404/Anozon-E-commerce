@@ -4,9 +4,9 @@ import { CartContext } from "../context/CartContext";
 import { fetchProducts } from "../services/products";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import withLoading from "../hoc/withLoading";
 
 const ProductList = () => {
-    
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const { addCart } = useContext(CartContext);
@@ -16,19 +16,19 @@ const ProductList = () => {
   useEffect(() => {
     setTimeout(() => {
       load();
-    }, 500);
+      
+    }, 1000);
   }, []);
 
-// sourcery skip: avoid-function-declarations-in-blocks
   async function load() {
-
     try {
-
       const items = await fetchProducts();
+      document.title = "Anozon - Products";
       setProducts(items);
-      
+
     } catch (error) {
       console.error(error);
+      
     } finally {
       setLoading(false);
     }
@@ -40,23 +40,11 @@ const ProductList = () => {
       navigate("/login");
       return;
     }
-
     addCart(product, 1);
     alert(`${productName} added to cart`);
   }
 
-  if (loading) {
-    return (
-      <div className="text-center p-10">
-        <div className="flex items-center justify-center gap-2">
-          <div className="w-5 h-5 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <h1 className="text-xl dark:text-white">Loading...</h1>
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  const ProductListContent = () => (
     <>
       <div className="w-full dark:bg-gradient-to-r dark:from-gray-800 dark:to-gray-900 dark:text-gray-300 
                         bg-gradient-to-br from-blue-50 to-blue-100 py-8 mb-8">
@@ -85,7 +73,7 @@ const ProductList = () => {
                 key={item._id || item.id}
                 product={item}
                 click={() => addToCart(item.name, item)}
-                onView={() => navigate(`/products/${item._id || item.id}`)}
+                onView={() => navigate(`/product/${item._id || item.id}`)}
               />
             ))
           )}
@@ -93,6 +81,9 @@ const ProductList = () => {
       </div>
     </>
   );
+
+  const ProductListWithLoading = withLoading(ProductListContent);
+  return <ProductListWithLoading isLoading={loading} />;
 };
 
 export default ProductList;

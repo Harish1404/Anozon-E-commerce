@@ -64,6 +64,7 @@ const AdminDashboard = () => {
 
   // Load products on mount
   useEffect(() => {
+    document.title = "Anozon - Admin Dashboard";
     fetchProducts()
   }, [])
 
