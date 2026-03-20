@@ -22,6 +22,7 @@ const SearchBar = () => {
   const [results, setResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(false);
+<<<<<<< HEAD
   const [activeIndex, setActiveIndex] = useState(-1);
   const debounceRef = useRef(null);
   const resultsRef = useRef([]);
@@ -41,15 +42,39 @@ const SearchBar = () => {
 
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
+=======
+  const debounceRef = useRef(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    // Debounce: wait 400ms after user stops typing
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+
+>>>>>>> 45471ce (Added Search Engine feature)
       try {
         setLoading(true);
         const data = await searchProducts(query.trim(), 1, 8);
         setResults(data);
         setShowResults(true);
+<<<<<<< HEAD
         setActiveIndex(-1);
       } catch (error) {
         console.error("Search failed:", error);
         setResults([]);
+=======
+
+      } catch (error) {
+        console.error("Search failed:", error);
+        setResults([]);
+        
+>>>>>>> 45471ce (Added Search Engine feature)
       } finally {
         setLoading(false);
       }
@@ -103,7 +128,10 @@ const SearchBar = () => {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setShowResults(true)}
           onBlur={() => setTimeout(() => setShowResults(false), 200)}
+<<<<<<< HEAD
           onKeyDown={handleKeyDown}
+=======
+>>>>>>> 45471ce (Added Search Engine feature)
           placeholder="Search for essentials..."
           className="block w-full pl-10 pr-10 py-2.5 rounded-full 
                      bg-stone-100 dark:bg-slate-800 text-gray-900 dark:text-gray-100
@@ -123,6 +151,7 @@ const SearchBar = () => {
                         rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 
                         z-20 max-h-[400px] overflow-y-auto">
           {results.length ? (
+<<<<<<< HEAD
             results.map((p, index) => (
               <div
                 key={p._id}
@@ -133,6 +162,16 @@ const SearchBar = () => {
                     ? "bg-blue-50 dark:bg-slate-600"
                     : "hover:bg-gray-50 dark:hover:bg-slate-700"
                 }`}
+=======
+            results.map((p) => (
+              <div
+                key={p._id}
+                onMouseDown={() => {
+                  clearSearch();
+                  navigate(`/product/${p._id}`);
+                }}
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+>>>>>>> 45471ce (Added Search Engine feature)
               >
                 <NavComp product={p} />
               </div>
