@@ -20,6 +20,14 @@ async def get_products(
     limit: int = Query(30, description="Number of products per page")
 ):
     return await ProductService.get_products(category, min_price, max_price, sort_by, sort_order, page, limit)
+@router.get("/products/search")
+async def search_products_route(
+    q: str = Query(..., description="Search query"),
+    page: int = Query(1, description="Page number"),
+    limit: int = Query(30, description="Number of products per page")
+):
+    """Search products by name or description"""
+    return await ProductService.search_products(q, page, limit)
 
 @router.get("/products/{product_id}")
 async def get_product_details(product_id: str = Path(..., description="The ID of the product to view")):
@@ -47,3 +55,4 @@ async def get_products_by_category(
     if not products:
         raise HTTPException(status_code=404, detail=f"No products found in category: {category}")
     return products
+

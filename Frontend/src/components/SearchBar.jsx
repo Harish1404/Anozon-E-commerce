@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { searchProducts } from "../services/products";
 import NavComp from "./NavComp";
 
-// Icons (moved here because they are search-specific)
 const SearchIcon = () => (
   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -17,28 +17,46 @@ const CloseIcon = () => (
   </svg>
 );
 
-const SearchBar = ({ products }) => {
-    
+const SearchBar = () => {
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef(null);
   const navigate = useNavigate();
 
-  // 🔥 Only this component re-renders while typing
-  const filteredProducts = useMemo(() => {
-    if (!query) return [];
-    return products.filter((p) =>
-      p.name.toLowerCase().includes(query.toLowerCase())
-    );
-  }, [query, products]);
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setShowResults(false);
+      return;
+    }
 
-  const handleSearch = (e) => {
-    const {value} = e.target;
-    setQuery(value);
-    setShowResults(value.length > 0);
-  };
+    // Debounce: wait 400ms after user stops typing
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+
+      try {
+        setLoading(true);
+        const data = await searchProducts(query.trim(), 1, 8);
+        setResults(data);
+        setShowResults(true);
+
+      } catch (error) {
+        console.error("Search failed:", error);
+        setResults([]);
+        
+      } finally {
+        setLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
 
   const clearSearch = () => {
     setQuery("");
+    setResults([]);
     setShowResults(false);
   };
 
@@ -46,14 +64,19 @@ const SearchBar = ({ products }) => {
     <div className="hidden md:block flex-1 max-w-lg mx-8 relative group">
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <SearchIcon />
+          {loading ? (
+            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <SearchIcon />
+          )}
         </div>
 
         <input
           type="text"
           value={query}
-          onChange={handleSearch}
-          onFocus={() => query && setShowResults(true)}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => results.length > 0 && setShowResults(true)}
+          onBlur={() => setTimeout(() => setShowResults(false), 200)}
           placeholder="Search for essentials..."
           className="block w-full pl-10 pr-10 py-2.5 rounded-full 
                      bg-stone-100 dark:bg-slate-800 text-gray-900 dark:text-gray-100
@@ -62,41 +85,35 @@ const SearchBar = ({ products }) => {
         />
 
         {query && (
-          <button
-            onClick={clearSearch}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
-          >
+          <button onClick={clearSearch} className="absolute inset-y-0 right-0 pr-3 flex items-center">
             <CloseIcon />
           </button>
         )}
       </div>
 
       {showResults && (
-        <>
-          <div className="fixed inset-0 z-10" />
-
-          <div className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 
-                          rounded-xl shadow-2xl border z-20 max-h-[400px] overflow-y-auto">
-            {filteredProducts.length ? (
-              filteredProducts.map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => {
-                    clearSearch();
-                    navigate(`/product/${p.id}`);
-                  }}
-                >
-                  {/* Your existing component */}
-                  <NavComp product={p} />
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-center text-gray-500">
-                No products found for "{query}"
+        <div className="absolute top-full mt-2 w-full bg-white dark:bg-slate-800 
+                        rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 
+                        z-20 max-h-[400px] overflow-y-auto">
+          {results.length ? (
+            results.map((p) => (
+              <div
+                key={p._id}
+                onMouseDown={() => {
+                  clearSearch();
+                  navigate(`/product/${p._id}`);
+                }}
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                <NavComp product={p} />
               </div>
-            )}
-          </div>
-        </>
+            ))
+          ) : (
+            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+              No products found for "{query}"
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

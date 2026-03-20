@@ -5,13 +5,14 @@ from app.routes import auth_user, product_routes,protected, admin_routes, user_r
 # from app.routes import bacground_email  # Email not implemented yet
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
-from app.db.mongodb import connect_to_mongo, close_mongo_connection
+from app.db.mongodb import connect_to_mongo, create_indexes, close_mongo_connection
 from app.core.logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Connect to MongoDB
     await connect_to_mongo()
+    await create_indexes()
     yield
     # Shutdown: Close MongoDB Connection
     await close_mongo_connection()

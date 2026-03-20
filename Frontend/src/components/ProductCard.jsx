@@ -39,7 +39,7 @@ const ProductCard = ({ product, click, onView }) => {
       {/* Product Image */}
       <img
         className="object-cover h-80 w-full transform group-hover:scale-105 transition-transform duration-500"
-        src={product.url}
+        src={product.image_url || product.url}
         alt={product.name}
       />
 
@@ -76,7 +76,7 @@ const ProductCard = ({ product, click, onView }) => {
             {product.likes || 0}
           </p>
 
-          {product.stock > 0 ? (
+          {(product.stock_quantity ?? product.stock ?? 0) > 0 ? (
             <button
               className="bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-black font-semibold px-4 py-2 rounded-xl text-sm md:text-base transition-colors"
               onClick={(e) => {
