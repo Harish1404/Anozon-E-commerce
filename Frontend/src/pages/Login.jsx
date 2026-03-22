@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -27,6 +27,10 @@ const Login = () => {
       return () => clearTimeout(timer);
     }
   }, [error, clearError]);
+
+  useEffect(() => {
+    document.title = "Anozon - Login";
+  }, []);
 
   // Validate email
   const validateEmail = (email) => {

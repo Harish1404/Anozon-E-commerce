@@ -86,8 +86,19 @@ const normalizeProduct = (p) => ({
   raw: p,
 })
 
-export default {
-  fetchProducts,
-  fetchProductById,
-  enrichCartItems,
+export const searchProducts = async (query, page = 1, limit = 30) => {
+
+  const params = new URLSearchParams({ q: query, page, limit }).toString()
+  const response = await apiRequest(`/products/search?${params}`)
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || 'Search failed')
+  }
+
+  const data = await response.json()
+  const items = Array.isArray(data) ? data : data.products || []
+  
+  return items.map(normalizeProduct)
 }
+

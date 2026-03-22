@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException,status, Query, Path
 from app.services.user_service import UserService
+from app.services.product_service import ProductService
 from app.deps.auth import get_current_user
 from app.db.mongodb import get_users_collection
 from app.models.user_model import *
@@ -59,8 +60,24 @@ async def toggle_favorite(
     collection = Depends(get_users_collection)
 ):
     """Like or Unlike a product"""
-    return await UserService.toggle_favorite(
-        user_id=str(current_user["_id"]),
+    if not item.product_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Product ID is required")
+    
+    user_id = str(current_user["_id"])
+    
+    # Toggle favorite in user collection
+    result = await UserService.toggle_favorite(
+        user_id=user_id,
         product_id=item.product_id,
         collection=collection
     )
+    
+    # Update product likes based on toggle result
+    if result["is_favorite"]:
+        # Added to favorites - increment product likes
+        await ProductService.like_product(product_id=item.product_id, user_id=user_id)
+    else:
+        # Removed from favorites - decrement product likes
+        await ProductService.unlike_product(product_id=item.product_id, user_id=user_id)
+    
+    return result

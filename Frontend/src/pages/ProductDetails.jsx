@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchProductById } from "../services/products";
 import AddToCartButton from "../components/AddToCartButton";
@@ -20,6 +20,7 @@ const ProductDetails = () => {
       try {
         // fetchProductById already returns a normalized product object
         const data = await fetchProductById(id);
+        document.title = `Anozon - ${data.name}`;
         setProduct(data);
       } catch (err) {
         console.error("Error fetching product:", err);

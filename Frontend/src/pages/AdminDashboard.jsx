@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
 import { apiRequest } from '../services/auth'
+import withAdmin from '../hoc/withAdmin'
 
 const AdminDashboard = () => {
 
-  const { isAdmin, isLoading } = useAuth()
-  const navigate = useNavigate()
+  const {isLoading } = useAuth()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -18,6 +17,7 @@ const AdminDashboard = () => {
     price: '',
     category: '',
     image_url: '',
+    likes: '',
     stock: '',
   })
 
@@ -28,11 +28,6 @@ const AdminDashboard = () => {
   const DELETE_ENDPOINT = import.meta.env.VITE_PRODUCTS_DELETE || '/admin/product/delete_product'
 
   // Redirect non-admin users
-  useEffect(() => {
-    if (!isLoading && !isAdmin()) {
-      navigate('/')
-    }
-  }, [isAdmin, isLoading, navigate])
 
   // Fetch products
   const fetchProducts = async () => {
@@ -69,10 +64,9 @@ const AdminDashboard = () => {
 
   // Load products on mount
   useEffect(() => {
-    if (!isLoading && isAdmin()) {
-      fetchProducts()
-    }
-  }, [isLoading, isAdmin])
+    document.title = "Anozon - Admin Dashboard";
+    fetchProducts()
+  }, [])
 
   // Handle form input
   const handleInputChange = (e) => {
@@ -102,6 +96,7 @@ const AdminDashboard = () => {
       category: formData.category,
       image_url: formData.image_url,
       price: Number(formData.price),
+      likes: Number(formData.likes),
       stock_quantity: Number(formData.stock),
     }
       const response = await apiRequest(url, {
@@ -123,6 +118,7 @@ const AdminDashboard = () => {
         price: '',
         category: '',
         image_url: '',
+        likes: '',
         stock: '',
       })
 
@@ -148,6 +144,7 @@ const AdminDashboard = () => {
       price: product.price || '',
       category: product.category || '',
       image_url: product.image_url || '',
+      likes: product.likes || '',
       stock: product.stock || '',
     })
     setShowForm(true)
@@ -189,6 +186,7 @@ const AdminDashboard = () => {
       price: '',
       category: '',
       image_url: '',
+      likes: '',
       stock: '',
     })
   }
@@ -288,7 +286,16 @@ const AdminDashboard = () => {
                   onChange={handleInputChange}
                   className='w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
-                
+
+                <input 
+                  type = 'number'
+                  name='likes'
+                  placeholder='Likes'
+                  value={formData.likes}
+                  onChange={handleInputChange}
+                  className='w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
+                />
+
                 <input
                   type='number'
                   name='stock'
@@ -375,4 +382,4 @@ const AdminDashboard = () => {
   )
 }
 
-export default AdminDashboard
+export default withAdmin(AdminDashboard)

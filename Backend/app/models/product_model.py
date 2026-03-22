@@ -12,6 +12,7 @@ class ProductBase(BaseModel):
     price: int = Field(..., gt=0) # Changed to float for cents (e.g. 10.99)
     stock_quantity: int = Field(..., ge=0) # Cannot be negative
     image_url: HttpUrl # Validates it is a real URL
+    likes: Optional[int] = Field(0, ge=0) # Default to 0, cannot be negative
     liked_by: list[PyObjectId] = Field(default_factory=list) # List of User IDs who liked the product
 
 # --- CREATE MODEL (Input) ---
@@ -26,7 +27,7 @@ class ProductUpdate(BaseModel):
     price: Optional[float] = Field(None, gt=0)
     stock_quantity: Optional[int] = Field(None, ge=0)
     image_url: Optional[HttpUrl] = None
-
+    likes: Optional[int] = Field(None, ge=0)
 # --- RESPONSE MODEL (Output to Frontend) ---
 class ProductResponse(ProductBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)

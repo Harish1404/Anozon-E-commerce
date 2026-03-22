@@ -1,9 +1,13 @@
-from http.client import HTTPException
+from fastapi import HTTPException
 from app.db.mongodb import products_collection
 from bson import ObjectId
 import re
 
 class ProductService:
+    @staticmethod
+    def serialize(product):
+        product["_id"] = str(product["_id"])
+        return product
 
     @staticmethod
     async def get_products(
@@ -57,3 +61,164 @@ class ProductService:
             return product
 
         return None
+
+    @staticmethod
+    async def like_product(product_id: str, user_id: str):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid Product ID")
+        
+        # Check if product exists
+        product = await products_collection().find_one({"_id": ObjectId(product_id)})
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        # Initialize fields if they don't exist
+        if "liked_by" not in product:
+            await products_collection().update_one(
+                {"_id": ObjectId(product_id)},
+                {"$set": {"liked_by": [], "likes": 0}}
+            )
+        
+        # Add user to liked_by array
+        result = await products_collection().update_one(
+            {"_id": ObjectId(product_id)},
+            {"$addToSet": {"liked_by": user_id}}
+        )
+
+        # Only increment if user was actually added
+        if result.modified_count > 0:
+            await products_collection().update_one(
+                {"_id": ObjectId(product_id)},
+                {"$inc": {"likes": 1}}
+            )
+
+    @staticmethod
+    async def unlike_product(product_id: str, user_id: str):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid Product ID")
+        
+        # Check if product exists
+        product = await products_collection().find_one({"_id": ObjectId(product_id)})
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        # Remove user from liked_by array
+        result = await products_collection().update_one(
+            {"_id": ObjectId(product_id)},
+            {"$pull": {"liked_by": user_id}}
+        )
+
+        # Only decrement if user was actually removed
+        if result.modified_count > 0:
+            await products_collection().update_one(
+                {"_id": ObjectId(product_id)},
+                {"$inc": {"likes": -1}}
+            )
+
+    @staticmethod
+    async def get_product_by_category(category: str, page: int = 1, limit: int = 30):
+    # Create case-insensitive regex pattern for exact category match
+        category_pattern = {"$regex": f"^{re.escape(category)}$", "$options": "i"}
+
+        # Calculate skip value for pagination
+        skip = (page - 1) * limit
+
+        # Use aggregation pipeline for better performance and flexibility
+        pipeline = [
+            {"$match": {"category": category_pattern}},
+            {"$sort": {"likes": -1}},  # Sort by likes in descending order
+            {"$skip": skip},
+            {"$limit": limit},
+            {"$project": {
+                "_id": {"$toString": "$_id"},  # Convert ObjectId to string in query
+                "name": 1,
+                "category": 1,
+                "price": 1,
+                "likes": 1,
+                "stock_quantity": 1,
+                "description": 1,
+                "image_url": 1,
+                "created_at": 1
+            }}
+        ]
+
+        # Execute aggregation pipeline
+        products_cursor = products_collection().aggregate(pipeline)
+        return await products_cursor.to_list(length=limit)
+
+    @staticmethod
+    async def get_categories():
+        # Get distinct categories efficiently
+        categories = await products_collection().distinct("category")
+        return sorted(categories, key=str.lower)  # Return alphabetically sorted categories
+
+    @staticmethod
+    async def get_category_count(category: str):
+        # Get count of products in a specific category
+        category_pattern = {"$regex": f"^{re.escape(category)}$", "$options": "i"}
+        return await products_collection().count_documents(
+            {"category": category_pattern}
+        )      
+
+
+    @staticmethod
+    async def text_search( query, skip, limit):
+
+        pipeline = [
+            {
+                "$match": {
+                    "$text": {"$search": query}
+                }
+            },
+            {
+                "$addFields": {
+                    "score": {"$meta": "textScore"}
+                }
+            },
+            {
+                "$sort": {"score": -1}
+            },
+            {"$skip": skip},
+            {"$limit": limit}
+        ]
+
+        return await products_collection().aggregate(pipeline).to_list(length=limit)
+    
+    @staticmethod
+    async def prefix_search( query, skip, limit):
+        escaped = re.escape(query)
+
+        pipeline = [
+            {
+                "$match": {
+                    "name": {
+                        "$regex": f"^{escaped}",
+                        "$options": "i"
+                    }
+                }
+            },
+            {
+                "$sort": {"likes": -1}
+            },
+            {"$skip": skip},
+            {"$limit": limit}
+        ]
+
+        return await products_collection().aggregate(pipeline).to_list(length=limit)
+    
+    @classmethod
+    async def search_products(cls, query: str, page: int = 1, limit: int = 30):
+        if not query or not query.strip():
+            raise HTTPException(status_code=400, detail="Search query cannot be empty")
+
+        query = query.strip()
+        skip = (page - 1) * limit
+
+        # Step 1: Try fast text search
+        results = await cls.text_search(query, skip, limit)
+
+        # Step 2: Fallback to prefix search if empty
+        if not results:
+            results = await cls.prefix_search( query, skip, limit)
+
+        return [cls.serialize(product) for product in results ]
