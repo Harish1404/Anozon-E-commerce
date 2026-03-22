@@ -4,11 +4,6 @@ from app.models.product_model import *
 
 router = APIRouter(tags=["public product routes"])
 
-@router.get("/")
-def landing_page():
-
-    return {"Message": "Hi Harish Here is your Product Management API!"}
-
 @router.get("/products")
 async def get_products(
     category: Optional[str] = Query(None, description="Category name (case-insensitive)"),

@@ -22,30 +22,34 @@ const SearchBar = () => {
   const [results, setResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const debounceRef = useRef(null);
+  const resultsRef = useRef([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    resultsRef.current = results;
+  }, [results]);
 
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
       setShowResults(false);
+      setActiveIndex(-1);
       return;
     }
 
-    // Debounce: wait 400ms after user stops typing
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
-
       try {
         setLoading(true);
         const data = await searchProducts(query.trim(), 1, 8);
         setResults(data);
         setShowResults(true);
-
+        setActiveIndex(-1);
       } catch (error) {
         console.error("Search failed:", error);
         setResults([]);
-        
       } finally {
         setLoading(false);
       }
@@ -58,6 +62,28 @@ const SearchBar = () => {
     setQuery("");
     setResults([]);
     setShowResults(false);
+    setActiveIndex(-1);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!showResults || !resultsRef.current.length) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev < resultsRef.current.length - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : resultsRef.current.length - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIndex >= 0 && resultsRef.current[activeIndex]) {
+        clearSearch();
+        navigate(`/product/${resultsRef.current[activeIndex]._id}`);
+      }
+    } else if (e.key === "Escape") {
+      setShowResults(false);
+      setActiveIndex(-1);
+    }
   };
 
   return (
@@ -77,6 +103,7 @@ const SearchBar = () => {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setShowResults(true)}
           onBlur={() => setTimeout(() => setShowResults(false), 200)}
+          onKeyDown={handleKeyDown}
           placeholder="Search for essentials..."
           className="block w-full pl-10 pr-10 py-2.5 rounded-full 
                      bg-stone-100 dark:bg-slate-800 text-gray-900 dark:text-gray-100
@@ -96,14 +123,16 @@ const SearchBar = () => {
                         rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 
                         z-20 max-h-[400px] overflow-y-auto">
           {results.length ? (
-            results.map((p) => (
+            results.map((p, index) => (
               <div
                 key={p._id}
-                onMouseDown={() => {
-                  clearSearch();
-                  navigate(`/product/${p._id}`);
-                }}
-                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                onMouseDown={() => { clearSearch(); navigate(`/product/${p._id}`); }}
+                onMouseEnter={() => setActiveIndex(index)}
+                className={`cursor-pointer transition-colors ${
+                  activeIndex === index
+                    ? "bg-blue-50 dark:bg-slate-600"
+                    : "hover:bg-gray-50 dark:hover:bg-slate-700"
+                }`}
               >
                 <NavComp product={p} />
               </div>

@@ -30,6 +30,11 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"message": "Internal Server Error. Our team has been notified."}
     )
+@app.get("/")
+def landing_page():
+    logger.info("Landing page accessed")
+    return {"Message": "Hi Harish Here is your Product Management API!"}
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
