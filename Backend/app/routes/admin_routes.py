@@ -20,7 +20,7 @@ async def create_product(product: ProductCreate, collection=Depends(products_col
     try:
         new_product = product.model_dump(mode="json")
         # store created time in IST as hh-mm-ss am/pm (lowercase)
-        new_product["created_at"] = now_ist("%I-%M-%S %p").lower()
+        new_product["created_at"] = now_ist()
 
         result = await collection.insert_one(new_product)
 
@@ -42,7 +42,7 @@ async def replace_product(product_id: str, product: ProductUpdate, collection=De
 
     update_data = product.model_dump(mode="json")
     # updated time in IST hh-mm-ss am/pm
-    update_data["updated_at"] = now_ist("%I-%M-%S %p").lower()
+    update_data["updated_at"] = now_ist()
 
     result = await collection.update_one(
         {"_id": ObjectId(product_id)},
@@ -71,7 +71,7 @@ async def update_product(product_id: str, product: ProductUpdate, collection=Dep
         raise HTTPException(status_code=400, detail="No fields provided for update")
 
     # updated time in IST hh-mm-ss am/pm
-    update_data["updated_at"] = now_ist("%I-%M-%S %p").lower()
+    update_data["updated_at"] = now_ist()
 
     result = await collection.update_one(
         {"_id": ObjectId(product_id)},

@@ -1,6 +1,5 @@
 import logging
 import sys
-from app.core.config import settings
 
 # Create a custom logger
 logger = logging.getLogger("anozon_logger")

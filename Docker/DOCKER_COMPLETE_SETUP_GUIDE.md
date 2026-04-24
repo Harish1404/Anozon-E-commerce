@@ -295,7 +295,7 @@ curl http://localhost:3000
 # Morning - Start everything
 docker-compose up -d
 
-# Code... edit files in Backend/ or Frontend/
+# Code... edit files in Backend/ or Frontend
 
 # Made changes? Rebuild the service
 docker-compose up -d --build backend     # If backend changed

@@ -1,5 +1,6 @@
 # Web Framework
 fastapi==0.104.1
+fastapi-mail
 uvicorn[standard]==0.24.0
 starlette==0.27.0
 
@@ -25,6 +26,7 @@ email-validator==2.1.0
 python-dotenv==1.0.0
 
 # Email
+
 
 # Utilities
 typing-extensions==4.8.0

@@ -1,20 +1,24 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from h11 import Request
-from app.routes import auth_user, product_routes,protected, admin_routes, user_routes
+from app.routes import auth_user, product_routes, admin_routes, user_routes
+from app.ai import ollama 
 # from app.routes import bacground_email  # Email not implemented yet
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 from app.db.mongodb import connect_to_mongo, close_mongo_connection
+from app.db.redis import connect_redis, close_redis
 from app.core.logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Connect to MongoDB
     await connect_to_mongo()
+    await connect_redis()
     yield
     # Shutdown: Close MongoDB Connection
     await close_mongo_connection()
+    await close_redis()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -37,7 +41,7 @@ app.include_router(auth_user.router)
 app.include_router(user_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(product_routes.router)
-app.include_router(protected.router)
+app.include_router(ollama.router)  # Ollama AI routes
 # app.include_router(bacground_email.router)  # Email not implemented yet
 
 app.add_middleware(

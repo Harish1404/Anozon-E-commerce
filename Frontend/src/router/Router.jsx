@@ -8,6 +8,7 @@ import Cart from '../pages/Cart';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 import AdminDashboard from '../pages/AdminDashboard';
+import AiChatbot from '../pages/AiChabot';
 
 const LoadingSpinner = () => (
 
@@ -57,6 +58,7 @@ const AppRouter = () => {
         <Route path='/' element={<ProductList />} />
         <Route path='/cart' element={<Cart />} />
         <Route path='/products/:id' element={<ProductDetails />} />
+        <Route path='/chatbot' element={<AiChatbot />} />
       </Route>
 
       <Route element={<AdminRoute><MainLayout /></AdminRoute>}>
