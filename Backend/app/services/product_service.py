@@ -4,6 +4,10 @@ from bson import ObjectId
 import re
 
 class ProductService:
+    @staticmethod
+    def serialize(product):
+        product["_id"] = str(product["_id"])
+        return product
 
     @staticmethod
     async def get_products(
@@ -131,6 +135,10 @@ class ProductService:
                 "category": 1,
                 "price": 1,
                 "likes": 1,
+<<<<<<< HEAD
+=======
+                "stock_quantity": 1,
+>>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20
                 "description": 1,
                 "image_url": 1,
                 "created_at": 1
@@ -155,3 +163,68 @@ class ProductService:
             {"category": category_pattern}
         )      
 
+<<<<<<< HEAD
+=======
+
+    @staticmethod
+    async def text_search( query, skip, limit):
+
+        pipeline = [
+            {
+                "$match": {
+                    "$text": {"$search": query}
+                }
+            },
+            {
+                "$addFields": {
+                    "score": {"$meta": "textScore"}
+                }
+            },
+            {
+                "$sort": {"score": -1}
+            },
+            {"$skip": skip},
+            {"$limit": limit}
+        ]
+
+        return await products_collection().aggregate(pipeline).to_list(length=limit)
+    
+    @staticmethod
+    async def prefix_search( query, skip, limit):
+        escaped = re.escape(query)
+
+        pipeline = [
+            {
+                "$match": {
+                    "name": {
+                        "$regex": f"^{escaped}",
+                        "$options": "i"
+                    }
+                }
+            },
+            {
+                "$sort": {"likes": -1}
+            },
+            {"$skip": skip},
+            {"$limit": limit}
+        ]
+
+        return await products_collection().aggregate(pipeline).to_list(length=limit)
+    
+    @classmethod
+    async def search_products(cls, query: str, page: int = 1, limit: int = 30):
+        if not query or not query.strip():
+            raise HTTPException(status_code=400, detail="Search query cannot be empty")
+
+        query = query.strip()
+        skip = (page - 1) * limit
+
+        # Step 1: Try fast text search
+        results = await cls.text_search(query, skip, limit)
+
+        # Step 2: Fallback to prefix search if empty
+        if not results:
+            results = await cls.prefix_search( query, skip, limit)
+
+        return [cls.serialize(product) for product in results ]
+>>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20

@@ -81,7 +81,11 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20
 networks:
   product-shop-network:
     driver: bridge
@@ -90,3 +94,7 @@ volumes:
   mongodb_data:
     driver: local
 
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20

@@ -37,6 +37,12 @@ async def connect_to_mongo():
     except Exception as e:
         logger.error(f"❌ MongoDB Connection Failed: {e}")
         raise e
+   
+async def create_indexes():  
+
+    # Create text index on product name
+    await products_collection().create_index([("name", "text")], weights = {"name": 5, "description":2 }, name = "name_text_description_text")
+
 
 async def close_mongo_connection():
     if db_instance.client:
