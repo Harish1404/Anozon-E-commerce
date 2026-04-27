@@ -6,23 +6,16 @@ from app.ai import ollama
 # from app.routes import bacground_email  # Email not implemented yet
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
-<<<<<<< HEAD
-from app.db.mongodb import connect_to_mongo, close_mongo_connection
-from app.db.redis import connect_redis, close_redis
-=======
 from app.db.mongodb import connect_to_mongo, create_indexes, close_mongo_connection
->>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20
+from app.db.redis import connect_redis, close_redis
 from app.core.logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Connect to MongoDB
     await connect_to_mongo()
-<<<<<<< HEAD
     await connect_redis()
-=======
     await create_indexes()
->>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20
     yield
     # Shutdown: Close MongoDB Connection
     await close_mongo_connection()

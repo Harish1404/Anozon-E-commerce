@@ -135,10 +135,7 @@ class ProductService:
                 "category": 1,
                 "price": 1,
                 "likes": 1,
-<<<<<<< HEAD
-=======
                 "stock_quantity": 1,
->>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20
                 "description": 1,
                 "image_url": 1,
                 "created_at": 1
@@ -163,8 +160,6 @@ class ProductService:
             {"category": category_pattern}
         )      
 
-<<<<<<< HEAD
-=======
 
     @staticmethod
     async def text_search( query, skip, limit):
@@ -227,4 +222,4 @@ class ProductService:
             results = await cls.prefix_search( query, skip, limit)
 
         return [cls.serialize(product) for product in results ]
->>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20
+

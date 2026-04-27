@@ -98,3 +98,7 @@ async def delete_product(product_id: str, collection=Depends(products_collection
         raise HTTPException(status_code=404, detail="Product not found")
     
     return {"message": "Product deleted successfully"}
+
+
+
+    

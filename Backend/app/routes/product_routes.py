@@ -16,6 +16,7 @@ async def get_products(
     limit: int = Query(30, description="Number of products per page")
 ):
     return await ProductService.get_products(category, min_price, max_price, sort_by, sort_order, page, limit)
+
 @router.get("/products/search")
 async def search_products_route(
     q: str = Query(..., description="Search query"),
@@ -35,23 +36,6 @@ async def get_product_details(product_id: str = Path(..., description="The ID of
     
     return product
 
-<<<<<<< HEAD
-@router.get("ollama/ai/chat")
-async def chat_with_ollama_ai(message: str = Query(..., description="Message to send to Ollama AI")):
-    try:
-        response = requests.post(
-            "http://localhost:11434/api/v1/chat",
-            json={"model": "ollama/ai", "messages": [{"role": "user", "content": message}]}
-        )
-        
-        return response.json()
-    
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Error communicating with Ollama AI: {str(e)}")
-
-
-
-=======
 @router.get("/categories")
 async def get_categories():
     """Get all available product categories"""
@@ -68,5 +52,18 @@ async def get_products_by_category(
     if not products:
         raise HTTPException(status_code=404, detail=f"No products found in category: {category}")
     return products
->>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20
+
+@router.get("ollama/ai/chat")
+async def chat_with_ollama_ai(message: str = Query(..., description="Message to send to Ollama AI")):
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/v1/chat",
+            json={"model": "ollama/ai", "messages": [{"role": "user", "content": message}]}
+        )
+        
+        return response.json()
+    
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Error communicating with Ollama AI: {str(e)}")
+
 

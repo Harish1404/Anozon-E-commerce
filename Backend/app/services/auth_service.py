@@ -1,12 +1,14 @@
 from pymongo.errors import PyMongoError
-from app.db.mongodb import get_users_collection
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, verify_token
-from app.repo.auth_helpers import count_users, insert_user, update_user, delete_user, get_user_by_email, generate_tokens, update_user_by_email
+from app.repo.auth_helpers import count_users, insert_user, update_user, get_user_by_email, generate_tokens, update_user_by_email
 from app.core.time_utils import now_ist
-from fastapi import Depends, HTTPException, status, Body
+from app.utils.email import send_forget_password_email
+from fastapi import HTTPException, status, Response
+from app.utils.cookies import clear_refresh_cookie
 from app.services.otp_service import generate_and_store_otp, verify_user_otp
-from app.repo.otp_helpers import set_temp_password_token, get_temp_password_token
+from app.repo.otp_helpers import set_temp_password_token, get_temp_password_token, is_reset_blocked, is_reset_on_cooldown, increment_reset_send_count
 import logging
+import uuid
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -26,7 +28,7 @@ class AuthService:
         # 2. Hash Password
         hashed = hash_password(user.password)
         
-        roles = "admin" if await count_users(user_col) == 0 else "user"
+        roles = "super_admin" if await count_users(user_col) == 0 else "user"
         # 3. Prepare Data
         user_data = {
             "username": user.username,
@@ -35,8 +37,6 @@ class AuthService:
             "refresh_token_hashed": None,
             "role": roles, # Explicitly setting default role is safer
             "is_verified": False,
-            "cart": [], # Initialize cart to an empty list
-            "favorites": [], # Initialize favorites to an empty list
             "created_at": now_ist() # Store creation time and date for auditing
         }
         
@@ -167,11 +167,18 @@ class AuthService:
 
         email = payload.get("sub")
         await update_user_by_email(user_col, email, {"refresh_token_hashed": None})
+        
         logger.info(f"User {email} logged out")
         return {"message": "Logged out"}
 
     @staticmethod
     async def forget_password(email: str, user_col):
+        if await is_reset_blocked(email):
+            raise HTTPException(status_code=403, detail="Too many requests. Please try again later.")
+
+        if await is_reset_on_cooldown(email):
+            raise HTTPException(status_code=429, detail="Please wait before requesting another reset.")
+
         user = await get_user_by_email(user_col, email)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -186,13 +193,15 @@ class AuthService:
         if not email_sent:
             logger.error(f"Failed to send forget password email to {email}")
             raise HTTPException(status_code=500, detail="Failed to send forget password email")
-        
+
+        await increment_reset_send_count(email)
+
         logger.info(f"Forget password email sent to {email}")
             
         return {"message": "Forget password email sent successfully"}
 
     @staticmethod
-    async def reset_password(email: str, token: str, new_password: str, user_col):
+    async def reset_password(email: str, token: str, new_password: str, user_col, response: Response):
         user = await get_user_by_email(user_col, email)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -202,15 +211,17 @@ class AuthService:
 
         temp_token = await get_temp_password_token(email)
         if not temp_token or temp_token != token:
-            raise HTTPException(status_code=400, detail="Invalid token")
+            raise HTTPException(status_code=400, detail="Invalid or expired reset link")
 
         await update_user(user_col, user["_id"], {"hashed_password": hash_password(new_password)})
-        await set_temp_password_token(email, None)
+        await set_temp_password_token(email, None) 
+        
+        clear_refresh_cookie(response)
         
         logger.info(f"User {email} reset password successfully")
         return {"message": "Password reset successful"}
     
-        
+    
 
 
             

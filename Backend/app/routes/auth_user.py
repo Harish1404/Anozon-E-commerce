@@ -55,9 +55,9 @@ async def logout(response: Response, token: str = Depends(oauth2_scheme), users_
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
 async def forgot_password(request: ForgotPasswordRequest, users_col=Depends(get_users_collection)):
-    return await AuthService.forgot_password(request.email, users_col)
+    return await AuthService.forget_password(request.email, users_col)
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 async def reset_password(request: ResetPasswordRequest, users_col=Depends(get_users_collection)):
-    return await AuthService.reset_password(request.email, request.otp_token, request.otp, request.new_password, users_col)
+    return await AuthService.reset_password(request.email, request.otp_token, request.new_password, users_col)
 

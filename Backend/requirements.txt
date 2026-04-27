@@ -1,32 +1,33 @@
 # Web Framework
-fastapi==0.104.1
+fastapi
 fastapi-mail
-uvicorn[standard]==0.24.0
-starlette==0.27.0
+uvicorn[standard]
+starlette
+requests
 
 # Database
-motor==3.3.2
-pymongo==4.6.0
+motor
+pymongo
+
+redis
 
 # Authentication & Security
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
+python-jose[cryptography]
+passlib[bcrypt]
 bcrypt==4.0.1
-cryptography==41.0.7
-python-multipart==0.0.6
+cryptography
+python-multipart
 pytz
 
 # Data Validation
-pydantic==2.5.0
-pydantic[email]==2.5.0
-pydantic-settings==2.1.0
-email-validator==2.1.0
+pydantic
+pydantic[email]
+pydantic-settings
+email-validator
 
-# Environment Variables
-python-dotenv==1.0.0
 
 # Email
 
 
 # Utilities
-typing-extensions==4.8.0
+typing-extensions
