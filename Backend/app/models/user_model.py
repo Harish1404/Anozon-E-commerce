@@ -1,9 +1,16 @@
 from pydantic import BaseModel, EmailStr, Field, BeforeValidator, field_validator
 from typing import Optional, Annotated
+from enum import Enum
 import re
 
 # Helper for MongoDB ID
 PyObjectId = Annotated[str, BeforeValidator(str)]
+
+class UserRole(str, Enum):
+    user = "user"
+    seller = "seller"
+    admin = "admin"
+    super_admin = "super_admin"
 
 # 1. Base Model (Shared properties)
 class UserBase(BaseModel):
@@ -36,17 +43,14 @@ class UserRegister(UserBase):
 
 # 3. Internal Creation (Used by backend logic - Can set role)
 class UserCreateInternal(UserRegister):
-    role: str = "user" 
+    role: UserRole = UserRole.user 
 
-# 4. Cart model 
-class CartItem(BaseModel):
-    product_id: str
-    quantity: int = 1
+
 
 # 5. Database Model (What actually gets saved)
 class UserInDB(UserBase):
     hashed_password: str
-    role: str = "user"  # Default to user if missing
+    role: UserRole = UserRole.user  # Default to user if missing
     is_verified: bool = False
     refresh_token_hashed: Optional[str] = None
     favorites: list[PyObjectId] = Field(default_factory=list)
@@ -58,7 +62,7 @@ class UserInDB(UserBase):
 # 6. Response Model (What we send back to frontend - NO PASSWORDS)
 class UserResponse(UserBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    role: str
+    role: UserRole
 
     class Config:
         populate_by_name = True
@@ -70,18 +74,6 @@ class UserResponse(UserBase):
             }
         }
 
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    role: str  # <--- NEW: Send role back so Frontend knows to show Admin Dashboard
-
-class CartRequest(BaseModel):
-    product_id: str
-    quantity: int = 1
-
-class FavoriteRequest(BaseModel):
-    product_id: str
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str

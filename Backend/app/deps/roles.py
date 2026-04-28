@@ -29,19 +29,27 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "system:settings"
     },
     "admin": {
-        "seller:approve", "seller:suspend",
+        "seller:approve", "seller:suspend", "seller:reject",
         "user:ban", "user:view",
         "product:any", "order:any"
     },
     "seller": {
-        "product:own:write", "product:own:delete",
-        "order:own:view"
+        "product:own:write",
+        "product:own:delete",
+        "product:own:toggle",
+        "order:own:view",
+        "order:own:status:update",
+        "seller_profile:own:write"
     },
     "user": {
         "product:read",
         "cart:write",
-        "order:own:create", "order:own:view",
-        "profile:own:write"
+        "order:own:create",
+        "order:own:view",
+        "order:own:cancel",
+        "review:own:write",
+        "profile:own:write",
+        "seller:apply"
     }
 }
 
@@ -83,4 +91,6 @@ def require_permission(permission: str):
             )
         return current_user
     return checker
+
+
 

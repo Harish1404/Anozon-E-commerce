@@ -18,11 +18,27 @@ def get_database_client():
 def get_users_collection():
     return db_instance.client[settings.DB_NAME]['Users']
 
+def profiles_collection():
+    return db_instance.client[settings.DB_NAME]['Profiles']
+
+def sellers_collection():
+    return db_instance.client[settings.DB_NAME]['Sellers']
+
+def audit_logs_collection():
+    return db_instance.client[settings.DB_NAME]['AuditLogs']
+
+def reviews_collection():
+    return db_instance.client[settings.DB_NAME]['Reviews']
+
+def cart_collection():
+    return db_instance.client[settings.DB_NAME]['Cart']
+
+def orders_collection():
+    return db_instance.client[settings.DB_NAME]['Orders']
+
 def products_collection():
     return db_instance.client[settings.DB_NAME]['Products']
 
-def get_file_collection():
-    return db_instance.client[settings.DB_NAME]['Files']
 
 # --- Connection Logic ---
 async def connect_to_mongo():

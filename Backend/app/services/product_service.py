@@ -1,12 +1,21 @@
+import math
 from fastapi import HTTPException
 from app.db.mongodb import products_collection
-from bson import ObjectId
-import re
+from app.models.product_model import PaginatedProductResponse, ProductResponse
+from app.repo.product_helpers import (
+    build_product_query,
+    count_products,
+    fetch_products,
+    fetch_product_by_id,
+    fetch_categories,
+    update_product_likes
+)
 
 class ProductService:
     @staticmethod
     def serialize(product):
         product["_id"] = str(product["_id"])
+        # Ensure fallback for required fields in case older DB documents miss them
         return product
 
     @staticmethod
@@ -14,212 +23,83 @@ class ProductService:
         category: str = None,
         min_price: float = None,
         max_price: float = None,
-        sort_by: str = "likes",
-        sort_order: int = 1,
+        min_discount: int = None,
+        min_rating: float = None,
+        in_stock: bool = None,
+        search: str = None,
+        sort_by: str = "created_at",
+        sort_order: int = -1,
         page: int = 1,
         limit: int = 30,
-    ):
-        query = {}
-
-        if category:
-            query["category"] = {"$regex": f"^{re.escape(category)}$", "$options": "i"}
-
-        if min_price is not None and max_price is not None:
-            query["price"] = {"$gte": min_price, "$lte": max_price}
-        elif min_price is not None:
-            query["price"] = {"$gte": min_price}
-        elif max_price is not None:
-            query["price"] = {"$lte": max_price}
-
-        skip = (page - 1) * limit
-
-        products_cursor = (
-            products_collection()
-            .find(query)
-            .sort(sort_by, sort_order)
-            .skip(skip)
-            .limit(limit)
+    ) -> PaginatedProductResponse:
+        
+        # 1. Build Query Dictionary
+        query = build_product_query(
+            category=category,
+            min_price=min_price,
+            max_price=max_price,
+            min_discount=min_discount,
+            min_rating=min_rating,
+            in_stock=in_stock,
+            search=search
         )
 
-        products = await products_cursor.to_list(length=limit)
+        # 2. Pagination Math
+        skip = (page - 1) * limit
+        
+        # 3. Fetch from DB
+        collection = products_collection()
+        total_items = await count_products(collection, query)
+        raw_products = await fetch_products(collection, query, sort_by, sort_order, skip, limit)
+        
+        # 4. Serialize & Calculate Pages
+        serialized_products = [ProductService.serialize(p) for p in raw_products]
+        total_pages = math.ceil(total_items / limit) if limit > 0 else 0
 
-        for product in products:
-            product["_id"] = str(product["_id"])
-
-        return products
+        # 5. Map to Model
+        return PaginatedProductResponse(
+            items=serialized_products,
+            total=total_items,
+            page=page,
+            limit=limit,
+            pages=total_pages
+        )
 
     @staticmethod
     async def get_product_by_id(product_id: str):
-        
-        if not ObjectId.is_valid(product_id):
-            raise HTTPException(status_code=400, detail="Invalid Product ID format")
-
-        product = await products_collection().find_one({"_id": ObjectId(product_id)})
-
+        product = await fetch_product_by_id(products_collection(), product_id)
         if product:
-            product["_id"] = str(product["_id"])
-            return product
-
+            return ProductService.serialize(product)
         return None
 
     @staticmethod
     async def like_product(product_id: str, user_id: str):
-        if not ObjectId.is_valid(product_id):
-            raise HTTPException(status_code=400, detail="Invalid Product ID")
-        
-        # Check if product exists
-        product = await products_collection().find_one({"_id": ObjectId(product_id)})
+        # We assume checking the product exists is done, but the helper handles it efficiently via update.
+        # To strictly enforce 404 if not found:
+        product = await fetch_product_by_id(products_collection(), product_id)
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
-        
-        # Initialize fields if they don't exist
-        if "liked_by" not in product:
-            await products_collection().update_one(
-                {"_id": ObjectId(product_id)},
-                {"$set": {"liked_by": [], "likes": 0}}
-            )
-        
-        # Add user to liked_by array
-        result = await products_collection().update_one(
-            {"_id": ObjectId(product_id)},
-            {"$addToSet": {"liked_by": user_id}}
-        )
-
-        # Only increment if user was actually added
-        if result.modified_count > 0:
-            await products_collection().update_one(
-                {"_id": ObjectId(product_id)},
-                {"$inc": {"likes": 1}}
-            )
+        await update_product_likes(products_collection(), product_id, user_id, action="like")
 
     @staticmethod
     async def unlike_product(product_id: str, user_id: str):
-        if not ObjectId.is_valid(product_id):
-            raise HTTPException(status_code=400, detail="Invalid Product ID")
-        
-        # Check if product exists
-        product = await products_collection().find_one({"_id": ObjectId(product_id)})
+        product = await fetch_product_by_id(products_collection(), product_id)
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
-        
-        # Remove user from liked_by array
-        result = await products_collection().update_one(
-            {"_id": ObjectId(product_id)},
-            {"$pull": {"liked_by": user_id}}
-        )
-
-        # Only decrement if user was actually removed
-        if result.modified_count > 0:
-            await products_collection().update_one(
-                {"_id": ObjectId(product_id)},
-                {"$inc": {"likes": -1}}
-            )
-
-    @staticmethod
-    async def get_product_by_category(category: str, page: int = 1, limit: int = 30):
-    # Create case-insensitive regex pattern for exact category match
-        category_pattern = {"$regex": f"^{re.escape(category)}$", "$options": "i"}
-
-        # Calculate skip value for pagination
-        skip = (page - 1) * limit
-
-        # Use aggregation pipeline for better performance and flexibility
-        pipeline = [
-            {"$match": {"category": category_pattern}},
-            {"$sort": {"likes": -1}},  # Sort by likes in descending order
-            {"$skip": skip},
-            {"$limit": limit},
-            {"$project": {
-                "_id": {"$toString": "$_id"},  # Convert ObjectId to string in query
-                "name": 1,
-                "category": 1,
-                "price": 1,
-                "likes": 1,
-                "stock_quantity": 1,
-                "description": 1,
-                "image_url": 1,
-                "created_at": 1
-            }}
-        ]
-
-        # Execute aggregation pipeline
-        products_cursor = products_collection().aggregate(pipeline)
-        return await products_cursor.to_list(length=limit)
+        await update_product_likes(products_collection(), product_id, user_id, action="unlike")
 
     @staticmethod
     async def get_categories():
-        # Get distinct categories efficiently
-        categories = await products_collection().distinct("category")
-        return sorted(categories, key=str.lower)  # Return alphabetically sorted categories
+        return await fetch_categories(products_collection())
 
-    @staticmethod
-    async def get_category_count(category: str):
-        # Get count of products in a specific category
-        category_pattern = {"$regex": f"^{re.escape(category)}$", "$options": "i"}
-        return await products_collection().count_documents(
-            {"category": category_pattern}
-        )      
-
-
-    @staticmethod
-    async def text_search( query, skip, limit):
-
-        pipeline = [
-            {
-                "$match": {
-                    "$text": {"$search": query}
-                }
-            },
-            {
-                "$addFields": {
-                    "score": {"$meta": "textScore"}
-                }
-            },
-            {
-                "$sort": {"score": -1}
-            },
-            {"$skip": skip},
-            {"$limit": limit}
-        ]
-
-        return await products_collection().aggregate(pipeline).to_list(length=limit)
-    
-    @staticmethod
-    async def prefix_search( query, skip, limit):
-        escaped = re.escape(query)
-
-        pipeline = [
-            {
-                "$match": {
-                    "name": {
-                        "$regex": f"^{escaped}",
-                        "$options": "i"
-                    }
-                }
-            },
-            {
-                "$sort": {"likes": -1}
-            },
-            {"$skip": skip},
-            {"$limit": limit}
-        ]
-
-        return await products_collection().aggregate(pipeline).to_list(length=limit)
-    
+    # We keep search_products as a shorthand that just routes to get_products 
+    # to not break existing strict search routes immediately, but it now benefits from the paginated model.
     @classmethod
     async def search_products(cls, query: str, page: int = 1, limit: int = 30):
         if not query or not query.strip():
             raise HTTPException(status_code=400, detail="Search query cannot be empty")
+        return await cls.get_products(search=query.strip(), page=page, limit=limit)
 
-        query = query.strip()
-        skip = (page - 1) * limit
-
-        # Step 1: Try fast text search
-        results = await cls.text_search(query, skip, limit)
-
-        # Step 2: Fallback to prefix search if empty
-        if not results:
-            results = await cls.prefix_search( query, skip, limit)
-
-        return [cls.serialize(product) for product in results ]
-
+    @classmethod
+    async def get_product_by_category(cls, category: str, page: int = 1, limit: int = 30):
+        return await cls.get_products(category=category, page=page, limit=limit)

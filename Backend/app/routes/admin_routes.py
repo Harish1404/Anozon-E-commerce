@@ -1,103 +1,65 @@
-import logging
-from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.time_utils import now_ist
-from fastapi.security import OAuth2PasswordBearer
-from app.models.product_model import *
-from app.db.mongodb import  products_collection
-from app.deps.auth import get_current_admin_user
+from app.deps.roles import require_permission
+from app.services.seller_service import get_pending_applications, approve_seller, reject_seller, suspend_seller, unsuspend_seller
+from app.services.role_service import ban_user
+from app.models.seller_model import SellerRejectRequest
+from app.db.mongodb import get_users_collection
 
-logger = logging.getLogger("uvicorn.error")
+@router.get("/sellers/pending")
+async def fetch_pending_sellers(
+    limit: int = 50, skip: int = 0,
+    current_user: dict = Depends(require_permission("seller:approve"))
+):
+    return await get_pending_applications(limit, skip)
 
-router = APIRouter(prefix="/admin", tags=["admin controls"], dependencies=[Depends(get_current_admin_user)])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+@router.post("/sellers/{target_user_id}/approve")
+async def approve_seller_application(
+    target_user_id: str,
+    current_user: dict = Depends(require_permission("seller:approve"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    return await approve_seller(target_user_id, str(admin_user["_id"]))
 
-# ADMIN: Create Product
+@router.post("/sellers/{target_user_id}/reject")
+async def reject_seller_application(
+    target_user_id: str,
+    payload: SellerRejectRequest,
+    current_user: dict = Depends(require_permission("seller:reject"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    return await reject_seller(target_user_id, str(admin_user["_id"]), payload.rejection_reason)
 
-@router.post("/products/create_products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-async def create_product(product: ProductCreate, collection=Depends(products_collection)):
+@router.post("/sellers/{target_user_id}/suspend")
+async def suspend_active_seller(
+    target_user_id: str,
+    current_user: dict = Depends(require_permission("seller:suspend"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await suspend_seller(target_user_id, str(admin_user["_id"]))
 
-    try:
-        new_product = product.model_dump(mode="json")
-        # store created time in IST as hh-mm-ss am/pm (lowercase)
-        new_product["created_at"] = now_ist()
+@router.post("/sellers/{target_user_id}/unsuspend")
+async def unsuspend_active_seller(
+    target_user_id: str,
+    current_user: dict = Depends(require_permission("seller:suspend"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await unsuspend_seller(target_user_id, str(admin_user["_id"]))
 
-        result = await collection.insert_one(new_product)
-
-        new_product["_id"] = str(result.inserted_id)
-
-        # 5. Return the WHOLE object, not just a partial dict
-        # This satisfies the ProductResponse model which needs category, description, etc.
-        return new_product
-
-    except Exception as e:
-        logger.error(f"Create product Failed: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    
-@router.put("/product/replace_product/{product_id}", status_code=status.HTTP_200_OK)
-async def replace_product(product_id: str, product: ProductUpdate, collection=Depends(products_collection)):
-
-    if not ObjectId.is_valid(product_id):
-        raise HTTPException(status_code=400, detail="Invalid product ID format")
-
-    update_data = product.model_dump(mode="json")
-    # updated time in IST hh-mm-ss am/pm
-    update_data["updated_at"] = now_ist()
-
-    result = await collection.update_one(
-        {"_id": ObjectId(product_id)},
-        {"$set": update_data}
-    )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Product not found!!")
-    
-    updated_product = await collection.find_one({"_id": ObjectId(product_id)})
-    updated_product["_id"] = str(updated_product["_id"]) 
-    
-    return {
-        "message": "Product updated successfully",
-        "product": updated_product
-    }
-
-@router.patch("/product/update_product/{product_id}", status_code=status.HTTP_200_OK)
-async def update_product(product_id: str, product: ProductUpdate, collection=Depends(products_collection)):
-    if not ObjectId.is_valid(product_id):
-        raise HTTPException(status_code=400, detail="Invalid product ID format")
-
-    update_data = {k: v for k, v in product.dict(exclude_unset=True).items() if v is not None}
-    
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No fields provided for update")
-
-    # updated time in IST hh-mm-ss am/pm
-    update_data["updated_at"] = now_ist()
-
-    result = await collection.update_one(
-        {"_id": ObjectId(product_id)},
-        {"$set": update_data}
-    )
-    
-    if result.matched_count == 0:
-        logger.error(f"Update Product Failed: Not Found ID {product_id}")
-        raise HTTPException(status_code=404, detail="Product not found")
-    
-    return {"message": "Product updated successfully"}
-
-@router.delete("/product/delete_product/{product_id}", status_code=status.HTTP_200_OK)
-async def delete_product(product_id: str, collection=Depends(products_collection)):
-
-    if not ObjectId.is_valid(product_id):
-        logger.error(f"Delete Product Failed: Invalid ID {product_id}")
-        raise HTTPException(status_code=400, detail="Invalid product ID format")
-
-    result = await collection.delete_one({"_id": ObjectId(product_id)})
-    
-    if result.deleted_count == 0:
-        logger.error(f"Delete Product Failed: Not Found ID {product_id}")
-        raise HTTPException(status_code=404, detail="Product not found")
-    
-    return {"message": "Product deleted successfully"}
+@router.post("/users/{target_user_id}/ban")
+async def ban_a_user(
+    target_user_id: str,
+    current_user: dict = Depends(require_permission("user:ban"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await ban_user(target_user_id, str(admin_user["_id"]))
 
 
 

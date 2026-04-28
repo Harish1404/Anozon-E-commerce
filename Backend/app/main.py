@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from h11 import Request
-from app.routes import auth_user, product_routes, admin_routes, user_routes
+from app.routes import auth_user, product_routes, admin_routes, user_routes, seller_routes, super_admin_routes
 from app.ai import ollama 
 # from app.routes import bacground_email  # Email not implemented yet
 from contextlib import asynccontextmanager
@@ -47,6 +47,8 @@ app.include_router(auth_user.router)
 app.include_router(user_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(product_routes.router)
+app.include_router(seller_routes.router)
+app.include_router(super_admin_routes.router)
 app.include_router(ollama.router)  # Ollama AI routes
 # app.include_router(bacground_email.router)  # Email not implemented yet
 
