@@ -5,14 +5,18 @@ from app.db.mongodb import sellers_collection, get_users_collection
 from app.models.seller_model import SellerApplicationRequest, SellerProfile, SellerResponse
 from app.services.audit_service import log_action
 import logging
-from app.repo.seller_helpers import (
+from app.repo.role_helpers import get_user_by_id, update_user_role
+from app.repo.admin_helpers import (
     get_seller_by_user_id,
     insert_seller,
     update_seller_by_user_id,
     update_seller_by_object_id,
-    get_pending_sellers
+    get_pending_sellers,
+    get_pending_products,
+    update_product_approval_status
 )
-from app.repo.role_helpers import get_user_by_id, update_user_role
+from app.db.mongodb import products_collection
+from app.models.product_model import ProductResponse
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -221,5 +225,37 @@ async def unsuspend_seller(target_user_id: str, admin_id: str, reason: str):
     except PyMongoError as e:
         logger.error(f"Error unsuspending seller {target_user_id}: {e}")
         raise HTTPException(status_code=500, detail="Database update failed")
+
+async def fetch_pending_products(limit: int = 50, skip: int = 0):
+    products = await get_pending_products(products_collection(), limit, skip)
+    return [ProductResponse(**p, id=str(p["_id"])) for p in products]
+
+async def approve_product(product_id: str, admin_id: str):
+    success = await update_product_approval_status(products_collection(), product_id, True, admin_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Product not found or already approved")
+    
+    await log_action(
+        action="product_approved",
+        target_user_id=product_id,
+        performed_by=admin_id,
+        from_role="admin",
+        to_role="seller"
+    )
+    return {"message": "Product approved successfully"}
+
+async def reject_product(product_id: str, admin_id: str, reason: str):
+    success = await update_product_approval_status(products_collection(), product_id, False, admin_id, reason)
+    if not success:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    await log_action(
+        action="product_rejected",
+        target_user_id=product_id,
+        performed_by=admin_id,
+        from_role="admin",
+        reason=reason
+    )
+    return {"message": "Product rejected"}
 
 

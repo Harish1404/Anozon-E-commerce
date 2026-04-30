@@ -32,6 +32,20 @@ async def add_to_cart(
         cart_collection=collection
     )
 
+@router.put("/cart", status_code=200)
+async def update_cart(
+    item: CartItem,
+    current_user = Depends(get_current_user),
+    collection = Depends(cart_collection)
+):
+    """Set the exact quantity for an item in the cart"""
+    return await UserService.update_cart_quantity(
+        user_id=str(current_user["_id"]),
+        product_id=item.product_id,
+        quantity=item.quantity,
+        cart_collection=collection
+    )
+
 @router.delete("/cart/{product_id}")
 async def remove_from_cart(
     product_id: str,

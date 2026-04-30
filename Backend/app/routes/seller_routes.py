@@ -13,7 +13,11 @@ async def get_seller_profile(user=Depends(get_current_user)):
     return await SellerService.get_profile(str(user["_id"]))
 
 @router.put("/profile", dependencies=[Depends(require_permission("seller_profile:own:write"))])
-async def update_seller_profile(profile_data: SellerProfileUpdate, user=Depends(get_current_user)):
+async def update_seller_profile_put(profile_data: SellerProfileUpdate, user=Depends(get_current_user)):
+    return await SellerService.update_profile(str(user["_id"]), profile_data)
+
+@router.patch("/profile", dependencies=[Depends(require_permission("seller_profile:own:write"))])
+async def update_seller_profile_patch(profile_data: SellerProfileUpdate, user=Depends(get_current_user)):
     return await SellerService.update_profile(str(user["_id"]), profile_data)
 
 # --- Dashboard ---

@@ -14,7 +14,8 @@ def build_product_query(
     min_discount: Optional[int] = None,
     min_rating: Optional[float] = None,
     in_stock: Optional[bool] = None,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    include_unapproved: bool = False
 ) -> dict:
     query = {}
     
@@ -61,6 +62,10 @@ def build_product_query(
             
     # Default: Always only show active products on user end
     query["is_active"] = True
+    query["is_deleted"] = False
+    
+    if not include_unapproved:
+        query["is_approved"] = True
 
     return query
 
@@ -84,11 +89,15 @@ async def count_products(collection, query: dict) -> int:
         logger.error(f"DB Error counting products: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
-async def fetch_product_by_id(collection, product_id: str):
+async def fetch_product_by_id(collection, product_id: str, only_approved: bool = True):
     if not ObjectId.is_valid(product_id):
         raise HTTPException(status_code=400, detail="Invalid Product ID format")
     try:
-        return await collection.find_one({"_id": ObjectId(product_id)})
+        query = {"_id": ObjectId(product_id), "is_deleted": False}
+        if only_approved:
+            query["is_approved"] = True
+            query["is_active"] = True
+        return await collection.find_one(query)
     except PyMongoError as e:
         logger.error(f"DB Error fetching product {product_id}: {e}")
         raise HTTPException(status_code=500, detail="Database error")

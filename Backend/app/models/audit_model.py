@@ -15,6 +15,8 @@ class AuditAction(str, Enum):
     seller_suspended = "seller_suspended"
     seller_unsuspended = "seller_unsuspended"
     user_banned = "user_banned"
+    product_approved = "product_approved"
+    product_rejected = "product_rejected"
 
 class AuditLog(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)

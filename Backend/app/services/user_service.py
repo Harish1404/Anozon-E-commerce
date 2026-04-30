@@ -13,6 +13,8 @@ from app.repo.cart_helpers import (
     clear_user_cart,
     update_user_wishlist
 )
+from app.repo.product_helpers import fetch_product_by_id
+from app.db.mongodb import products_collection
 
 class UserService:
     
@@ -76,6 +78,27 @@ class UserService:
         if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
             raise HTTPException(status_code=400, detail="Invalid ID")
 
+        # Check stock limits
+        product = await fetch_product_by_id(products_collection(), product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Get current cart quantity to ensure total doesn't exceed stock
+        cart = await get_cart_by_user(cart_collection, user_id)
+        current_qty = 0
+        if cart:
+            for item in cart.get("items", []):
+                if str(item.get("product_id")) == str(product_id):
+                    current_qty = item.get("quantity", 0)
+                    break
+
+        if current_qty + quantity > product.get("stock", 0):
+            available = product.get("stock", 0) - current_qty
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot add {quantity} items. Only {available} more available in stock."
+            )
+
         try:
             result = await add_item_to_cart(cart_collection, user_id, product_id, quantity)
         except PyMongoError as e:
@@ -120,6 +143,17 @@ class UserService:
         if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
             raise HTTPException(status_code=400, detail="Invalid ID")
 
+        # Check stock limits
+        product = await fetch_product_by_id(products_collection(), product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        if quantity > product.get("stock", 0):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot update to {quantity} items. Only {product.get('stock', 0)} available in stock."
+            )
+
         try:
             result = await update_item_quantity(cart_collection, user_id, product_id, quantity)
         except PyMongoError as e:
@@ -163,3 +197,5 @@ class UserService:
             raise HTTPException(status_code=404, detail="Cart not found for user")
 
         return {"message": "Cart cleared successfully"}
+
+

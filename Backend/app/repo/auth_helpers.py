@@ -15,10 +15,10 @@ async def get_user_by_email(collection, email: str):
         logger.error(f"DB Error fetching user {email}: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
-async def generate_tokens(sub: str, role: str, user_col):
+async def generate_tokens(id: str, email: str, role: str, user_col):
     try: 
-        access_token = create_access_token({"sub": sub, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": datetime.utcnow() })
-        refresh_token = create_refresh_token({"sub": sub, "iss": "Anozon", "aud": "Anozon", "iat": datetime.utcnow()})
+        access_token = create_access_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": datetime.utcnow() })
+        refresh_token = create_refresh_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": datetime.utcnow()})
         
         return access_token, refresh_token
 

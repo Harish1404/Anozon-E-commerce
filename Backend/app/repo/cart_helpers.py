@@ -115,3 +115,4 @@ async def update_user_wishlist(collection, user_id: str, product_id: str, action
     except PyMongoError as e:
         logger.error(f"Error updating wishlist for user {user_id}: {e}")
         raise e
+

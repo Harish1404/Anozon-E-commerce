@@ -82,7 +82,7 @@ class AuthService:
             raise HTTPException(status_code=400, detail="Email is already verified")
             
         try:
-            access_token, refresh_token = await generate_tokens(user["email"], user["role"], user_col)
+            access_token, refresh_token = await generate_tokens(user["_id"], user["email"], user["role"], user_col)
             refresh_hash = hash_password(refresh_token)
 
             # 1. Mark user as verified
@@ -130,7 +130,7 @@ class AuthService:
             logger.warning(f"Login failed: User {email} is not verified")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified. Please verify your OTP.")
 
-        access_token, refresh_token = await generate_tokens(user["email"], user["role"], user_col)
+        access_token, refresh_token = await generate_tokens(user["_id"], user["email"], user["role"], user_col)
 
         # Hash the refresh token before storing (recommended)
         refresh_hash = hash_password(refresh_token)
@@ -151,7 +151,7 @@ class AuthService:
         if not payload:
             raise HTTPException(status_code=401, detail="Invalid token structure")
 
-        email = payload.get("sub")
+        email = payload.get("email")
         user = await get_user_by_email(user_col, email)
 
         # Validate User and Token
@@ -164,8 +164,7 @@ class AuthService:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
         # Issue New Tokens
-        new_access = create_access_token({"sub": email, "role": user["role"]})
-        new_refresh = create_refresh_token({"sub": email})
+        new_access, new_refresh = await generate_tokens(str(user["_id"]), email, user["role"], user_col)
         new_refresh_hashed = hash_password(new_refresh)
 
         try:
@@ -181,7 +180,7 @@ class AuthService:
         if not payload:
             return {"message": "Logged out (Token expired)"}
 
-        email = payload.get("sub")
+        email = payload.get("email")
         try:
             await update_user_by_email(user_col, email, {"refresh_token_hashed": None})
         except PyMongoError as e:
@@ -245,6 +244,4 @@ class AuthService:
             raise HTTPException(status_code=500, detail="Password reset failed")
     
     
-
-
             

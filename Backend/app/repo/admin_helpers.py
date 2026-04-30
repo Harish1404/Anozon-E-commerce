@@ -1,6 +1,8 @@
 import logging
 from pymongo.errors import PyMongoError
 from fastapi import HTTPException
+from bson import ObjectId
+from datetime import datetime
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -49,4 +51,30 @@ async def get_pending_sellers(collection, limit: int = 50, skip: int = 0):
         logger.error(f"DB Error fetching pending sellers: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
+async def get_pending_products(collection, limit: int = 50, skip: int = 0):
+    try:
+        cursor = collection.find({"is_approved": False, "is_deleted": False}).skip(skip).limit(limit)
+        return await cursor.to_list(length=limit)
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching pending products: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
 
+async def update_product_approval_status(collection, product_id: str, is_approved: bool, admin_id: str, reason: str = None):
+    try:
+        update_data = {
+            "is_approved": is_approved,
+            "reviewed_by": admin_id,
+            "reviewed_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        if reason:
+            update_data["rejection_reason"] = reason
+            
+        result = await collection.update_one(
+            {"_id": ObjectId(product_id)},
+            {"$set": update_data}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating product approval {product_id}: {e}")
+        raise HTTPException(status_code=500, detail="Database error")

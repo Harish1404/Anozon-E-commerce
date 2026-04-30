@@ -17,7 +17,7 @@ async def insert_seller_product(collection, product_data: dict) -> dict:
 
 async def get_seller_products(collection, seller_id: str, filters: dict = None, skip: int = 0, limit: int = 10):
     try:
-        query = {"seller_id": seller_id, "is_active": True}
+        query = {"seller_id": seller_id, "is_deleted": False}
         if filters:
             query.update(filters)
         cursor = collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
@@ -30,7 +30,7 @@ async def get_seller_products(collection, seller_id: str, filters: dict = None, 
 
 async def get_seller_product_by_id(collection, product_id: str, seller_id: str):
     try:
-        product = await collection.find_one({"_id": ObjectId(product_id), "seller_id": seller_id, "is_active": True})
+        product = await collection.find_one({"_id": ObjectId(product_id), "seller_id": seller_id, "is_deleted": False})
         return product
     except PyMongoError as e:
         logger.error(f"DB Error fetching seller product: {e}")
@@ -52,11 +52,19 @@ async def soft_delete_seller_product(collection, product_id: str, seller_id: str
     try:
         result = await collection.update_one(
             {"_id": ObjectId(product_id), "seller_id": seller_id},
-            {"$set": {"is_active": False, "updated_at": datetime.utcnow()}}
+            {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}
         )
         return result.modified_count > 0
     except PyMongoError as e:
         logger.error(f"DB Error deleting seller product: {e}")
+        logger.error(f"DB Error deleting seller product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_product_by_slug(collection, seller_id: str, slug: str):
+    try:
+        return await collection.find_one({"seller_id": seller_id, "slug": slug})
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching product by slug: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
 async def get_seller_orders(collection, seller_id: str, skip: int = 0, limit: int = 10):
