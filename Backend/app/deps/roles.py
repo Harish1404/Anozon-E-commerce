@@ -20,18 +20,21 @@ async def get_current_user(token: str = Depends(oauth2_scheme), users_col = Depe
     return {"email": email, "role": role}
 
 
-ROLE_PERMISSIONS: dict[str, set[str]] = {
+ROLE_PERMISSIONS = {
     "super_admin": {
         "admin:create", "admin:demote",
-        "seller:approve", "seller:suspend",
+        "seller:approve", "seller:reject", "seller:suspend",
         "user:ban", "user:view",
-        "product:any", "order:any",
-        "system:settings"
+        "product:any",
+        "order:any",
+        "system:settings",
+        "audit:view"
     },
     "admin": {
-        "seller:approve", "seller:suspend", "seller:reject",
+        "seller:approve", "seller:reject", "seller:suspend",
         "user:ban", "user:view",
-        "product:any", "order:any"
+        "product:any",
+        "order:any"
     },
     "seller": {
         "product:own:write",
@@ -51,7 +54,7 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "profile:own:write",
         "seller:apply"
     }
-}
+}  
 
 def get_user_permissions(role: str) -> set[str]:
     return ROLE_PERMISSIONS.get(role, set())

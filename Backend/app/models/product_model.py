@@ -1,24 +1,26 @@
 from pydantic import BaseModel, Field, HttpUrl, BeforeValidator
 from typing import Optional, Annotated
+from bson import ObjectId
+from datetime import datetime
 
 # 1. Helper to handle MongoDB ObjectId -> String conversion
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
 # --- BASE MODEL (Shared Rules) ---
 class ProductBase(BaseModel):
-    name: str = Field(...),
-    slug: str = Field(...),
-    description: str = Field(...),
-    category: str = Field(...),
-    price: int = Field(...),
-    discount_percent: int = Field(...),
-    discount_price: int = Field(...),
-    stock: int = Field(...),
-    image_urls: list[str] = Field(...),
-    is_active: bool = Field(...),
-    avg_rating: float = Field(...),
-    review_count: int = Field(...),
-    product_likes: int = Field(...),
+    name: str = Field(...)
+    slug: str = Field(...)
+    description: str = Field(...)
+    category: str = Field(...)
+    price: int = Field(...)
+    discount_percent: int = Field(...)
+    discount_price: int = Field(...)
+    stock: int = Field(...)
+    image_urls: list[str] = Field(...)
+    is_active: bool = Field(...)
+    avg_rating: float = Field(...)
+    review_count: int = Field(...)
+    product_likes: int = Field(...)
     
 
 # --- CREATE MODEL (Input) ---
@@ -27,11 +29,14 @@ class ProductCreate(ProductBase):
 
 class ProductInDB(ProductBase):
     id: PyObjectId = Field(alias="_id")
-    seller_id: ObjectId
+    seller_id: PyObjectId
+    is_approved: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow) 
 
     model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
         "arbitrary_types_allowed": True
     }
 
@@ -49,9 +54,15 @@ class ProductUpdate(BaseModel):
     avg_rating: Optional[float] = None
     review_count: Optional[int] = None
     product_likes: Optional[int] = None
-    seller_id: Optional[ObjectId] = None
+    seller_id: Optional[PyObjectId] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True
+    }
     
 # --- RESPONSE MODEL (Output to Frontend) ---
 class ProductResponse(ProductBase):
@@ -68,14 +79,20 @@ class ProductResponse(ProductBase):
     avg_rating: float = Field(...)
     review_count: int = Field(...)
     product_likes: int = Field(...)
+    seller_id: str = Field(...)
     created_at: datetime = Field(...)
     updated_at: datetime = Field(...)
-    seller_id: str = Field(...)
 
     model_config = {
         "from_attributes": True,   # maps ProductInDB -> ProductResponse
         "populate_by_name": True,
     }
+
+class ProductStockUpdate(BaseModel):
+    stock: int = Field(..., ge=0)
+
+class ProductToggleRequest(BaseModel):
+    is_active: bool = Field(...)
 
 class PaginatedProductResponse(BaseModel):
     items: list[ProductResponse]

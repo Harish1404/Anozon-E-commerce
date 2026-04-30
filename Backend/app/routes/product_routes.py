@@ -80,3 +80,5 @@ async def chat_with_ollama_ai(message: str = Query(..., description="Message to 
         return response.json()
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Error communicating with Ollama AI: {str(e)}")
+
+

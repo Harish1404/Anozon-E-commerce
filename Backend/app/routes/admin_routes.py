@@ -1,8 +1,11 @@
 from app.deps.roles import require_permission
-from app.services.seller_service import get_pending_applications, approve_seller, reject_seller, suspend_seller, unsuspend_seller
+from fastapi import APIRouter, Depends, HTTPException
+from app.services.admin_service import get_pending_applications, approve_seller, reject_seller, suspend_seller, unsuspend_seller
 from app.services.role_service import ban_user
-from app.models.seller_model import SellerRejectRequest
+from app.models.seller_model import SellerRejectRequest, SuspendRequest, UnsuspendRequest
 from app.db.mongodb import get_users_collection
+
+router = APIRouter(prefix="/admin", tags=["Admin Features"])
 
 @router.get("/sellers/pending")
 async def fetch_pending_sellers(
@@ -37,20 +40,22 @@ async def reject_seller_application(
 @router.post("/sellers/{target_user_id}/suspend")
 async def suspend_active_seller(
     target_user_id: str,
+    payload: SuspendRequest,
     current_user: dict = Depends(require_permission("seller:suspend"))
 ):
     email = current_user.get("email")
     admin_user = await get_users_collection().find_one({"email": email})
-    return await suspend_seller(target_user_id, str(admin_user["_id"]))
+    return await suspend_seller(target_user_id, str(admin_user["_id"]), payload.suspend_reason)
 
 @router.post("/sellers/{target_user_id}/unsuspend")
 async def unsuspend_active_seller(
     target_user_id: str,
+    payload: UnsuspendRequest,
     current_user: dict = Depends(require_permission("seller:suspend"))
 ):
     email = current_user.get("email")
     admin_user = await get_users_collection().find_one({"email": email})
-    return await unsuspend_seller(target_user_id, str(admin_user["_id"]))
+    return await unsuspend_seller(target_user_id, str(admin_user["_id"]), payload.unsuspend_reason)
 
 @router.post("/users/{target_user_id}/ban")
 async def ban_a_user(

@@ -1,6 +1,6 @@
 from app.core.config import settings
 from fastapi import APIRouter, Query, HTTPException, Depends
-from app.deps.auth import get_current_user
+from app.deps.roles import get_current_user
 import requests
 
 API_KEY = settings.OLLAMA_API_URL

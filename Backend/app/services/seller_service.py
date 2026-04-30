@@ -1,185 +1,151 @@
-from fastapi import HTTPException, status
+import logging
+from fastapi import HTTPException
+from app.repo import seller_helpers
+from app.models.product_model import ProductCreate, ProductUpdate, ProductStockUpdate, ProductToggleRequest
+from app.models.orders_model import OrderItemStatusUpdate
+from app.models.seller_model import SellerProfileUpdate
+from app.db.mongodb import products_collection, orders_collection, sellers_collection
 from datetime import datetime
-from app.db.mongodb import sellers_collection, get_users_collection
-from app.models.seller_model import SellerApplicationRequest, SellerProfile, SellerResponse
-from app.services.audit_service import log_action
-from app.repo.seller_helpers import (
-    get_seller_by_user_id,
-    insert_seller,
-    update_seller_by_user_id,
-    update_seller_by_object_id,
-    get_pending_sellers
-)
-from app.repo.role_helpers import get_user_by_id, update_user_role
+from bson import ObjectId
 
-async def apply_for_seller(user_id: str, payload: SellerApplicationRequest):
-    user = await get_user_by_id(get_users_collection(), user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+logger = logging.getLogger("uvicorn.error")
+
+class SellerService:
+    @staticmethod
+    async def create_product(seller_id: str, product_data: ProductCreate):
+        data = product_data.model_dump()
+        data["seller_id"] = seller_id
+        data["is_approved"] = False
+        data["created_at"] = datetime.utcnow()
+        data["updated_at"] = datetime.utcnow()
+        result = await seller_helpers.insert_seller_product(products_collection(), data)
+        result["_id"] = str(result["_id"])
+        return result
+
+    @staticmethod
+    async def get_products(seller_id: str, page: int = 1, limit: int = 10):
+        skip = (page - 1) * limit
+        items, total = await seller_helpers.get_seller_products(products_collection(), seller_id, skip=skip, limit=limit)
+        for item in items:
+            item["_id"] = str(item["_id"])
+        return {"items": items, "total": total, "page": page, "limit": limit}
+
+    @staticmethod
+    async def get_product_by_id(seller_id: str, product_id: str):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+        product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        product["_id"] = str(product["_id"])
+        return product
+
+    @staticmethod
+    async def update_product(seller_id: str, product_id: str, product_data: ProductUpdate):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+        update_data = product_data.model_dump(exclude_unset=True)
+        for field in ["is_approved", "seller_id", "avg_rating", "review_count", "product_likes", "created_at", "_id", "id"]:
+            update_data.pop(field, None)
         
-    if not user.get("is_verified", False):
-        raise HTTPException(status_code=400, detail="User must be verified to apply for seller")
+        success = await seller_helpers.update_seller_product(products_collection(), product_id, seller_id, update_data)
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found or no changes made")
+        return {"message": "Product updated successfully"}
+
+    @staticmethod
+    async def toggle_product(seller_id: str, product_id: str, toggle_data: ProductToggleRequest):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+        success = await seller_helpers.update_seller_product(products_collection(), product_id, seller_id, {"is_active": toggle_data.is_active})
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"message": "Product active status toggled"}
+
+    @staticmethod
+    async def update_stock(seller_id: str, product_id: str, stock_data: ProductStockUpdate):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+        success = await seller_helpers.update_seller_product(products_collection(), product_id, seller_id, {"stock": stock_data.stock})
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"message": "Product stock updated"}
+
+    @staticmethod
+    async def delete_product(seller_id: str, product_id: str):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+        success = await seller_helpers.soft_delete_seller_product(products_collection(), product_id, seller_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"message": "Product deleted successfully"}
+
+    @staticmethod
+    async def get_orders(seller_id: str, page: int = 1, limit: int = 10):
+        skip = (page - 1) * limit
+        items, total = await seller_helpers.get_seller_orders(orders_collection(), seller_id, skip=skip, limit=limit)
+        for item in items:
+            item["_id"] = str(item["_id"])
+            if "user_id" in item:
+                item["user_id"] = str(item["user_id"])
+        return {"items": items, "total": total, "page": page, "limit": limit}
+
+    @staticmethod
+    async def get_order_by_id(seller_id: str, order_id: str):
+        if not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid order ID")
+        order = await seller_helpers.get_seller_order_by_id(orders_collection(), order_id, seller_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
         
-    if user.get("is_banned", False):
-        raise HTTPException(status_code=400, detail="Banned users cannot apply")
+        order["_id"] = str(order["_id"])
+        if "user_id" in order:
+            order["user_id"] = str(order["user_id"])
         
-    # Check if application already exists
-    existing = await get_seller_by_user_id(sellers_collection(), user_id)
-    if existing:
-        if existing.get("application_status") == "pending":
-            raise HTTPException(status_code=400, detail="Application already pending")
-        if existing.get("application_status") == "approved":
-            raise HTTPException(status_code=400, detail="You are already an approved seller")
-        # If rejected, they can re-apply. We'll update the existing document.
-        await update_seller_by_object_id(
-            sellers_collection(),
-            existing["_id"],
-            {
-                "business_name": payload.business_name,
-                "business_type": payload.business_type.value if hasattr(payload.business_type, "value") else payload.business_type,
-                "gstin": payload.gstin,
-                "business_address": payload.business_address.model_dump(),
-                "application_status": "pending",
-                "rejection_reason": None,
-                "updated_at": datetime.utcnow()
-            }
+        if "shipping_address" in order and "mobile" in order["shipping_address"]:
+            del order["shipping_address"]["mobile"]
+            
+        seller_total = sum(item.get("price", 0) * item.get("quantity", 1) for item in order.get("items", []))
+        order["seller_total"] = seller_total
+        
+        return order
+
+    @staticmethod
+    async def update_order_status(seller_id: str, order_id: str, status_data: OrderItemStatusUpdate):
+        if not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid order ID")
+        success = await seller_helpers.update_seller_order_item_status(orders_collection(), order_id, seller_id, status_data.status.value)
+        if not success:
+            raise HTTPException(status_code=404, detail="Order item not found")
+        return {"message": f"Order item status updated to {status_data.status.value}"}
+
+    @staticmethod
+    async def update_profile(seller_id: str, profile_data: SellerProfileUpdate):
+        update_data = profile_data.model_dump(exclude_unset=True)
+        if not update_data:
+             return {"message": "No fields to update"}
+             
+        update_data["updated_at"] = datetime.utcnow()
+        result = await sellers_collection().update_one(
+            {"_id": ObjectId(seller_id)},
+            {"$set": update_data}
         )
-        return {"message": "Application resubmitted successfully"}
-
-    # Create new profile
-    profile = SellerProfile(
-        user_id=user_id,
-        email=user.get("email"),
-        business_name=payload.business_name,
-        business_type=payload.business_type,
-        gstin=payload.gstin,
-        business_address=payload.business_address
-    )
-    
-    await insert_seller(sellers_collection(), profile.model_dump(by_alias=True, exclude={"id"}))
-    return {"message": "Seller application submitted successfully"}
-
-async def get_pending_applications(limit: int = 50, skip: int = 0):
-    apps = await get_pending_sellers(sellers_collection(), limit, skip)
-    return [SellerResponse(**app) for app in apps]
-
-async def approve_seller(target_user_id: str, admin_id: str):
-    profile = await get_seller_by_user_id(sellers_collection(), target_user_id)
-    if not profile or profile.get("application_status") != "pending":
-        raise HTTPException(status_code=400, detail="No pending application found for this user")
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Seller profile not found")
+        return {"message": "Profile updated successfully"}
         
-    user = await get_user_by_id(get_users_collection(), target_user_id)
-    old_role = user.get("role", "user") if user else "user"
+    @staticmethod
+    async def get_profile(seller_id: str):
+        profile = await sellers_collection().find_one({"_id": ObjectId(seller_id)})
+        if not profile:
+            raise HTTPException(status_code=404, detail="Seller profile not found")
+        profile["_id"] = str(profile["_id"])
+        if "user_id" in profile:
+             profile["user_id"] = str(profile["user_id"])
+        return profile
 
-    # Update Seller Profile
-    await update_seller_by_user_id(
-        sellers_collection(),
-        target_user_id,
-        {
-            "application_status": "approved",
-            "reviewed_by": admin_id,
-            "reviewed_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        }
-    )
-    
-    # Update User Role
-    await update_user_role(get_users_collection(), target_user_id, "seller")
-    
-    await log_action(
-        action="seller_approved",
-        target_user_id=target_user_id,
-        performed_by=admin_id,
-        from_role=old_role,
-        to_role="seller"
-    )
-    return {"message": "Seller application approved successfully"}
+    @staticmethod
+    async def get_dashboard(seller_id: str):
+        stats = await seller_helpers.get_seller_dashboard_stats(products_collection(), orders_collection(), seller_id)
+        return stats
 
-async def reject_seller(target_user_id: str, admin_id: str, reason: str):
-    profile = await get_seller_by_user_id(sellers_collection(), target_user_id)
-    if not profile or profile.get("application_status") != "pending":
-        raise HTTPException(status_code=400, detail="No pending application found for this user")
-        
-    user = await get_user_by_id(get_users_collection(), target_user_id)
-    old_role = user.get("role", "user") if user else "user"
-
-    # Update Seller Profile
-    await update_seller_by_user_id(
-        sellers_collection(),
-        target_user_id,
-        {
-            "application_status": "rejected",
-            "rejection_reason": reason,
-            "reviewed_by": admin_id,
-            "reviewed_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        }
-    )
-    
-    await log_action(
-        action="seller_rejected",
-        target_user_id=target_user_id,
-        performed_by=admin_id,
-        from_role=old_role,
-        to_role=old_role,
-        reason=reason
-    )
-    return {"message": "Seller application rejected"}
-
-async def suspend_seller(target_user_id: str, admin_id: str):
-    profile = await get_seller_by_user_id(sellers_collection(), target_user_id)
-    if not profile or profile.get("application_status") != "approved":
-        raise HTTPException(status_code=400, detail="User is not an approved seller")
-        
-    if profile.get("is_suspended"):
-        raise HTTPException(status_code=400, detail="Seller is already suspended")
-        
-    user = await get_user_by_id(get_users_collection(), target_user_id)
-    old_role = user.get("role", "user") if user else "user"
-
-    await update_seller_by_user_id(
-        sellers_collection(),
-        target_user_id,
-        {
-            "is_suspended": True,
-            "updated_at": datetime.utcnow()
-        }
-    )
-    
-    await log_action(
-        action="seller_suspended",
-        target_user_id=target_user_id,
-        performed_by=admin_id,
-        from_role=old_role,
-        to_role=old_role
-    )
-    return {"message": "Seller has been suspended"}
-
-async def unsuspend_seller(target_user_id: str, admin_id: str):
-    profile = await get_seller_by_user_id(sellers_collection(), target_user_id)
-    if not profile or profile.get("application_status") != "approved":
-        raise HTTPException(status_code=400, detail="User is not an approved seller")
-        
-    if not profile.get("is_suspended"):
-        raise HTTPException(status_code=400, detail="Seller is not suspended")
-        
-    user = await get_user_by_id(get_users_collection(), target_user_id)
-    old_role = user.get("role", "user") if user else "user"
-
-    await update_seller_by_user_id(
-        sellers_collection(),
-        target_user_id,
-        {
-            "is_suspended": False,
-            "updated_at": datetime.utcnow()
-        }
-    )
-    
-    await log_action(
-        action="seller_unsuspended",
-        target_user_id=target_user_id,
-        performed_by=admin_id,
-        from_role=old_role,
-        to_role=old_role
-    )
-    return {"message": "Seller has been unsuspended"}

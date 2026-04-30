@@ -36,3 +36,4 @@ async def view_audit_logs(
     current_user: dict = Depends(require_permission("audit:view"))
 ):
     return await get_all_logs(limit, skip)
+

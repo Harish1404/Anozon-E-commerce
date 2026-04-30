@@ -3,6 +3,9 @@ from typing import Optional, Dict, Any
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from app.core.config import settings
+import logging
+
+logger = logging.getLogger("uvicorn.error")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -28,10 +31,17 @@ def create_refresh_token(data: Dict[str, Any], expires_delta: Optional[timedelta
 
 def verify_token(token: str) -> Optional[Dict[str, Any]]:
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            token, 
+            settings.JWT_SECRET, 
+            algorithms=[settings.JWT_ALGORITHM],
+            audience="Anozon",
+            issuer="Anozon"
+        )
         return payload
     
-    except JWTError:
+    except JWTError as e:
+        logger.error(f"JWT Verification Failed: {e}")
         return None
 
     

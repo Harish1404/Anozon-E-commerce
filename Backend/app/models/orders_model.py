@@ -31,6 +31,7 @@ class OrderItem(BaseModel):
     image: str
     price: float
     quantity: int
+    status: OrderStatus = Field(default=OrderStatus.pending)
 
 class ShippingAddress(BaseModel):
     full_name: str
@@ -58,4 +59,30 @@ class Order(BaseModel):
 class OrderResponse(Order):
     class Config:
         populate_by_name = True
+
+class MaskedShippingAddress(BaseModel):
+    full_name: str
+    line1: str
+    line2: Optional[str] = None
+    city: str
+    state: str
+    pincode: str
+
+class SellerOrderResponse(BaseModel):
+    id: PyObjectId = Field(alias="_id")
+    items: List[OrderItem]
+    shipping_address: MaskedShippingAddress
+    status: OrderStatus
+    seller_total: float
+    created_at: datetime
+    updated_at: datetime
+    payment_status: PaymentStatus
+    payment_method: PaymentMethod
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class OrderItemStatusUpdate(BaseModel):
+    status: OrderStatus
 

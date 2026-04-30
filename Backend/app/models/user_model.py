@@ -37,7 +37,7 @@ class UserRegister(UserBase):
     @field_validator('username')
     @classmethod
     def validate_username(cls, v: str):
-        if not re.search(r"^[a-zA-Z0-9_]*$", v):
+        if not re.search(r"^[a-zA-Z0-9_@]+$", v):
             raise ValueError("Username can only contain letters, numbers, and underscores")
         return v
 
@@ -53,8 +53,6 @@ class UserInDB(UserBase):
     role: UserRole = UserRole.user  # Default to user if missing
     is_verified: bool = False
     refresh_token_hashed: Optional[str] = None
-    favorites: list[PyObjectId] = Field(default_factory=list)
-    cart: list[CartItem] = Field(default_factory=list)
     
     # Optional: Timestamps (Good for auditing)
     # created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -73,6 +71,11 @@ class UserResponse(UserBase):
                 "role": "admin"
             }
         }
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "Bearer"
+    role: UserRole = UserRole.user
 
 
 class RefreshTokenRequest(BaseModel):

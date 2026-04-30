@@ -1,75 +1,77 @@
 from fastapi import APIRouter, Depends, HTTPException,status, Query, Path
 from app.services.user_service import UserService
 from app.services.product_service import ProductService
-from app.deps.auth import get_current_user
-from app.db.mongodb import get_users_collection
+from app.deps.roles import require_permission, get_current_user
+from app.models.seller_model import SellerApplicationRequest
+from app.services.admin_service import apply_for_seller
+from app.db.mongodb import get_users_collection, cart_collection
 from app.models.user_model import *
+from app.models.cart_model import *
 
 router = APIRouter(prefix="/users", tags=["user Features"])
 
 @router.get("/cart")
 async def get_my_cart(
     current_user = Depends(get_current_user),
-    collection = Depends(get_users_collection)
+    collection = Depends(cart_collection)
 ):
     """View my cart items"""
-    # In a real app, you would also fetch product details (name, price) here
     return await UserService.get_cart(str(current_user["_id"]), collection)
 
 @router.post("/cart", status_code=200)
 async def add_to_cart(
-    item: CartRequest,
+    item: CartItem,
     current_user = Depends(get_current_user),
-    collection = Depends(get_users_collection)
+    collection = Depends(cart_collection)
 ):
     """Add item or increase quantity"""
     return await UserService.add_to_cart(
         user_id=str(current_user["_id"]),
         product_id=item.product_id,
         quantity=item.quantity,
-        collection=collection
+        cart_collection=collection
     )
 
 @router.delete("/cart/{product_id}")
 async def remove_from_cart(
     product_id: str,
     current_user = Depends(get_current_user),
-    collection = Depends(get_users_collection)
+    collection = Depends(cart_collection)
 ):
     """Remove item completely from cart"""
     return await UserService.remove_from_cart(
         user_id=str(current_user["_id"]),
         product_id=product_id,
-        collection=collection
+        cart_collection=collection
     )
 
-# --- ❤️ FAVORITES ENDPOINTS ---
+# --- ❤️ FAVORITES / WISHLIST ENDPOINTS ---
 
 @router.get("/favorites")
 async def get_my_favorites(
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    collection = Depends(cart_collection)
 ):
-    """View my favorite product IDs"""
-    # Favorites are already inside the user object from the dependency!
-    return current_user.get("favorites", [])
+    """View my favorite/wishlist items"""
+    return await UserService.get_wishlist(str(current_user["_id"]), collection)
 
 @router.post("/favorites/toggle")
 async def toggle_favorite(
-    item: FavoriteRequest,
+    item: WishlistRequest,
     current_user = Depends(get_current_user),
-    collection = Depends(get_users_collection)
+    collection = Depends(cart_collection)
 ):
-    """Like or Unlike a product"""
+    """Like or Unlike a product (Wishlist)"""
     if not item.product_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Product ID is required")
     
     user_id = str(current_user["_id"])
     
-    # Toggle favorite in user collection
+    # Toggle wishlist in cart collection
     result = await UserService.toggle_favorite(
         user_id=user_id,
         product_id=item.product_id,
-        collection=collection
+        cart_collection=collection
     )
     
     # Update product likes based on toggle result
@@ -81,3 +83,20 @@ async def toggle_favorite(
         await ProductService.unlike_product(product_id=item.product_id, user_id=user_id)
     
     return result
+
+@router.post("/seller-apply")
+async def submit_seller_application(
+    payload: SellerApplicationRequest,
+    current_user: dict = Depends(require_permission("seller:apply"))
+):
+    """
+    Submit an application to become a seller.
+    Only users with 'seller:apply' permission (i.e., regular users) can do this.
+    """
+    email = current_user.get("email")
+    user = await get_users_collection().find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    return await apply_for_seller(str(user["_id"]), payload)
+

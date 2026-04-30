@@ -9,6 +9,10 @@ from app.services.otp_service import generate_and_store_otp, verify_user_otp
 from app.repo.otp_helpers import set_temp_password_token, get_temp_password_token, is_reset_blocked, is_reset_on_cooldown, increment_reset_send_count
 import logging
 import uuid
+from app.db.mongodb import profiles_collection, cart_collection, orders_collection
+from app.repo.profiles_helpers import create_empty_profile
+from app.repo.cart_helpers import create_empty_cart
+from app.repo.orders_helpers import init_user_orders
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -81,13 +85,21 @@ class AuthService:
             access_token, refresh_token = await generate_tokens(user["email"], user["role"], user_col)
             refresh_hash = hash_password(refresh_token)
 
+            # 1. Mark user as verified
             await update_user(user_col, user["_id"], {"is_verified": True, "refresh_token_hashed": refresh_hash})
-            logger.info(f"User {email} verified successfully")
+            
+            # 2. Initialize User Data (Profile, Cart, Orders)
+            user_id_str = str(user["_id"])
+            await create_empty_profile(profiles_collection(), user_id_str, email)
+            await create_empty_cart(cart_collection(), user_id_str)
+            await init_user_orders(orders_collection(), user_id_str)
+
+            logger.info(f"User {email} verified and data initialized successfully")
             return {"access_token": access_token, "refresh_token": refresh_token, "role": user["role"], "token_type": "bearer"}
 
         except PyMongoError as e:
             logger.error(f"Verify OTP DB Error: {e}")
-            raise HTTPException(status_code=500, detail="Failed to update verification status")
+            raise HTTPException(status_code=500, detail="Failed to update verification status or initialize data")
 
     @staticmethod
     async def resend_otp(email: str, user_col):
@@ -102,6 +114,7 @@ class AuthService:
         if not success:
             raise HTTPException(status_code=400, detail=message)
             
+        logger.info(f"OTP resent to {email}")
         return {"message": "OTP sent successfully.", "otp_token": otp_token}
 
     @staticmethod
@@ -155,9 +168,12 @@ class AuthService:
         new_refresh = create_refresh_token({"sub": email})
         new_refresh_hashed = hash_password(new_refresh)
 
-        await update_user(user_col, user["_id"], {"refresh_token_hashed": new_refresh_hashed})
-        
-        return {"access_token": new_access, "refresh_token": new_refresh, "role": user["role"], "token_type": "bearer"}
+        try:
+            await update_user(user_col, user["_id"], {"refresh_token_hashed": new_refresh_hashed})
+            return {"access_token": new_access, "refresh_token": new_refresh, "role": user["role"], "token_type": "bearer"}
+        except PyMongoError as e:
+            logger.error(f"Refresh Token DB Update Error for {email}: {e}")
+            raise HTTPException(status_code=500, detail="Token refresh failed")
 
     @staticmethod
     async def logout(token: str, user_col):
@@ -166,7 +182,11 @@ class AuthService:
             return {"message": "Logged out (Token expired)"}
 
         email = payload.get("sub")
-        await update_user_by_email(user_col, email, {"refresh_token_hashed": None})
+        try:
+            await update_user_by_email(user_col, email, {"refresh_token_hashed": None})
+        except PyMongoError as e:
+            logger.error(f"Logout DB Update Error for {email}: {e}")
+            # We still return success since the token is cleared on frontend anyway
         
         logger.info(f"User {email} logged out")
         return {"message": "Logged out"}
@@ -197,7 +217,6 @@ class AuthService:
         await increment_reset_send_count(email)
 
         logger.info(f"Forget password email sent to {email}")
-            
         return {"message": "Forget password email sent successfully"}
 
     @staticmethod
@@ -213,13 +232,17 @@ class AuthService:
         if not temp_token or temp_token != token:
             raise HTTPException(status_code=400, detail="Invalid or expired reset link")
 
-        await update_user(user_col, user["_id"], {"hashed_password": hash_password(new_password)})
-        await set_temp_password_token(email, None) 
-        
-        clear_refresh_cookie(response)
-        
-        logger.info(f"User {email} reset password successfully")
-        return {"message": "Password reset successful"}
+        try:
+            await update_user(user_col, user["_id"], {"hashed_password": hash_password(new_password)})
+            await set_temp_password_token(email, None) 
+            
+            clear_refresh_cookie(response)
+            
+            logger.info(f"User {email} reset password successfully")
+            return {"message": "Password reset successful"}
+        except PyMongoError as e:
+            logger.error(f"Reset Password DB Update Error for {email}: {e}")
+            raise HTTPException(status_code=500, detail="Password reset failed")
     
     
 

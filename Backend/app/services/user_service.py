@@ -1,43 +1,72 @@
 from fastapi import HTTPException, status
+from pymongo.errors import PyMongoError
 from bson import ObjectId
-from app.models.user_model import UserInDB
-from app.db.mongodb import get_users_collection
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+from app.repo.user_helpers import get_user_by_id, update_user_favorites
+from app.repo.cart_helpers import (
+    get_cart_by_user, 
+    add_item_to_cart, 
+    remove_item_from_cart, 
+    update_item_quantity, 
+    clear_user_cart,
+    update_user_wishlist
+)
 
 class UserService:
     
     # --- ❤️ FAVORITES LOGIC ---
     @staticmethod
-    async def toggle_favorite(user_id: str, product_id: str, collection):
+    async def toggle_favorite(user_id: str, product_id: str, cart_collection):
         """
-        Adds product to favorites if not there, removes it if it is.
+        Adds product to wishlist if not there, removes it if it is.
         Returns: The new state (True = Added, False = Removed)
         """
         if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
             raise HTTPException(status_code=400, detail="Invalid ID format")
 
-        user = await collection.find_one({"_id": ObjectId(user_id)})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        cart = await get_cart_by_user(cart_collection, user_id)
+        if not cart:
+            raise HTTPException(status_code=404, detail="Cart/Wishlist not found")
 
-        # Check if already favorite
-        if product_id in user.get("favorites", []):
-            # REMOVE (Unlike)
-            await collection.update_one(
-                {"_id": ObjectId(user_id)},
-                {"$pull": {"favorites": product_id}}
-            )
-            return {"message": "Removed from favorites", "is_favorite": False}
-        else:
-            # ADD (Like) - $addToSet prevents duplicates automatically
-            await collection.update_one(
-                {"_id": ObjectId(user_id)},
-                {"$addToSet": {"favorites": product_id}}
-            )
-            return {"message": "Added to favorites", "is_favorite": True}
+        # Check if already in wishlist
+        wishlist = cart.get("wishlist", [])
+        in_wishlist = any(item.get("product_id") == product_id for item in wishlist)
+        
+        try:
+            if in_wishlist:
+                # REMOVE (Unlike)
+                logger.info(f"Removing product {product_id} from wishlist for user {user_id}")
+                await update_user_wishlist(cart_collection, user_id, product_id, 'remove')
+                return {"message": "Removed from wishlist", "is_favorite": False}
+            else:
+                # ADD (Like)
+                logger.info(f"Adding product {product_id} to wishlist for user {user_id}")
+                await update_user_wishlist(cart_collection, user_id, product_id, 'add')
+                return {"message": "Added to wishlist", "is_favorite": True}
+        except PyMongoError as e:
+            logger.error(f"Error toggling wishlist for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
+
+    @staticmethod
+    async def get_wishlist(user_id: str, cart_collection):
+        """
+        Returns the user's wishlist items.
+        """
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        
+        cart = await get_cart_by_user(cart_collection, user_id)
+
+        if not cart:
+            return []
+        
+        return cart.get("wishlist", [])
 
     # --- 🛒 CART LOGIC ---
     @staticmethod
-    async def add_to_cart(user_id: str, product_id: str, quantity: int, collection):
+    async def add_to_cart(user_id: str, product_id: str, quantity: int, cart_collection):
         """
         Adds item to cart. If exists, increases quantity.
         """
@@ -47,109 +76,90 @@ class UserService:
         if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
             raise HTTPException(status_code=400, detail="Invalid ID")
 
-        # 1. Check if item already exists in cart
-        user = await collection.find_one({"_id": ObjectId(user_id), "cart.product_id": product_id})
+        try:
+            result = await add_item_to_cart(cart_collection, user_id, product_id, quantity)
+        except PyMongoError as e:
+            logger.error(f"Error adding to cart for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
 
-        if user:
-            # OPTION A: Item exists -> Increase Quantity
-            # We use the positional operator $ to find the specific item in the array
-            result = await collection.update_one(
-                {"_id": ObjectId(user_id), "cart.product_id": product_id},
-                {"$inc": {"cart.$.quantity": quantity}}
-            )
-        else:
-            # OPTION B: Item does not exist -> Push new object
-            new_item = {"product_id": product_id, "quantity": quantity}
-            result = await collection.update_one(
-                {"_id": ObjectId(user_id)},
-                {"$push": {"cart": new_item}}
-            )
-
-        if result.modified_count == 0:
-            raise HTTPException(status_code=400, detail="Failed to update cart")
+        if result.modified_count == 0 and result.upserted_id is None and result.matched_count == 0:
+             # This might happen if the cart document doesn't exist for the user yet
+             # But our verify_otp now ensures it exists.
+             logger.error(f"Failed to update cart for user {user_id}")
+             raise HTTPException(status_code=400, detail="Failed to update cart")
             
+        logger.info(f"Product {product_id} added to cart for user {user_id}")
         return {"message": "Cart updated"}
 
     @staticmethod
-    async def remove_from_cart(user_id: str, product_id: str, collection):
+    async def remove_from_cart(user_id: str, product_id: str, cart_collection):
         """
         Removes an item completely from the cart.
         """
         if not ObjectId.is_valid(user_id):
             raise HTTPException(status_code=400, detail="Invalid user ID")
         
-        user = await collection.find_one({"_id": ObjectId(user_id)})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        result = await collection.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$pull": {"cart": {"product_id": product_id}}}
-        )
+        try:
+            result = await remove_item_from_cart(cart_collection, user_id, product_id)
+        except PyMongoError as e:
+            logger.error(f"Error removing from cart for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
         
         if result.modified_count == 0:
+            logger.error(f"Product {product_id} not found in cart for user {user_id}")
             raise HTTPException(status_code=404, detail="Product not found in cart")
             
+        logger.info(f"Product {product_id} removed from cart for user {user_id}")
         return {"message": "Item removed from cart"}
     
     @staticmethod
-    async def update_cart_quantity(user_id: str,product_id: str,quantity: int,collection):
+    async def update_cart_quantity(user_id: str, product_id: str, quantity: int, cart_collection):
         if quantity <= 0:
-            raise HTTPException(status_code=400,detail="Quantity must be greater than zero")
+            raise HTTPException(status_code=400, detail="Quantity must be greater than zero")
 
         if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
             raise HTTPException(status_code=400, detail="Invalid ID")
 
-        result = await collection.update_one(
-            {
-                "_id": ObjectId(user_id),
-                "cart.product_id": product_id
-            },
-            {
-                "$set": {
-                    "cart.$.quantity": quantity
-                }
-            }
-        )
+        try:
+            result = await update_item_quantity(cart_collection, user_id, product_id, quantity)
+        except PyMongoError as e:
+            logger.error(f"Error updating cart quantity for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
 
         if result.modified_count == 0:
+            logger.error(f"Product {product_id} not found in cart for user {user_id}")
             raise HTTPException(
                 status_code=404,
                 detail="Product not found in cart"
             )
 
+        logger.info(f"Cart quantity updated for product {product_id}, user {user_id}")
         return {"message": "Cart quantity updated"}
 
     @staticmethod
-    async def get_cart(user_id: str, collection):
+    async def get_cart(user_id: str, cart_collection):
         """
-        Returns the user's cart. 
-        Note: In a real app, you would also fetch Product Details (Name, Price, Image) 
-        here by doing a 'Lookup' (Join) with the Products collection.
-        For now, we return the IDs and let the Frontend fetch details.
+        Returns the user's cart items.
         """
         if not ObjectId.is_valid(user_id):
             raise HTTPException(status_code=400, detail="Invalid user ID")
         
-        user = await collection.find_one({"_id": ObjectId(user_id)},{"cart": 1, "_id": 0})
+        cart = await get_cart_by_user(cart_collection, user_id)
 
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        if not cart:
+            # If no cart document found, return empty list
+            return []
         
-        return user.get("cart", [])
+        return cart.get("items", [])
     
     @staticmethod
-    async def clear_cart(user_id: str, collection):
-        
+    async def clear_cart(user_id: str, cart_collection):
         if not ObjectId.is_valid(user_id):
             raise HTTPException(status_code=400, detail="Invalid user ID")
 
-        result = await collection.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$set": {"cart": []}}
-        )
+        result = await clear_user_cart(cart_collection, user_id)
 
         if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="Cart not found for user")
 
         return {"message": "Cart cleared successfully"}

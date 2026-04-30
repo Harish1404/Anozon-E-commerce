@@ -1,5 +1,7 @@
 import math
 from fastapi import HTTPException
+from pymongo.errors import PyMongoError
+import logging
 from app.db.mongodb import products_collection
 from app.models.product_model import PaginatedProductResponse, ProductResponse
 from app.repo.product_helpers import (
@@ -10,6 +12,9 @@ from app.repo.product_helpers import (
     fetch_categories,
     update_product_likes
 )
+
+logger = logging.getLogger("uvicorn.error")
+
 
 class ProductService:
     @staticmethod
@@ -49,13 +54,18 @@ class ProductService:
         
         # 3. Fetch from DB
         collection = products_collection()
-        total_items = await count_products(collection, query)
-        raw_products = await fetch_products(collection, query, sort_by, sort_order, skip, limit)
+        try:
+            total_items = await count_products(collection, query)
+            raw_products = await fetch_products(collection, query, sort_by, sort_order, skip, limit)
+        except PyMongoError as e:
+            logger.error(f"Error fetching products: {e}")
+            raise HTTPException(status_code=500, detail="Database query failed")
         
         # 4. Serialize & Calculate Pages
         serialized_products = [ProductService.serialize(p) for p in raw_products]
         total_pages = math.ceil(total_items / limit) if limit > 0 else 0
 
+        logger.info(f"Fetched {len(serialized_products)} products for page {page}")
         # 5. Map to Model
         return PaginatedProductResponse(
             items=serialized_products,
@@ -79,14 +89,28 @@ class ProductService:
         product = await fetch_product_by_id(products_collection(), product_id)
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
-        await update_product_likes(products_collection(), product_id, user_id, action="like")
+        
+        
+        logger.info(f"User {user_id} liked product {product_id}")
+        try:
+            await update_product_likes(products_collection(), product_id, user_id, action="like")
+        except PyMongoError as e:
+            logger.error(f"Error liking product {product_id} for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
 
     @staticmethod
     async def unlike_product(product_id: str, user_id: str):
         product = await fetch_product_by_id(products_collection(), product_id)
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
-        await update_product_likes(products_collection(), product_id, user_id, action="unlike")
+        
+        
+        logger.info(f"User {user_id} unliked product {product_id}")
+        try:
+            await update_product_likes(products_collection(), product_id, user_id, action="unlike")
+        except PyMongoError as e:
+            logger.error(f"Error unlinking product {product_id} for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
 
     @staticmethod
     async def get_categories():
@@ -98,6 +122,8 @@ class ProductService:
     async def search_products(cls, query: str, page: int = 1, limit: int = 30):
         if not query or not query.strip():
             raise HTTPException(status_code=400, detail="Search query cannot be empty")
+        
+        logger.info(f"Searching for products with query: {query}")
         return await cls.get_products(search=query.strip(), page=page, limit=limit)
 
     @classmethod
