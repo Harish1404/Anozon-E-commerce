@@ -8,7 +8,7 @@ from app.db.mongodb import get_users_collection
 
 logger = logging.getLogger("uvicorn.error")
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["Auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # SIGNUP
@@ -46,18 +46,18 @@ async def refresh_token(response: Response, token: RefreshTokenRequest | None = 
     
     return result
 
-# LOGOUT — revoke refresh token (remove from DB)
-@router.post("/logout")
-async def logout(response: Response, token: str = Depends(oauth2_scheme), users_col=Depends(get_users_collection)):
-    clear_refresh_cookie(response)
-    result = await AuthService.logout(token, users_col)
-    return result
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
 async def forgot_password(request: ForgotPasswordRequest, users_col=Depends(get_users_collection)):
     return await AuthService.forget_password(request.email, users_col)
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
-async def reset_password(request: ResetPasswordRequest, users_col=Depends(get_users_collection)):
-    return await AuthService.reset_password(request.email, request.otp_token, request.new_password, users_col)
+async def reset_password(response: Response, request: ResetPasswordRequest, users_col=Depends(get_users_collection)):
+    return await AuthService.reset_password(request.email, request.otp_token, request.new_password, users_col, response)
 
+# LOGOUT — revoke refresh token (remove from DB)
+@router.post("/logout")
+async def logout(response: Response, token: str = Depends(oauth2_scheme), users_col=Depends(get_users_collection)):
+    clear_refresh_cookie(response)
+    result = await AuthService.logout(token, users_col)
+    return result

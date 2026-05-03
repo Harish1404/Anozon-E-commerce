@@ -4,8 +4,6 @@ import logging
 
 logger = logging.getLogger("uvicorn.error")
 
-
-
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.EMAIL_USER,
     MAIL_PASSWORD=settings.EMAIL_PASS,
@@ -109,7 +107,7 @@ async def send_forget_password_email(email: str, token: str):
                 <br>
                 <p>Click the link below to reset your password:</p>
                 <a href="http://localhost:3000/reset-password?token={token}">Reset Password</a>
-                <p>This link will expire in 1 hour.</p>
+                <p>This link will expire in 15 minutes.</p>
                 <br>
                 <p>Best regards,</p>
                 <p><strong>Anozon Team</strong></p>

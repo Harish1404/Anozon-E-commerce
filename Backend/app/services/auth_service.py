@@ -1,7 +1,6 @@
 from pymongo.errors import PyMongoError
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, verify_token
 from app.repo.auth_helpers import count_users, insert_user, update_user, get_user_by_email, generate_tokens, update_user_by_email
-from app.core.time_utils import now_ist
 from app.utils.email import send_forget_password_email
 from fastapi import HTTPException, status, Response
 from app.utils.cookies import clear_refresh_cookie
@@ -9,10 +8,10 @@ from app.services.otp_service import generate_and_store_otp, verify_user_otp
 from app.repo.otp_helpers import set_temp_password_token, get_temp_password_token, is_reset_blocked, is_reset_on_cooldown, increment_reset_send_count
 import logging
 import uuid
-from app.db.mongodb import profiles_collection, cart_collection, orders_collection
+from app.db.mongodb import profiles_collection, cart_collection
 from app.repo.profiles_helpers import create_empty_profile
 from app.repo.cart_helpers import create_empty_cart
-from app.repo.orders_helpers import init_user_orders
+from app.core.time_utils import utc_now
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -41,32 +40,30 @@ class AuthService:
             "refresh_token_hashed": None,
             "role": roles, # Explicitly setting default role is safer
             "is_verified": False,
-            "created_at": now_ist() # Store creation time and date for auditing
+            "is_banned": False,
+            "created_at": utc_now() # Store creation time and date for auditing
         }
         
         # 4. Safe Database Insertion
         try:
-
             success, message, otp_token = await generate_and_store_otp(user.email)
             if not success:
                 raise HTTPException(status_code=400, detail=message)
 
-            try:    
-                logger.info(f"OTP sent to {user.email}")
+            logger.info(f"OTP sent to {user.email}")
 
-                result = await insert_user(user_col, user_data)
-                # Logging for DevOps visibility
-                logger.info(f"Registered, Now please verify your email ")
-                return {"message": "User registered successfully, Please verify your email", "otp_token": otp_token}
+            result = await insert_user(user_col, user_data)
+            logger.info(f"Registered, Now please verify your email ")
+            return {"message": "User registered successfully, Please verify your email", "otp_token": otp_token}
 
-            except Exception as e:
-                logger.error(f"Error inserting user to DB: {e}")
-                raise HTTPException(status_code=500, detail="Failed to complete registration")
-            
-        
+        except HTTPException:
+            raise  # Re-raise HTTP exceptions as-is
         except PyMongoError as e:
             logger.error(f"Signup DB Error: {e}")
             raise HTTPException(status_code=500, detail="Signup failed due to server error")
+        except Exception as e:
+            logger.error(f"Error during signup: {e}")
+            raise HTTPException(status_code=500, detail="Failed to complete registration")
 
     @staticmethod
     async def verify_otp(otp_token: str, otp: str, user_col):
@@ -88,11 +85,10 @@ class AuthService:
             # 1. Mark user as verified
             await update_user(user_col, user["_id"], {"is_verified": True, "refresh_token_hashed": refresh_hash})
             
-            # 2. Initialize User Data (Profile, Cart, Orders)
+            # 2. Initialize User Data (Profile, Cart)
             user_id_str = str(user["_id"])
             await create_empty_profile(profiles_collection(), user_id_str, email)
             await create_empty_cart(cart_collection(), user_id_str)
-            await init_user_orders(orders_collection(), user_id_str)
 
             logger.info(f"User {email} verified and data initialized successfully")
             return {"access_token": access_token, "refresh_token": refresh_token, "role": user["role"], "token_type": "bearer"}
@@ -129,6 +125,14 @@ class AuthService:
         if not user.get("is_verified", False):
             logger.warning(f"Login failed: User {email} is not verified")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified. Please verify your OTP.")
+
+        # Check blocked status
+        if user.get("is_banned", False):
+            logger.warning(f"Banned user attempt: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been banned by the administrator."
+            )
 
         access_token, refresh_token = await generate_tokens(user["_id"], user["email"], user["role"], user_col)
 

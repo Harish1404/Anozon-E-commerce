@@ -3,6 +3,7 @@ from pymongo.errors import PyMongoError
 from fastapi import HTTPException
 from bson import ObjectId
 from datetime import datetime
+from app.core.time_utils import utc_now
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -64,8 +65,8 @@ async def update_product_approval_status(collection, product_id: str, is_approve
         update_data = {
             "is_approved": is_approved,
             "reviewed_by": admin_id,
-            "reviewed_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "reviewed_at": utc_now(),
+            "updated_at": utc_now()
         }
         if reason:
             update_data["rejection_reason"] = reason

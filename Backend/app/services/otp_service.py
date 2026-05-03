@@ -1,7 +1,7 @@
 import uuid
 import logging
 from app.repo import otp_helpers
-from app.utils.otp import generate_otp
+from app.utils.otp import generate_otp_token
 from app.utils.email import send_otp_email
 from app.repo.otp_helpers import MAX_ATTEMPTS, MAX_RESEND_ATTEMPTS
 
@@ -29,7 +29,7 @@ async def generate_and_store_otp(email: str) -> tuple[bool, str, str]:
             return False, "Too many resend requests. Account temporarily blocked.", ""
 
         # 4. Generate OTP & Token
-        otp = generate_otp()
+        otp = generate_otp_token()
         otp_token = str(uuid.uuid4())
 
         # 4. Store OTP data

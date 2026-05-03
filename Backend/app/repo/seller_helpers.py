@@ -3,6 +3,7 @@ from bson import ObjectId
 from pymongo.errors import PyMongoError
 from fastapi import HTTPException
 from datetime import datetime
+from app.core.time_utils import utc_now
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -38,7 +39,7 @@ async def get_seller_product_by_id(collection, product_id: str, seller_id: str):
 
 async def update_seller_product(collection, product_id: str, seller_id: str, update_data: dict):
     try:
-        update_data["updated_at"] = datetime.utcnow()
+        update_data["updated_at"] = utc_now()
         result = await collection.update_one(
             {"_id": ObjectId(product_id), "seller_id": seller_id},
             {"$set": update_data}
@@ -52,11 +53,10 @@ async def soft_delete_seller_product(collection, product_id: str, seller_id: str
     try:
         result = await collection.update_one(
             {"_id": ObjectId(product_id), "seller_id": seller_id},
-            {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}
+            {"$set": {"is_deleted": True, "updated_at": utc_now()}}
         )
         return result.modified_count > 0
     except PyMongoError as e:
-        logger.error(f"DB Error deleting seller product: {e}")
         logger.error(f"DB Error deleting seller product: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
@@ -70,13 +70,13 @@ async def get_product_by_slug(collection, seller_id: str, slug: str):
 async def get_seller_orders(collection, seller_id: str, skip: int = 0, limit: int = 10):
     try:
         pipeline = [
-            {"$match": {"items.seller_id": seller_id}},
+            {"$match": {"items.seller_id": ObjectId(seller_id)}},
             {"$addFields": {
                 "items": {
                     "$filter": {
                         "input": "$items",
                         "as": "item",
-                        "cond": {"$eq": ["$$item.seller_id", seller_id]}
+                        "cond": {"$eq": ["$$item.seller_id", ObjectId(seller_id)]}
                     }
                 }
             }},
@@ -86,7 +86,7 @@ async def get_seller_orders(collection, seller_id: str, skip: int = 0, limit: in
         ]
         
         count_pipeline = [
-            {"$match": {"items.seller_id": seller_id}},
+            {"$match": {"items.seller_id": ObjectId(seller_id)}},
             {"$count": "total"}
         ]
         
@@ -102,16 +102,24 @@ async def get_seller_orders(collection, seller_id: str, skip: int = 0, limit: in
         logger.error(f"DB Error fetching seller orders: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
+async def get_full_order_by_id(collection, order_id: str):
+    """Fetch the complete order document with ALL items (across all sellers)."""
+    try:
+        return await collection.find_one({"_id": ObjectId(order_id)})
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching full order by id: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
 async def get_seller_order_by_id(collection, order_id: str, seller_id: str):
     try:
         pipeline = [
-            {"$match": {"_id": ObjectId(order_id), "items.seller_id": seller_id}},
+            {"$match": {"_id": ObjectId(order_id), "items.seller_id": ObjectId(seller_id)}},
             {"$addFields": {
                 "items": {
                     "$filter": {
                         "input": "$items",
                         "as": "item",
-                        "cond": {"$eq": ["$$item.seller_id", seller_id]}
+                        "cond": {"$eq": ["$$item.seller_id", ObjectId(seller_id)]}
                     }
                 }
             }}
@@ -129,11 +137,45 @@ async def update_seller_order_item_status(collection, order_id: str, seller_id: 
             {"_id": ObjectId(order_id)},
             {
                 "$set": {
-                    "items.$[elem].status": new_status,
-                    "updated_at": datetime.utcnow()
+                    "items.$[elem].item_status": new_status,
+                    "updated_at": utc_now()
                 }
             },
-            array_filters=[{"elem.seller_id": seller_id}]
+            array_filters=[{"elem.seller_id": ObjectId(seller_id)}]
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating seller order status: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_seller_order_item_status_by_product(collection, order_id: str, seller_id: str, product_id: str, new_status: str) -> bool:
+    """Update the status of a single item identified by both seller_id and product_id."""
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(order_id)},
+            {
+                "$set": {
+                    "items.$[elem].item_status": new_status,
+                    "updated_at": utc_now()
+                }
+            },
+            array_filters=[{"elem.seller_id": ObjectId(seller_id), "elem.product_id": ObjectId(product_id)}]
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating order item status by product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_order_status(collection, order_id: str, new_status: str):
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(order_id)},
+            {
+                "$set": {
+                    "order_status": new_status,
+                    "updated_at": utc_now()
+                }
+            },
         )
         return result.modified_count > 0
     except PyMongoError as e:
@@ -148,16 +190,19 @@ async def get_seller_dashboard_stats(product_collection, order_collection, selle
         low_stock = sum(1 for p in products if p.get("stock", 0) < 10)
         
         pipeline = [
-            {"$match": {"items.seller_id": seller_id}},
+            {"$match": {"items.seller_id": ObjectId(seller_id)}},
             {"$unwind": "$items"},
-            {"$match": {"items.seller_id": seller_id}}
+            {"$match": {"items.seller_id": ObjectId(seller_id)}},
+            {"$match": {"items.item_status": {"$nin": ["cancelled"]}}},
+            {"$sort": {"created_at": -1}},
+            
         ]
         orders = await order_collection.aggregate(pipeline).to_list(length=None)
         
         total_revenue = 0
         this_month_revenue = 0
         
-        now = datetime.utcnow()
+        now = utc_now()
         start_of_month = datetime(now.year, now.month, 1)
         
         for o in orders:

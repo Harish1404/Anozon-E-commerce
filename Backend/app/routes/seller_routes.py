@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from app.deps.roles import require_permission, get_current_user
 from app.services.seller_service import SellerService
 from app.models.product_model import ProductCreate, ProductUpdate, ProductStockUpdate, ProductToggleRequest
@@ -26,7 +26,7 @@ async def get_seller_dashboard(user=Depends(get_current_user)):
     return await SellerService.get_dashboard(str(user["_id"]))
 
 # --- Products ---
-@router.post("/products", dependencies=[Depends(require_permission("product:own:write"))])
+@router.post("/products", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission("product:own:write"))])
 async def create_product(product_data: ProductCreate, user=Depends(get_current_user)):
     return await SellerService.create_product(str(user["_id"]), product_data)
 
@@ -63,7 +63,13 @@ async def get_orders(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le
 async def get_order_by_id(order_id: str, user=Depends(get_current_user)):
     return await SellerService.get_order_by_id(str(user["_id"]), order_id)
 
-@router.patch("/orders/{order_id}/status", dependencies=[Depends(require_permission("order:own:status:update"))])
-async def update_order_status(order_id: str, status_data: OrderItemStatusUpdate, user=Depends(get_current_user)):
-    return await SellerService.update_order_status(str(user["_id"]), order_id, status_data)
+@router.patch("/orders/{order_id}/items/{product_id}/status", dependencies=[Depends(require_permission("order:own:status:update"))])
+async def update_order_status(order_id: str, product_id: str, status_data: OrderItemStatusUpdate, user=Depends(get_current_user)):
+    return await SellerService.update_order_status(str(user["_id"]), order_id, product_id, status_data)
+
+# --- Reviews (read-only for sellers) ---
+@router.get("/products/{product_id}/reviews", dependencies=[Depends(require_permission("product:own:write"))])
+async def get_product_reviews(product_id: str, page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=50), user=Depends(get_current_user)):
+    from app.services.review_service import ReviewService
+    return await ReviewService.get_seller_product_reviews(str(user["_id"]), product_id, page, limit)
 

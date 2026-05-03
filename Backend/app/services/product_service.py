@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from pymongo.errors import PyMongoError
 import logging
 from app.db.mongodb import products_collection
+from app.services.review_service import ReviewService
 from app.models.product_model import PaginatedProductResponse, ProductResponse
 from app.repo.product_helpers import (
     build_product_query,
@@ -10,13 +11,15 @@ from app.repo.product_helpers import (
     fetch_products,
     fetch_product_by_id,
     fetch_categories,
-    update_product_likes
 )
+from app.db.mongodb import sellers_collection
+from bson import ObjectId
 
 logger = logging.getLogger("uvicorn.error")
 
 
 class ProductService:
+
     @staticmethod
     def serialize(product):
         product["_id"] = str(product["_id"])
@@ -79,38 +82,26 @@ class ProductService:
     async def get_product_by_id(product_id: str):
         product = await fetch_product_by_id(products_collection(), product_id)
         if product:
-            return ProductService.serialize(product)
+            serialized_product = ProductService.serialize(product)
+            
+            # 1. Fetch last 5 reviews
+            reviews_data = await ReviewService.get_product_reviews(product_id, page=1, limit=5)
+            serialized_product["recent_reviews"] = reviews_data.get("reviews", [])
+            
+            # 2. Fetch seller details
+            seller_id = product.get("seller_id")
+            if seller_id:
+                # user_id in Sellers collection is stored as string
+                seller = await sellers_collection().find_one({"user_id": str(seller_id)})
+                if seller:
+                    serialized_product["seller_details"] = {
+                        "business_name": seller.get("business_name"),
+                        "business_type": seller.get("business_type"),
+                        "rating": seller.get("rating", 0.0)
+                    }
+            
+            return serialized_product
         return None
-
-    @staticmethod
-    async def like_product(product_id: str, user_id: str):
-        # We assume checking the product exists is done, but the helper handles it efficiently via update.
-        # To strictly enforce 404 if not found:
-        product = await fetch_product_by_id(products_collection(), product_id)
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
-        
-        
-        logger.info(f"User {user_id} liked product {product_id}")
-        try:
-            await update_product_likes(products_collection(), product_id, user_id, action="like")
-        except PyMongoError as e:
-            logger.error(f"Error liking product {product_id} for user {user_id}: {e}")
-            raise HTTPException(status_code=500, detail="Database update failed")
-
-    @staticmethod
-    async def unlike_product(product_id: str, user_id: str):
-        product = await fetch_product_by_id(products_collection(), product_id)
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
-        
-        
-        logger.info(f"User {user_id} unliked product {product_id}")
-        try:
-            await update_product_likes(products_collection(), product_id, user_id, action="unlike")
-        except PyMongoError as e:
-            logger.error(f"Error unlinking product {product_id} for user {user_id}: {e}")
-            raise HTTPException(status_code=500, detail="Database update failed")
 
     @staticmethod
     async def get_categories():

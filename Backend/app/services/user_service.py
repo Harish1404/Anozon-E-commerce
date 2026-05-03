@@ -4,7 +4,7 @@ from bson import ObjectId
 import logging
 
 logger = logging.getLogger("uvicorn.error")
-from app.repo.user_helpers import get_user_by_id, update_user_favorites
+
 from app.repo.cart_helpers import (
     get_cart_by_user, 
     add_item_to_cart, 
@@ -13,7 +13,7 @@ from app.repo.cart_helpers import (
     clear_user_cart,
     update_user_wishlist
 )
-from app.repo.product_helpers import fetch_product_by_id
+from app.repo.product_helpers import fetch_product_by_id, update_product_likes
 from app.db.mongodb import products_collection
 
 class UserService:
@@ -41,11 +41,15 @@ class UserService:
                 # REMOVE (Unlike)
                 logger.info(f"Removing product {product_id} from wishlist for user {user_id}")
                 await update_user_wishlist(cart_collection, user_id, product_id, 'remove')
+                # Also update product like count
+                await update_product_likes(products_collection(), product_id, user_id, action="unlike")
                 return {"message": "Removed from wishlist", "is_favorite": False}
             else:
                 # ADD (Like)
                 logger.info(f"Adding product {product_id} to wishlist for user {user_id}")
                 await update_user_wishlist(cart_collection, user_id, product_id, 'add')
+                # Also update product like count
+                await update_product_likes(products_collection(), product_id, user_id, action="like")
                 return {"message": "Added to wishlist", "is_favorite": True}
         except PyMongoError as e:
             logger.error(f"Error toggling wishlist for user {user_id}: {e}")
@@ -106,13 +110,11 @@ class UserService:
             raise HTTPException(status_code=500, detail="Database update failed")
 
         if result.modified_count == 0 and result.upserted_id is None and result.matched_count == 0:
-             # This might happen if the cart document doesn't exist for the user yet
-             # But our verify_otp now ensures it exists.
              logger.error(f"Failed to update cart for user {user_id}")
              raise HTTPException(status_code=400, detail="Failed to update cart")
             
         logger.info(f"Product {product_id} added to cart for user {user_id}")
-        return {"message": "Cart updated"}
+        return await UserService.get_calculated_cart(user_id, cart_collection)
 
     @staticmethod
     async def remove_from_cart(user_id: str, product_id: str, cart_collection):
@@ -133,7 +135,7 @@ class UserService:
             raise HTTPException(status_code=404, detail="Product not found in cart")
             
         logger.info(f"Product {product_id} removed from cart for user {user_id}")
-        return {"message": "Item removed from cart"}
+        return await UserService.get_calculated_cart(user_id, cart_collection)
     
     @staticmethod
     async def update_cart_quantity(user_id: str, product_id: str, quantity: int, cart_collection):
@@ -168,23 +170,83 @@ class UserService:
             )
 
         logger.info(f"Cart quantity updated for product {product_id}, user {user_id}")
-        return {"message": "Cart quantity updated"}
+        return await UserService.get_calculated_cart(user_id, cart_collection)
 
     @staticmethod
     async def get_cart(user_id: str, cart_collection):
         """
-        Returns the user's cart items.
+        Returns the user's cart items with dynamic summary.
         """
         if not ObjectId.is_valid(user_id):
             raise HTTPException(status_code=400, detail="Invalid user ID")
-        
-        cart = await get_cart_by_user(cart_collection, user_id)
+        return await UserService.get_calculated_cart(user_id, cart_collection)
 
-        if not cart:
-            # If no cart document found, return empty list
-            return []
+    @staticmethod
+    async def get_calculated_cart(user_id: str, cart_collection) -> dict:
+        cart = await get_cart_by_user(cart_collection, user_id)
+        cart_items = cart.get("items", []) if cart else []
         
-        return cart.get("items", [])
+        response_items = []
+        subtotal = 0.0
+        
+        for item in cart_items:
+            product = await fetch_product_by_id(products_collection(), item["product_id"], only_approved=False)
+            if product:
+                is_available = bool(product.get("is_active") and product.get("is_approved"))
+                price = float(product.get("price", 0.0))
+                qty = item["quantity"]
+                item_total = price * qty if is_available else 0.0
+                if is_available:
+                    subtotal += item_total
+                
+                response_items.append({
+                    "product_id": str(product["_id"]),
+                    "name": product["name"],
+                    "image": product.get("image_urls", [""])[0] if product.get("image_urls") else "",
+                    "price": price,
+                    "quantity": qty,
+                    "item_total": item_total,
+                    "available": is_available
+                })
+        
+        delivery_charge = 0.0 if subtotal >= 500.0 else 50.0
+        if subtotal == 0:
+            delivery_charge = 0.0
+            
+        gst_rate = 18
+        gst_amount = subtotal * 0.18
+        total = subtotal + delivery_charge + gst_amount
+        
+        summary = {
+            "item_count": len(response_items),
+            "subtotal": round(subtotal, 2),
+            "gst_rate": gst_rate,
+            "gst_amount": round(gst_amount, 2),
+            "delivery_charge": delivery_charge,
+            "free_delivery_eligible": subtotal >= 500.0,
+            "total": round(total, 2)
+        }
+        
+        wishlist_items = []
+        for w_item in cart.get("wishlist", []) if cart else []:
+            prod = await fetch_product_by_id(products_collection(), w_item["product_id"])
+            if prod:
+                wishlist_items.append({
+                    "product_id": str(prod["_id"]),
+                    "name": prod["name"],
+                    "image": prod.get("image_urls", [""])[0] if prod.get("image_urls") else "",
+                    "price": float(prod.get("price", 0.0)),
+                    "added_at": w_item.get("added_at")
+                })
+        
+        return {
+            "_id": str(cart["_id"]) if cart and "_id" in cart else None,
+            "user_id": user_id,
+            "items": response_items,
+            "summary": summary,
+            "wishlist": wishlist_items,
+            "updated_at": cart.get("updated_at") if cart else None
+        }
     
     @staticmethod
     async def clear_cart(user_id: str, cart_collection):

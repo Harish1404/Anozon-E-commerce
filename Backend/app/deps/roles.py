@@ -1,14 +1,13 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from app.core.security import verify_token
-from app.db.mongodb import get_users_collection
 import logging
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 logger = logging.getLogger("uvicorn.error")
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), users_col = Depends(get_users_collection)):
+async def get_current_user(token: str = Depends(oauth2_scheme)):
 
     payload = verify_token(token)
 
@@ -18,7 +17,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), users_col = Depe
     user_id, email, role = payload.get("_id"), payload.get("email"), payload.get("role")
     if not user_id or not email or not role:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
-    logger.info(f"Token payload: {payload}")
+
     return {"_id": str(user_id), "email": email, "role": role}
 
 

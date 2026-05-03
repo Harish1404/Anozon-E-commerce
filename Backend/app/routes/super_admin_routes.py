@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from app.deps.roles import require_permission, get_current_user
 from app.services.role_service import promote_to_admin, demote_user
 from app.services.audit_service import get_all_logs
 from app.db.mongodb import get_users_collection
+from typing import Optional
+from datetime import datetime
 
 router = APIRouter(prefix="/super-admin", tags=["Super Admin"])
 
@@ -32,8 +34,25 @@ async def demote_any_user(
 
 @router.get("/audit-logs")
 async def view_audit_logs(
-    limit: int = 50, skip: int = 0,
+    module: Optional[str] = Query(None, description="Filter by module: role_management, seller, user, product"),
+    action: Optional[str] = Query(None, description="Filter by action type"),
+    performed_by: Optional[str] = Query(None, description="Filter by admin email"),
+    target: Optional[str] = Query(None, description="Filter by target user email"),
+    date_from: Optional[datetime] = Query(None, description="Start date filter (ISO format)"),
+    date_to: Optional[datetime] = Query(None, description="End date filter (ISO format)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: dict = Depends(require_permission("audit:view"))
 ):
-    return await get_all_logs(limit, skip)
-
+    """View audit logs with comprehensive filtering"""
+    skip = (page - 1) * limit
+    return await get_all_logs(
+        module=module,
+        action=action,
+        performed_by_email=performed_by,
+        target_email=target,
+        date_from=date_from,
+        date_to=date_to,
+        skip=skip,
+        limit=limit
+    )

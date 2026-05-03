@@ -1,11 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import pytz
 
 tz_india = pytz.timezone('Asia/Kolkata')
 
-def now_ist(format_str: str = "%Y-%m-%d %I:%M:%S %p") -> str:
-    """Returns current date and time in IST formatted as per given format string."""
-    now_india = datetime.now(tz_india)
-    return now_india.strftime(format_str)
+def utc_now() -> datetime:
+    """Returns current UTC time as a timezone-aware datetime.
+    Replaces deprecated datetime.utcnow() (deprecated since Python 3.12).
+    """
+    return datetime.now(timezone.utc)
+
+
 
     

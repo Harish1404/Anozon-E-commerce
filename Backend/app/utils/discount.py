@@ -11,3 +11,4 @@ def calculate_discount_price(price: int, discount_percent: int) -> int:
     discount_amount = price * (discount_percent / 100)
     discount_price = round(price - discount_amount)
     return discount_price
+

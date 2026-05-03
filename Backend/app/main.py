@@ -1,14 +1,14 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from h11 import Request
-from app.routes import auth_user, product_routes, admin_routes, user_routes, seller_routes, super_admin_routes
+from starlette.requests import Request
+from app.routes import auth_user, product_routes, admin_routes, user_routes, seller_routes, super_admin_routes, review_routes
 from app.ai import ollama 
-# from app.routes import bacground_email  # Email not implemented yet
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 from app.db.mongodb import connect_to_mongo, create_indexes, close_mongo_connection
 from app.db.redis import connect_redis, close_redis
 from app.core.logger import logger
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,19 +43,21 @@ def landing_page():
 async def health_check():
     return {"status": "ok"}
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "[IP_ADDRESS]", "http://[IP_ADDRESS]"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 app.include_router(auth_user.router)
 app.include_router(user_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(product_routes.router)
 app.include_router(seller_routes.router)
+app.include_router(review_routes.router)
 app.include_router(super_admin_routes.router)
 app.include_router(ollama.router)  # Ollama AI routes
 # app.include_router(bacground_email.router)  # Email not implemented yet
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)

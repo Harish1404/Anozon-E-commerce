@@ -3,7 +3,7 @@ from pymongo.errors import PyMongoError
 from app.db.mongodb import get_users_collection, sellers_collection
 from app.services.audit_service import log_action
 from app.repo.role_helpers import get_user_by_id, update_user_role
-from app.repo.seller_helpers import update_seller_by_user_id
+from app.repo.admin_helpers import update_seller_by_user_id
 import logging
 
 logger = logging.getLogger("uvicorn.error")
@@ -79,6 +79,9 @@ async def ban_user(user_id: str, performed_by: str):
     old_role = user.get("role", "user")
     if old_role == "super_admin":
         raise HTTPException(status_code=403, detail="Cannot ban a super admin")
+
+    if user.get("is_banned", False):
+        raise HTTPException(status_code=400, detail="User is already banned")
 
     logger.info(f"Banning user {user_id} by {performed_by}")
     try:

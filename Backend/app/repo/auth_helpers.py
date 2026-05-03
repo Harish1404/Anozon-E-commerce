@@ -1,6 +1,7 @@
+from bson.objectid import ObjectId
 from pymongo.errors import PyMongoError
 from app.core.security import create_access_token, create_refresh_token
-from datetime import datetime
+from app.core.time_utils import utc_now
 from fastapi import HTTPException
 import logging
 
@@ -17,8 +18,8 @@ async def get_user_by_email(collection, email: str):
 
 async def generate_tokens(id: str, email: str, role: str, user_col):
     try: 
-        access_token = create_access_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": datetime.utcnow() })
-        refresh_token = create_refresh_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": datetime.utcnow()})
+        access_token = create_access_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": utc_now() })
+        refresh_token = create_refresh_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": utc_now()})
         
         return access_token, refresh_token
 
@@ -44,7 +45,7 @@ async def insert_user(collection, user_data: dict):
 
 async def update_user(collection, user_id: str, update_data: dict):
     try: 
-        result = await collection.update_one({"_id": user_id}, {"$set": update_data})
+        result = await collection.update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
         return result
     except PyMongoError as e:
         logger.error(f"DB Error updating user: {e}")
@@ -52,7 +53,7 @@ async def update_user(collection, user_id: str, update_data: dict):
 
 async def delete_user(collection, user_id: str):
     try: 
-        result = await collection.delete_one({"_id": user_id})
+        result = await collection.delete_one({"_id": ObjectId(user_id)})
         return result
     except PyMongoError as e:
         logger.error(f"DB Error deleting user: {e}")

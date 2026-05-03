@@ -10,18 +10,20 @@ async def connect_redis():
     global redis_client
     try:
         redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+        await redis_client.ping()  # Force actual connection test (from_url is lazy)
         logger.info("Redis connected successfully")
     except Exception as e:
         logger.error(f"Redis connection error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to connect to Redis")
+        raise RuntimeError(f"Failed to connect to Redis: {e}")
 
 async def close_redis():
     try:
-        await redis_client.close()
-        logger.info("Redis connection closed")
+        if redis_client:
+            await redis_client.close()
+            logger.info("Redis connection closed")
     except Exception as e:
         logger.error(f"Redis connection close error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to close Redis connection")
+        # Don't raise during shutdown — no request context exists
 
 
 

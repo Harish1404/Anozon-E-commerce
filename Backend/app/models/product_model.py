@@ -3,6 +3,9 @@ from typing import Optional, Annotated, Any
 from bson import ObjectId
 from datetime import datetime
 from app.utils.discount import calculate_discount_price
+from app.models.reviews_model import ReviewPublicResponse
+from app.models.seller_model import SellerMinimalResponse
+from app.core.time_utils import utc_now
 
 # 1. Helper to handle MongoDB ObjectId -> String conversion
 PyObjectId = Annotated[str, BeforeValidator(str)]
@@ -50,8 +53,8 @@ class ProductInDB(ProductBase):
     avg_rating: float = Field(default=0.0)
     review_count: int = Field(default=0)
     product_likes: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow) 
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now) 
 
     model_config = {
         "from_attributes": True,
@@ -62,6 +65,7 @@ class ProductInDB(ProductBase):
 # --- RESPONSE MODEL (Output to Frontend) ---
 class ProductResponse(ProductBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    seller_id: PyObjectId
     slug: str
     discount_percent: int
     price: int # Final discounted price
@@ -71,7 +75,8 @@ class ProductResponse(ProductBase):
     avg_rating: float
     review_count: int
     product_likes: int
-    seller_id: str
+    recent_reviews: list["ReviewPublicResponse"] = []
+    seller_details: Optional["SellerMinimalResponse"] = None
     created_at: datetime
     updated_at: datetime
 
@@ -79,6 +84,7 @@ class ProductResponse(ProductBase):
         "from_attributes": True,   # maps ProductInDB -> ProductResponse
         "populate_by_name": True,
     }
+
 
 class ProductStockUpdate(BaseModel):
     stock: int = Field(..., ge=0)

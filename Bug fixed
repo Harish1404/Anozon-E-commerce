@@ -1,0 +1,3512 @@
+# Bug Fix Walkthrough — Anozon Backend
+
+## Changes Summary
+
+### Bugs Fixed By You (Manual)
+| Bug | Fix |
+|-----|-----|
+| BUG-01 | `h11.Request` → `starlette.requests.Request` in main.py |
+| BUG-08 | Added `ObjectId()` wrap in `auth_helpers.update_user` |
+| BUG-13 | Added cancelled-order filter in seller dashboard pipeline |
+| BUG-20 | Added `is_banned` check in login + ban_user |
+| BUG-09 (partial) | `datetime.utcnow()` deprecation noted |
+| BUG-24 | `!= None` → `is not None` in role_helpers |
+| BUG-27 (model) | Added `is_banned` field to UserInDB |
+| BUG-31 | Removed unused `users_col` param from `get_current_user` |
+| BUG-32 | Fixed missing `/` in product route path |
+| BUG-10 | Removed orphan `init_user_orders` + placeholder doc |
+
+### Bugs Fixed By Me (Automated)
+
+#### Critical / High Priority
+| Bug | File | Change |
+|-----|------|--------|
+| **BUG-04** | `order_service.py` | Reordered: order created BEFORE stock decrement + rollback on failure |
+| **BUG-05** | `product_routes.py` | Removed duplicate ollama route + unused `import requests` |
+| **BUG-09** | `time_utils.py`, `security.py`, `auth_helpers.py` | Added `utc_now()` helper, replaced `datetime.utcnow()` in token paths |
+| **BUG-11** | `user_service.py` | Cart shows unavailable products with `available: false` flag instead of hiding |
+| **BUG-14** | `admin_routes.py` | Added null checks for `admin_user` in suspend/unsuspend |
+| **BUG-16** | `order_service.py` | Cached products during validation, eliminated N redundant DB fetches |
+| **BUG-17** | `role_service.py` | Changed import to `admin_helpers.update_seller_by_user_id` for consistency |
+
+#### Low Priority
+| Bug | File | Change |
+|-----|------|--------|
+| **BUG-27** | `seller_helpers.py` | Removed duplicate `logger.error()` line |
+| **BUG-28** | `seller_service.py` | `updated_at: None` → `updated_at: created_at` for new products |
+| **BUG-29** | `auth_service.py` | Flattened nested try/except — outer `PyMongoError` was unreachable |
+
+#### Breakage Fixes (From Your Manual Changes)
+| Issue | File | Fix |
+|-------|------|-----|
+| `generate_otp` renamed but import not updated | `otp_service.py` | Updated import to `generate_otp_token` |
+| `generate_otp_token` returns `int` instead of `str` | `otp.py` | Wrapped return in `str()` — OTPs compared as strings |
+| `reset_password` route passes 4 args, service expects 5 | `auth_user.py` | Pass `response` to service; removed broken cookie line |
+| Dead imports after `init_user_orders` removal | `auth_service.py` | Removed `orders_collection` and `init_user_orders` imports |
+| Dead import `update_user_favorites` (deleted from helpers) | `user_service.py` | Removed the import |
+
+## Files Modified
+
+```diff:otp.py
+import random
+
+def generate_otp():
+    return str(random.randint(100000, 999999))
+===
+import secrets
+
+
+def generate_otp_token():
+    return str(secrets.randbelow(900000) + 100000)
+```
+```diff:otp_service.py
+import uuid
+import logging
+from app.repo import otp_helpers
+from app.utils.otp import generate_otp
+from app.utils.email import send_otp_email
+from app.repo.otp_helpers import MAX_ATTEMPTS, MAX_RESEND_ATTEMPTS
+
+logger = logging.getLogger("uvicorn.error")
+
+
+async def generate_and_store_otp(email: str) -> tuple[bool, str, str]:
+    """
+    Checks if email is blocked or in cooldown. If not, generates OTP, stores it,
+    sends email, and returns (success, message, otp_token).
+    """
+    # 1. Check if blocked
+    if await otp_helpers.is_blocked(email):
+        return False, "Account temporarily blocked due to too many failed attempts.", ""
+        
+    # 2. Check cooldown
+    if await otp_helpers.is_cooldown(email):
+        return False, f"Please wait {otp_helpers.RESEND_COOLDOWN} seconds before requesting a new OTP.", ""
+
+    try:
+        # 3. Check max resend attempts
+        resend_attempts = await otp_helpers.increment_resend_attempts(email)
+        if resend_attempts > MAX_RESEND_ATTEMPTS:
+            await otp_helpers.block_email(email)
+            return False, "Too many resend requests. Account temporarily blocked.", ""
+
+        # 4. Generate OTP & Token
+        otp = generate_otp()
+        otp_token = str(uuid.uuid4())
+
+        # 4. Store OTP data
+        await otp_helpers.set_otp_data(otp_token, email, otp)
+
+        # 5. Send email
+        email_sent = await send_otp_email(email, otp)
+        if not email_sent:
+            logger.error(f"Failed to send OTP to {email}")
+            return False, "Failed to send OTP email.", ""
+
+        # 6. Set cooldown
+        await otp_helpers.set_cooldown(email)
+
+        logger.info(f"OTP generated and sent to {email}")
+        return True, "OTP sent successfully.", otp_token
+    except Exception as e:
+        logger.error(f"Error in generate_and_store_otp for {email}: {e}")
+        return False, "An internal error occurred while processing OTP.", ""
+
+
+async def verify_user_otp(otp_token: str, user_otp: str) -> tuple[bool, str, str]:
+    """
+    Verifies the OTP using the otp_token.
+    Returns (is_valid, message, email).
+    """
+    try:
+        # 1. Retrieve OTP data
+        otp_data = await otp_helpers.get_otp_data(otp_token)
+        if not otp_data:
+            return False, "OTP expired or invalid token.", ""
+
+        email = otp_data["email"]
+        stored_otp = otp_data["otp"]
+
+        # 2. Check if blocked
+        if await otp_helpers.is_blocked(email):
+            return False, "Account temporarily blocked due to too many failed attempts.", email
+
+        # 3. Verify OTP
+        if stored_otp != user_otp:
+            attempts = await otp_helpers.increment_attempts(email)
+            if attempts >= MAX_ATTEMPTS:
+                await otp_helpers.block_email(email)
+                await otp_helpers.delete_otp_data(otp_token)
+                return False, "Too many failed attempts. Account temporarily blocked.", email
+            
+            remaining = MAX_ATTEMPTS - attempts
+            return False, f"Invalid OTP. {remaining} attempts remaining.", email
+
+        # 4. Success - clean up
+        await otp_helpers.delete_otp_data(otp_token)
+        await otp_helpers.reset_attempts(email)
+
+        logger.info(f"OTP verified successfully for {email}")
+        return True, "OTP verified successfully.", email
+    except Exception as e:
+        logger.error(f"Error in verify_user_otp for token {otp_token}: {e}")
+        return False, "An internal error occurred during OTP verification.", ""
+
+
+===
+import uuid
+import logging
+from app.repo import otp_helpers
+from app.utils.otp import generate_otp_token
+from app.utils.email import send_otp_email
+from app.repo.otp_helpers import MAX_ATTEMPTS, MAX_RESEND_ATTEMPTS
+
+logger = logging.getLogger("uvicorn.error")
+
+
+async def generate_and_store_otp(email: str) -> tuple[bool, str, str]:
+    """
+    Checks if email is blocked or in cooldown. If not, generates OTP, stores it,
+    sends email, and returns (success, message, otp_token).
+    """
+    # 1. Check if blocked
+    if await otp_helpers.is_blocked(email):
+        return False, "Account temporarily blocked due to too many failed attempts.", ""
+        
+    # 2. Check cooldown
+    if await otp_helpers.is_cooldown(email):
+        return False, f"Please wait {otp_helpers.RESEND_COOLDOWN} seconds before requesting a new OTP.", ""
+
+    try:
+        # 3. Check max resend attempts
+        resend_attempts = await otp_helpers.increment_resend_attempts(email)
+        if resend_attempts > MAX_RESEND_ATTEMPTS:
+            await otp_helpers.block_email(email)
+            return False, "Too many resend requests. Account temporarily blocked.", ""
+
+        # 4. Generate OTP & Token
+        otp = generate_otp_token()
+        otp_token = str(uuid.uuid4())
+
+        # 4. Store OTP data
+        await otp_helpers.set_otp_data(otp_token, email, otp)
+
+        # 5. Send email
+        email_sent = await send_otp_email(email, otp)
+        if not email_sent:
+            logger.error(f"Failed to send OTP to {email}")
+            return False, "Failed to send OTP email.", ""
+
+        # 6. Set cooldown
+        await otp_helpers.set_cooldown(email)
+
+        logger.info(f"OTP generated and sent to {email}")
+        return True, "OTP sent successfully.", otp_token
+    except Exception as e:
+        logger.error(f"Error in generate_and_store_otp for {email}: {e}")
+        return False, "An internal error occurred while processing OTP.", ""
+
+
+async def verify_user_otp(otp_token: str, user_otp: str) -> tuple[bool, str, str]:
+    """
+    Verifies the OTP using the otp_token.
+    Returns (is_valid, message, email).
+    """
+    try:
+        # 1. Retrieve OTP data
+        otp_data = await otp_helpers.get_otp_data(otp_token)
+        if not otp_data:
+            return False, "OTP expired or invalid token.", ""
+
+        email = otp_data["email"]
+        stored_otp = otp_data["otp"]
+
+        # 2. Check if blocked
+        if await otp_helpers.is_blocked(email):
+            return False, "Account temporarily blocked due to too many failed attempts.", email
+
+        # 3. Verify OTP
+        if stored_otp != user_otp:
+            attempts = await otp_helpers.increment_attempts(email)
+            if attempts >= MAX_ATTEMPTS:
+                await otp_helpers.block_email(email)
+                await otp_helpers.delete_otp_data(otp_token)
+                return False, "Too many failed attempts. Account temporarily blocked.", email
+            
+            remaining = MAX_ATTEMPTS - attempts
+            return False, f"Invalid OTP. {remaining} attempts remaining.", email
+
+        # 4. Success - clean up
+        await otp_helpers.delete_otp_data(otp_token)
+        await otp_helpers.reset_attempts(email)
+
+        logger.info(f"OTP verified successfully for {email}")
+        return True, "OTP verified successfully.", email
+    except Exception as e:
+        logger.error(f"Error in verify_user_otp for token {otp_token}: {e}")
+        return False, "An internal error occurred during OTP verification.", ""
+
+
+```
+```diff:auth_user.py
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
+from app.utils.cookies import set_refresh_cookie, clear_refresh_cookie
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+import logging
+from app.models.user_model import *
+from app.services.auth_service import AuthService
+from app.db.mongodb import get_users_collection
+
+logger = logging.getLogger("uvicorn.error")
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+# SIGNUP
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+async def signup(user: UserRegister, users_col=Depends(get_users_collection)):
+    return await AuthService.signup(user, users_col)
+
+@router.post("/verify-otp", status_code=status.HTTP_200_OK)
+async def verify_otp(request: OTPVerifyRequest, response: Response, users_col=Depends(get_users_collection)):
+    result = await AuthService.verify_otp(request.otp_token, request.otp, users_col)
+    set_refresh_cookie(response, result["refresh_token"])
+    return result
+
+@router.post("/resend-otp", status_code=status.HTTP_200_OK)
+async def resend_otp(request: ResendOTPRequest, users_col=Depends(get_users_collection)):
+    return await AuthService.resend_otp(request.email, users_col)
+
+# LOGIN (returns access + refresh tokens)
+@router.post("/login", response_model=TokenResponse)
+async def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), users_col=Depends(get_users_collection)):
+    result = await AuthService.login(form_data.username, form_data.password, users_col)
+    set_refresh_cookie(response, result["refresh_token"])
+    return result
+
+# REFRESH — exchange refresh token for a new access token
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(response: Response, token: RefreshTokenRequest | None = None, refresh_token: str | None = Cookie(default=None), users_col=Depends(get_users_collection)):
+    actual_token = refresh_token or (token.refresh_token if token else None)
+    
+    if not actual_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+
+    result = await AuthService.refresh_token(actual_token, users_col)
+    set_refresh_cookie(response, result["refresh_token"])
+    
+    return result
+
+# LOGOUT — revoke refresh token (remove from DB)
+@router.post("/logout")
+async def logout(response: Response, token: str = Depends(oauth2_scheme), users_col=Depends(get_users_collection)):
+    clear_refresh_cookie(response)
+    result = await AuthService.logout(token, users_col)
+    return result
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(request: ForgotPasswordRequest, users_col=Depends(get_users_collection)):
+    return await AuthService.forget_password(request.email, users_col)
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(request: ResetPasswordRequest, users_col=Depends(get_users_collection)):
+    return await AuthService.reset_password(request.email, request.otp_token, request.new_password, users_col)
+
+===
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
+from app.utils.cookies import set_refresh_cookie, clear_refresh_cookie
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+import logging
+from app.models.user_model import *
+from app.services.auth_service import AuthService
+from app.db.mongodb import get_users_collection
+
+logger = logging.getLogger("uvicorn.error")
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+# SIGNUP
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+async def signup(user: UserRegister, users_col=Depends(get_users_collection)):
+    return await AuthService.signup(user, users_col)
+
+@router.post("/verify-otp", status_code=status.HTTP_200_OK)
+async def verify_otp(request: OTPVerifyRequest, response: Response, users_col=Depends(get_users_collection)):
+    result = await AuthService.verify_otp(request.otp_token, request.otp, users_col)
+    set_refresh_cookie(response, result["refresh_token"])
+    return result
+
+@router.post("/resend-otp", status_code=status.HTTP_200_OK)
+async def resend_otp(request: ResendOTPRequest, users_col=Depends(get_users_collection)):
+    return await AuthService.resend_otp(request.email, users_col)
+
+# LOGIN (returns access + refresh tokens)
+@router.post("/login", response_model=TokenResponse)
+async def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), users_col=Depends(get_users_collection)):
+    result = await AuthService.login(form_data.username, form_data.password, users_col)
+    set_refresh_cookie(response, result["refresh_token"])
+    return result
+
+# REFRESH — exchange refresh token for a new access token
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(response: Response, token: RefreshTokenRequest | None = None, refresh_token: str | None = Cookie(default=None), users_col=Depends(get_users_collection)):
+    actual_token = refresh_token or (token.refresh_token if token else None)
+    
+    if not actual_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+
+    result = await AuthService.refresh_token(actual_token, users_col)
+    set_refresh_cookie(response, result["refresh_token"])
+    
+    return result
+
+# LOGOUT — revoke refresh token (remove from DB)
+@router.post("/logout")
+async def logout(response: Response, token: str = Depends(oauth2_scheme), users_col=Depends(get_users_collection)):
+    clear_refresh_cookie(response)
+    result = await AuthService.logout(token, users_col)
+    return result
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(request: ForgotPasswordRequest, users_col=Depends(get_users_collection)):
+    return await AuthService.forget_password(request.email, users_col)
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(response: Response, request: ResetPasswordRequest, users_col=Depends(get_users_collection)):
+    return await AuthService.reset_password(request.email, request.otp_token, request.new_password, users_col, response)
+
+```
+```diff:product_routes.py
+from fastapi import APIRouter, HTTPException, Query, Path
+from typing import Optional
+from app.services.product_service import ProductService
+from app.models.product_model import PaginatedProductResponse, ProductResponse
+import requests
+
+router = APIRouter(tags=["public product routes"])
+
+@router.get("/products", response_model=PaginatedProductResponse)
+async def get_products(
+    category: Optional[str] = Query(None, description="Comma separated categories"),
+    min_price: Optional[float] = Query(None, description="Minimum price"),
+    max_price: Optional[float] = Query(None, description="Maximum price"),
+    min_discount: Optional[int] = Query(None, description="Minimum discount percent"),
+    min_rating: Optional[float] = Query(None, description="Minimum average rating"),
+    in_stock: Optional[bool] = Query(None, description="Only show in-stock products"),
+    search: Optional[str] = Query(None, description="Search query string"),
+    sort_by: str = Query("created_at", description="Sort by field: price, avg_rating, created_at, discount_percent"),
+    sort_order: int = Query(-1, description="Sort order: 1 (asc) or -1 (desc)"),
+    page: int = Query(1, description="Page number"),
+    limit: int = Query(30, description="Items per page")
+):
+    """
+    Get a paginated list of products with comprehensive filtering.
+    """
+    return await ProductService.get_products(
+        category=category,
+        min_price=min_price,
+        max_price=max_price,
+        min_discount=min_discount,
+        min_rating=min_rating,
+        in_stock=in_stock,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        limit=limit
+    )
+
+@router.get("/products/search", response_model=PaginatedProductResponse)
+async def search_products_route(
+    q: str = Query(..., description="Search query"),
+    page: int = Query(1, description="Page number"),
+    limit: int = Query(30, description="Number of products per page")
+):
+    """Search products by name or description"""
+    return await ProductService.search_products(q, page, limit)
+
+@router.get("/products/{product_id}", response_model=ProductResponse)
+async def get_product_details(product_id: str = Path(..., description="The ID of the product to view")):
+    product = await ProductService.get_product_by_id(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+@router.get("/categories")
+async def get_categories():
+    """Get all available product categories"""
+    return await ProductService.get_categories()
+
+@router.get("/categories/{category}", response_model=PaginatedProductResponse)
+async def get_products_by_category(
+    category: str = Path(..., description="Category name"),
+    page: int = Query(1, description="Page number"),
+    limit: int = Query(30, description="Number of products per page")
+):
+    """Get products by specific category"""
+    products_page = await ProductService.get_product_by_category(category, page, limit)
+    if not products_page.items:
+        raise HTTPException(status_code=404, detail=f"No products found in category: {category}")
+    return products_page
+
+@router.get("ollama/ai/chat")
+async def chat_with_ollama_ai(message: str = Query(..., description="Message to send to Ollama AI")):
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/v1/chat",
+            json={"model": "ollama/ai", "messages": [{"role": "user", "content": message}]}
+        )
+        return response.json()
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Error communicating with Ollama AI: {str(e)}")
+
+
+===
+from fastapi import APIRouter, HTTPException, Query, Path
+from typing import Optional
+from app.services.product_service import ProductService
+from app.models.product_model import PaginatedProductResponse, ProductResponse
+
+router = APIRouter(tags=["public product routes"])
+
+@router.get("/products", response_model=PaginatedProductResponse)
+async def get_products(
+    category: Optional[str] = Query(None, description="Comma separated categories"),
+    min_price: Optional[float] = Query(None, description="Minimum price"),
+    max_price: Optional[float] = Query(None, description="Maximum price"),
+    min_discount: Optional[int] = Query(None, description="Minimum discount percent"),
+    min_rating: Optional[float] = Query(None, description="Minimum average rating"),
+    in_stock: Optional[bool] = Query(None, description="Only show in-stock products"),
+    search: Optional[str] = Query(None, description="Search query string"),
+    sort_by: str = Query("created_at", description="Sort by field: price, avg_rating, created_at, discount_percent"),
+    sort_order: int = Query(-1, description="Sort order: 1 (asc) or -1 (desc)"),
+    page: int = Query(1, description="Page number"),
+    limit: int = Query(30, description="Items per page")
+):
+    """
+    Get a paginated list of products with comprehensive filtering.
+    """
+    return await ProductService.get_products(
+        category=category,
+        min_price=min_price,
+        max_price=max_price,
+        min_discount=min_discount,
+        min_rating=min_rating,
+        in_stock=in_stock,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        limit=limit
+    )
+
+@router.get("/products/search", response_model=PaginatedProductResponse)
+async def search_products_route(
+    q: str = Query(..., description="Search query"),
+    page: int = Query(1, description="Page number"),
+    limit: int = Query(30, description="Number of products per page")
+):
+    """Search products by name or description"""
+    return await ProductService.search_products(q, page, limit)
+
+@router.get("/products/{product_id}", response_model=ProductResponse)
+async def get_product_details(product_id: str = Path(..., description="The ID of the product to view")):
+    product = await ProductService.get_product_by_id(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+@router.get("/categories")
+async def get_categories():
+    """Get all available product categories"""
+    return await ProductService.get_categories()
+
+@router.get("/categories/{category}", response_model=PaginatedProductResponse)
+async def get_products_by_category(
+    category: str = Path(..., description="Category name"),
+    page: int = Query(1, description="Page number"),
+    limit: int = Query(30, description="Number of products per page")
+):
+    """Get products by specific category"""
+    products_page = await ProductService.get_product_by_category(category, page, limit)
+    if not products_page.items:
+        raise HTTPException(status_code=404, detail=f"No products found in category: {category}")
+    return products_page
+```
+```diff:admin_routes.py
+from app.deps.roles import require_permission
+from fastapi import APIRouter, Depends, HTTPException
+from app.services.admin_service import (
+    get_pending_applications, approve_seller, reject_seller, suspend_seller, unsuspend_seller,
+    fetch_pending_products, approve_product, reject_product
+)
+from app.services.role_service import ban_user
+from app.models.seller_model import SellerRejectRequest, SuspendRequest, UnsuspendRequest
+from app.models.product_model import ProductRejectRequest
+from app.db.mongodb import get_users_collection
+
+router = APIRouter(prefix="/admin", tags=["Admin Features"])
+
+@router.get("/sellers/pending")
+async def fetch_pending_sellers(
+    limit: int = 50, skip: int = 0,
+    current_user: dict = Depends(require_permission("seller:approve"))
+):
+    return await get_pending_applications(limit, skip)
+
+@router.post("/sellers/{target_user_id}/approve")
+async def approve_seller_application(
+    target_user_id: str,
+    current_user: dict = Depends(require_permission("seller:approve"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    return await approve_seller(target_user_id, str(admin_user["_id"]))
+
+@router.post("/sellers/{target_user_id}/reject")
+async def reject_seller_application(
+    target_user_id: str,
+    payload: SellerRejectRequest,
+    current_user: dict = Depends(require_permission("seller:reject"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    return await reject_seller(target_user_id, str(admin_user["_id"]), payload.rejection_reason)
+
+@router.post("/sellers/{target_user_id}/suspend")
+async def suspend_active_seller(
+    target_user_id: str,
+    payload: SuspendRequest,
+    current_user: dict = Depends(require_permission("seller:suspend"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await suspend_seller(target_user_id, str(admin_user["_id"]), payload.suspend_reason)
+
+@router.post("/sellers/{target_user_id}/unsuspend")
+async def unsuspend_active_seller(
+    target_user_id: str,
+    payload: UnsuspendRequest,
+    current_user: dict = Depends(require_permission("seller:suspend"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await unsuspend_seller(target_user_id, str(admin_user["_id"]), payload.unsuspend_reason)
+
+@router.post("/users/{target_user_id}/ban")
+async def ban_a_user(
+    target_user_id: str,
+    current_user: dict = Depends(require_permission("user:ban"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await ban_user(target_user_id, str(admin_user["_id"]))
+
+@router.get("/products/pending")
+async def fetch_unapproved_products(
+    limit: int = 50, skip: int = 0,
+    current_user: dict = Depends(require_permission("product:approve"))
+):
+    return await fetch_pending_products(limit, skip)
+
+@router.post("/products/{product_id}/approve")
+async def approve_seller_product(
+    product_id: str,
+    current_user: dict = Depends(require_permission("product:approve"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await approve_product(product_id, str(admin_user["_id"]))
+
+@router.post("/products/{product_id}/reject")
+async def reject_seller_product(
+    product_id: str,
+    payload: ProductRejectRequest,
+    current_user: dict = Depends(require_permission("product:approve"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await reject_product(product_id, str(admin_user["_id"]), payload.rejection_reason)
+===
+from app.deps.roles import require_permission
+from fastapi import APIRouter, Depends, HTTPException
+from app.services.admin_service import (
+    get_pending_applications, approve_seller, reject_seller, suspend_seller, unsuspend_seller,
+    fetch_pending_products, approve_product, reject_product
+)
+from app.services.role_service import ban_user
+from app.models.seller_model import SellerRejectRequest, SuspendRequest, UnsuspendRequest
+from app.models.product_model import ProductRejectRequest
+from app.db.mongodb import get_users_collection
+
+router = APIRouter(prefix="/admin", tags=["Admin Features"])
+
+@router.get("/sellers/pending")
+async def fetch_pending_sellers(
+    limit: int = 50, skip: int = 0,
+    current_user: dict = Depends(require_permission("seller:approve"))
+):
+    return await get_pending_applications(limit, skip)
+
+@router.post("/sellers/{target_user_id}/approve")
+async def approve_seller_application(
+    target_user_id: str,
+    current_user: dict = Depends(require_permission("seller:approve"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    return await approve_seller(target_user_id, str(admin_user["_id"]))
+
+@router.post("/sellers/{target_user_id}/reject")
+async def reject_seller_application(
+    target_user_id: str,
+    payload: SellerRejectRequest,
+    current_user: dict = Depends(require_permission("seller:reject"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    return await reject_seller(target_user_id, str(admin_user["_id"]), payload.rejection_reason)
+
+@router.post("/sellers/{target_user_id}/suspend")
+async def suspend_active_seller(
+    target_user_id: str,
+    payload: SuspendRequest,
+    current_user: dict = Depends(require_permission("seller:suspend"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    return await suspend_seller(target_user_id, str(admin_user["_id"]), payload.suspend_reason)
+
+@router.post("/sellers/{target_user_id}/unsuspend")
+async def unsuspend_active_seller(
+    target_user_id: str,
+    payload: UnsuspendRequest,
+    current_user: dict = Depends(require_permission("seller:suspend"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    return await unsuspend_seller(target_user_id, str(admin_user["_id"]), payload.unsuspend_reason)
+
+@router.post("/users/{target_user_id}/ban")
+async def ban_a_user(
+    target_user_id: str,
+    current_user: dict = Depends(require_permission("user:ban"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await ban_user(target_user_id, str(admin_user["_id"]))
+
+@router.get("/products/pending")
+async def fetch_unapproved_products(
+    limit: int = 50, skip: int = 0,
+    current_user: dict = Depends(require_permission("product:approve"))
+):
+    return await fetch_pending_products(limit, skip)
+
+@router.post("/products/{product_id}/approve")
+async def approve_seller_product(
+    product_id: str,
+    current_user: dict = Depends(require_permission("product:approve"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await approve_product(product_id, str(admin_user["_id"]))
+
+@router.post("/products/{product_id}/reject")
+async def reject_seller_product(
+    product_id: str,
+    payload: ProductRejectRequest,
+    current_user: dict = Depends(require_permission("product:approve"))
+):
+    email = current_user.get("email")
+    admin_user = await get_users_collection().find_one({"email": email})
+    return await reject_product(product_id, str(admin_user["_id"]), payload.rejection_reason)
+```
+```diff:order_service.py
+from fastapi import HTTPException
+from bson import ObjectId
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
+from app.repo.cart_helpers import get_cart_by_user, clear_user_cart
+from app.repo.product_helpers import fetch_product_by_id, decrement_product_stock, increment_product_stock
+from app.repo.profiles_helpers import get_profile_by_user_id
+from app.repo.orders_helpers import create_order_in_db, get_user_orders_from_db, get_order_by_id_db, update_order_status_db
+from app.db.mongodb import cart_collection, products_collection, profiles_collection, orders_collection
+from app.services.user_service import UserService
+from app.models.orders_model import OrderStatus, PaymentStatus, PaymentMethod
+
+class OrderService:
+
+    @staticmethod
+    async def place_order(user_id: str, address_id: str):
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+
+        # 1. Fetch calculated cart
+        cart_response = await UserService.get_calculated_cart(user_id, cart_collection())
+        
+        items = cart_response.get("items", [])
+        if not items:
+            raise HTTPException(status_code=400, detail="Your cart is empty")
+
+        # 2. Re-validate each item and prepare for stock decrement
+        for item in items:
+            product = await fetch_product_by_id(products_collection(), item["product_id"])
+            if not product or not product.get("is_active") or not product.get("is_approved"):
+                raise HTTPException(status_code=400, detail=f"{item['name']} is no longer available")
+            if product.get("stock", 0) < item["quantity"]:
+                raise HTTPException(status_code=400, detail=f"Only {product.get('stock', 0)} units of {item['name']} available")
+
+        # 3. Fetch address from user profile
+        profile = await get_profile_by_user_id(profiles_collection(), user_id)
+        if not profile or not profile.get("addresses"):
+            raise HTTPException(status_code=400, detail="Add a delivery address before placing an order")
+
+        address = next((addr for addr in profile.get("addresses", []) if addr["address_id"] == address_id), None)
+        if not address:
+            raise HTTPException(status_code=400, detail="Selected address not found")
+
+        # 4. Prepare Order Document
+        order_items = []
+        for item in items:
+            product = await fetch_product_by_id(products_collection(), item["product_id"])
+            order_items.append({
+                "product_id": item["product_id"],
+                "seller_id": str(product.get("seller_id")),
+                "name": item["name"],
+                "image": item["image"],
+                "price": item["price"],
+                "quantity": item["quantity"],
+                "item_total": item["item_total"],
+                "status": OrderStatus.pending.value
+            })
+
+        shipping_address = {
+            "full_name": profile.get("full_name") or "User", # Or ideally from address if it had name, but profile has it
+            "line1": address.get("line1", ""),
+            "line2": address.get("line2"),
+            "city": address.get("city", ""),
+            "state": address.get("state", ""),
+            "pincode": address.get("pincode", ""),
+            "mobile": profile.get("mobile") or ""
+        }
+
+        order_data = {
+            "user_id": ObjectId(user_id),
+            "items": order_items,
+            "shipping_address": shipping_address,
+            "status": OrderStatus.pending.value,
+            "summary": cart_response["summary"],
+            "payment_status": PaymentStatus.pending.value,
+            "payment_method": PaymentMethod.cod.value
+        }
+
+        # 5. Decrement Stock
+        for item in items:
+            await decrement_product_stock(products_collection(), item["product_id"], item["quantity"])
+
+        # 6. Create Order and Clear Cart
+        order_id = await create_order_in_db(orders_collection(), order_data)
+        await clear_user_cart(cart_collection(), user_id)
+
+        return {"message": "Order placed successfully", "order_id": order_id}
+
+    @staticmethod
+    async def get_user_orders(user_id: str, status: str = None):
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        
+        orders = await get_user_orders_from_db(orders_collection(), user_id, status)
+        
+        # Serialize ObjectIds for response
+        for order in orders:
+            order["_id"] = str(order["_id"])
+            order["user_id"] = str(order["user_id"])
+            for item in order.get("items", []):
+                item["product_id"] = str(item["product_id"])
+                item["seller_id"] = str(item["seller_id"])
+                
+        return orders
+
+    @staticmethod
+    async def get_order_by_id(user_id: str, order_id: str):
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid IDs")
+            
+        order = await get_order_by_id_db(orders_collection(), order_id, user_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+            
+        order["_id"] = str(order["_id"])
+        order["user_id"] = str(order["user_id"])
+        for item in order.get("items", []):
+            item["product_id"] = str(item["product_id"])
+            item["seller_id"] = str(item["seller_id"])
+            
+        return order
+
+    @staticmethod
+    async def cancel_order(user_id: str, order_id: str):
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid IDs")
+            
+        order = await get_order_by_id_db(orders_collection(), order_id, user_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+            
+        if order.get("status") != OrderStatus.pending.value:
+            raise HTTPException(status_code=400, detail="Order cannot be cancelled after confirmation")
+            
+        # 1. Update order status
+        await update_order_status_db(orders_collection(), order_id, user_id, OrderStatus.cancelled.value)
+        
+        # 2. Restore stock
+        for item in order.get("items", []):
+            await increment_product_stock(products_collection(), str(item["product_id"]), item["quantity"])
+            
+        return {"message": "Order cancelled successfully"}
+===
+from fastapi import HTTPException
+from bson import ObjectId
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
+from app.repo.cart_helpers import get_cart_by_user, clear_user_cart
+from app.repo.product_helpers import fetch_product_by_id, decrement_product_stock, increment_product_stock
+from app.repo.profiles_helpers import get_profile_by_user_id
+from app.repo.orders_helpers import create_order_in_db, get_user_orders_from_db, get_order_by_id_db, update_order_status_db
+from app.db.mongodb import cart_collection, products_collection, profiles_collection, orders_collection
+from app.services.user_service import UserService
+from app.models.orders_model import OrderStatus, PaymentStatus, PaymentMethod
+
+class OrderService:
+
+    @staticmethod
+    async def place_order(user_id: str, address_id: str):
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+
+        # 1. Fetch calculated cart
+        cart_response = await UserService.get_calculated_cart(user_id, cart_collection())
+        
+        items = cart_response.get("items", [])
+        if not items:
+            raise HTTPException(status_code=400, detail="Your cart is empty")
+
+        # 2. Re-validate each item AND cache products (BUG-16 fix: single fetch per product)
+        product_cache = {}
+        for item in items:
+            product = await fetch_product_by_id(products_collection(), item["product_id"])
+            if not product or not product.get("is_active") or not product.get("is_approved"):
+                raise HTTPException(status_code=400, detail=f"{item['name']} is no longer available")
+            if product.get("stock", 0) < item["quantity"]:
+                raise HTTPException(status_code=400, detail=f"Only {product.get('stock', 0)} units of {item['name']} available")
+            product_cache[item["product_id"]] = product
+
+        # 3. Fetch address from user profile
+        profile = await get_profile_by_user_id(profiles_collection(), user_id)
+        if not profile or not profile.get("addresses"):
+            raise HTTPException(status_code=400, detail="Add a delivery address before placing an order")
+
+        address = next((addr for addr in profile.get("addresses", []) if addr["address_id"] == address_id), None)
+        if not address:
+            raise HTTPException(status_code=400, detail="Selected address not found")
+
+        # 4. Prepare Order Document (reuse cached products)
+        order_items = []
+        for item in items:
+            product = product_cache[item["product_id"]]
+            order_items.append({
+                "product_id": item["product_id"],
+                "seller_id": str(product.get("seller_id")),
+                "name": item["name"],
+                "image": item["image"],
+                "price": item["price"],
+                "quantity": item["quantity"],
+                "item_total": item["item_total"],
+                "status": OrderStatus.pending.value
+            })
+
+        shipping_address = {
+            "full_name": profile.get("full_name") or "User",
+            "line1": address.get("line1", ""),
+            "line2": address.get("line2"),
+            "city": address.get("city", ""),
+            "state": address.get("state", ""),
+            "pincode": address.get("pincode", ""),
+            "mobile": profile.get("mobile") or ""
+        }
+
+        order_data = {
+            "user_id": ObjectId(user_id),
+            "items": order_items,
+            "shipping_address": shipping_address,
+            "status": OrderStatus.pending.value,
+            "summary": cart_response["summary"],
+            "payment_status": PaymentStatus.pending.value,
+            "payment_method": PaymentMethod.cod.value
+        }
+
+        # 5. Create Order FIRST (BUG-04 fix: order exists before stock changes)
+        order_id = await create_order_in_db(orders_collection(), order_data)
+
+        # 6. Decrement Stock with rollback on failure
+        decremented = []
+        try:
+            for item in items:
+                success = await decrement_product_stock(products_collection(), item["product_id"], item["quantity"])
+                if not success:
+                    raise HTTPException(status_code=400, detail=f"Insufficient stock for {item['name']}")
+                decremented.append(item)
+        except Exception as e:
+            # Rollback: restore already-decremented stock
+            for dec_item in decremented:
+                await increment_product_stock(products_collection(), dec_item["product_id"], dec_item["quantity"])
+            # Cancel the order we just created
+            await update_order_status_db(orders_collection(), order_id, user_id, OrderStatus.cancelled.value)
+            logger.error(f"Stock decrement failed during order {order_id}, rolled back: {e}")
+            raise HTTPException(status_code=400, detail="Order failed due to stock issue. Please try again.")
+
+        # 7. Clear Cart
+        await clear_user_cart(cart_collection(), user_id)
+
+        return {"message": "Order placed successfully", "order_id": order_id}
+
+    @staticmethod
+    async def get_user_orders(user_id: str, status: str = None):
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        
+        orders = await get_user_orders_from_db(orders_collection(), user_id, status)
+        
+        # Serialize ObjectIds for response
+        for order in orders:
+            order["_id"] = str(order["_id"])
+            order["user_id"] = str(order["user_id"])
+            for item in order.get("items", []):
+                item["product_id"] = str(item["product_id"])
+                item["seller_id"] = str(item["seller_id"])
+                
+        return orders
+
+    @staticmethod
+    async def get_order_by_id(user_id: str, order_id: str):
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid IDs")
+            
+        order = await get_order_by_id_db(orders_collection(), order_id, user_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+            
+        order["_id"] = str(order["_id"])
+        order["user_id"] = str(order["user_id"])
+        for item in order.get("items", []):
+            item["product_id"] = str(item["product_id"])
+            item["seller_id"] = str(item["seller_id"])
+            
+        return order
+
+    @staticmethod
+    async def cancel_order(user_id: str, order_id: str):
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid IDs")
+            
+        order = await get_order_by_id_db(orders_collection(), order_id, user_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+            
+        if order.get("status") != OrderStatus.pending.value:
+            raise HTTPException(status_code=400, detail="Order cannot be cancelled after confirmation")
+            
+        # 1. Update order status
+        await update_order_status_db(orders_collection(), order_id, user_id, OrderStatus.cancelled.value)
+        
+        # 2. Restore stock
+        for item in order.get("items", []):
+            await increment_product_stock(products_collection(), str(item["product_id"]), item["quantity"])
+            
+        return {"message": "Order cancelled successfully"}
+```
+```diff:user_service.py
+from fastapi import HTTPException, status
+from pymongo.errors import PyMongoError
+from bson import ObjectId
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+from app.repo.user_helpers import get_user_by_id, update_user_favorites
+from app.repo.cart_helpers import (
+    get_cart_by_user, 
+    add_item_to_cart, 
+    remove_item_from_cart, 
+    update_item_quantity, 
+    clear_user_cart,
+    update_user_wishlist
+)
+from app.repo.product_helpers import fetch_product_by_id
+from app.db.mongodb import products_collection
+
+class UserService:
+    
+    # --- ❤️ FAVORITES LOGIC ---
+    @staticmethod
+    async def toggle_favorite(user_id: str, product_id: str, cart_collection):
+        """
+        Adds product to wishlist if not there, removes it if it is.
+        Returns: The new state (True = Added, False = Removed)
+        """
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid ID format")
+
+        cart = await get_cart_by_user(cart_collection, user_id)
+        if not cart:
+            raise HTTPException(status_code=404, detail="Cart/Wishlist not found")
+
+        # Check if already in wishlist
+        wishlist = cart.get("wishlist", [])
+        in_wishlist = any(item.get("product_id") == product_id for item in wishlist)
+        
+        try:
+            if in_wishlist:
+                # REMOVE (Unlike)
+                logger.info(f"Removing product {product_id} from wishlist for user {user_id}")
+                await update_user_wishlist(cart_collection, user_id, product_id, 'remove')
+                return {"message": "Removed from wishlist", "is_favorite": False}
+            else:
+                # ADD (Like)
+                logger.info(f"Adding product {product_id} to wishlist for user {user_id}")
+                await update_user_wishlist(cart_collection, user_id, product_id, 'add')
+                return {"message": "Added to wishlist", "is_favorite": True}
+        except PyMongoError as e:
+            logger.error(f"Error toggling wishlist for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
+
+    @staticmethod
+    async def get_wishlist(user_id: str, cart_collection):
+        """
+        Returns the user's wishlist items.
+        """
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        
+        cart = await get_cart_by_user(cart_collection, user_id)
+
+        if not cart:
+            return []
+        
+        return cart.get("wishlist", [])
+
+    # --- 🛒 CART LOGIC ---
+    @staticmethod
+    async def add_to_cart(user_id: str, product_id: str, quantity: int, cart_collection):
+        """
+        Adds item to cart. If exists, increases quantity.
+        """
+        if quantity <= 0:
+            raise HTTPException(status_code=400, detail="Quantity must be positive")
+        
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid ID")
+
+        # Check stock limits
+        product = await fetch_product_by_id(products_collection(), product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Get current cart quantity to ensure total doesn't exceed stock
+        cart = await get_cart_by_user(cart_collection, user_id)
+        current_qty = 0
+        if cart:
+            for item in cart.get("items", []):
+                if str(item.get("product_id")) == str(product_id):
+                    current_qty = item.get("quantity", 0)
+                    break
+
+        if current_qty + quantity > product.get("stock", 0):
+            available = product.get("stock", 0) - current_qty
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot add {quantity} items. Only {available} more available in stock."
+            )
+
+        try:
+            result = await add_item_to_cart(cart_collection, user_id, product_id, quantity)
+        except PyMongoError as e:
+            logger.error(f"Error adding to cart for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
+
+        if result.modified_count == 0 and result.upserted_id is None and result.matched_count == 0:
+             logger.error(f"Failed to update cart for user {user_id}")
+             raise HTTPException(status_code=400, detail="Failed to update cart")
+            
+        logger.info(f"Product {product_id} added to cart for user {user_id}")
+        return await UserService.get_calculated_cart(user_id, cart_collection)
+
+    @staticmethod
+    async def remove_from_cart(user_id: str, product_id: str, cart_collection):
+        """
+        Removes an item completely from the cart.
+        """
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        
+        try:
+            result = await remove_item_from_cart(cart_collection, user_id, product_id)
+        except PyMongoError as e:
+            logger.error(f"Error removing from cart for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
+        
+        if result.modified_count == 0:
+            logger.error(f"Product {product_id} not found in cart for user {user_id}")
+            raise HTTPException(status_code=404, detail="Product not found in cart")
+            
+        logger.info(f"Product {product_id} removed from cart for user {user_id}")
+        return await UserService.get_calculated_cart(user_id, cart_collection)
+    
+    @staticmethod
+    async def update_cart_quantity(user_id: str, product_id: str, quantity: int, cart_collection):
+        if quantity <= 0:
+            raise HTTPException(status_code=400, detail="Quantity must be greater than zero")
+
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid ID")
+
+        # Check stock limits
+        product = await fetch_product_by_id(products_collection(), product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        if quantity > product.get("stock", 0):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot update to {quantity} items. Only {product.get('stock', 0)} available in stock."
+            )
+
+        try:
+            result = await update_item_quantity(cart_collection, user_id, product_id, quantity)
+        except PyMongoError as e:
+            logger.error(f"Error updating cart quantity for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
+
+        if result.modified_count == 0:
+            logger.error(f"Product {product_id} not found in cart for user {user_id}")
+            raise HTTPException(
+                status_code=404,
+                detail="Product not found in cart"
+            )
+
+        logger.info(f"Cart quantity updated for product {product_id}, user {user_id}")
+        return await UserService.get_calculated_cart(user_id, cart_collection)
+
+    @staticmethod
+    async def get_cart(user_id: str, cart_collection):
+        """
+        Returns the user's cart items with dynamic summary.
+        """
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        return await UserService.get_calculated_cart(user_id, cart_collection)
+
+    @staticmethod
+    async def get_calculated_cart(user_id: str, cart_collection) -> dict:
+        cart = await get_cart_by_user(cart_collection, user_id)
+        cart_items = cart.get("items", []) if cart else []
+        
+        response_items = []
+        subtotal = 0.0
+        
+        for item in cart_items:
+            product = await fetch_product_by_id(products_collection(), item["product_id"])
+            if product and product.get("is_active") and product.get("is_approved"):
+                price = float(product.get("price", 0.0))
+                qty = item["quantity"]
+                item_total = price * qty
+                subtotal += item_total
+                
+                response_items.append({
+                    "product_id": str(product["_id"]),
+                    "name": product["name"],
+                    "image": product.get("images", [""])[0] if product.get("images") else "",
+                    "price": price,
+                    "quantity": qty,
+                    "item_total": item_total
+                })
+        
+        delivery_charge = 0.0 if subtotal >= 500.0 else 50.0
+        if subtotal == 0:
+            delivery_charge = 0.0
+            
+        gst_rate = 18
+        gst_amount = subtotal * 0.18
+        total = subtotal + delivery_charge + gst_amount
+        
+        summary = {
+            "item_count": len(response_items),
+            "subtotal": round(subtotal, 2),
+            "gst_rate": gst_rate,
+            "gst_amount": round(gst_amount, 2),
+            "delivery_charge": delivery_charge,
+            "free_delivery_eligible": subtotal >= 500.0,
+            "total": round(total, 2)
+        }
+        
+        wishlist_items = []
+        for w_item in cart.get("wishlist", []) if cart else []:
+            prod = await fetch_product_by_id(products_collection(), w_item["product_id"])
+            if prod:
+                wishlist_items.append({
+                    "product_id": str(prod["_id"]),
+                    "name": prod["name"],
+                    "image": prod.get("images", [""])[0] if prod.get("images") else "",
+                    "price": float(prod.get("price", 0.0)),
+                    "added_at": w_item.get("added_at")
+                })
+        
+        return {
+            "_id": str(cart["_id"]) if cart and "_id" in cart else None,
+            "user_id": user_id,
+            "items": response_items,
+            "summary": summary,
+            "wishlist": wishlist_items,
+            "updated_at": cart.get("updated_at") if cart else None
+        }
+    
+    @staticmethod
+    async def clear_cart(user_id: str, cart_collection):
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+
+        result = await clear_user_cart(cart_collection, user_id)
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Cart not found for user")
+
+        return {"message": "Cart cleared successfully"}
+
+
+===
+from fastapi import HTTPException, status
+from pymongo.errors import PyMongoError
+from bson import ObjectId
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
+from app.repo.cart_helpers import (
+    get_cart_by_user, 
+    add_item_to_cart, 
+    remove_item_from_cart, 
+    update_item_quantity, 
+    clear_user_cart,
+    update_user_wishlist
+)
+from app.repo.product_helpers import fetch_product_by_id
+from app.db.mongodb import products_collection
+
+class UserService:
+    
+    # --- ❤️ FAVORITES LOGIC ---
+    @staticmethod
+    async def toggle_favorite(user_id: str, product_id: str, cart_collection):
+        """
+        Adds product to wishlist if not there, removes it if it is.
+        Returns: The new state (True = Added, False = Removed)
+        """
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid ID format")
+
+        cart = await get_cart_by_user(cart_collection, user_id)
+        if not cart:
+            raise HTTPException(status_code=404, detail="Cart/Wishlist not found")
+
+        # Check if already in wishlist
+        wishlist = cart.get("wishlist", [])
+        in_wishlist = any(item.get("product_id") == product_id for item in wishlist)
+        
+        try:
+            if in_wishlist:
+                # REMOVE (Unlike)
+                logger.info(f"Removing product {product_id} from wishlist for user {user_id}")
+                await update_user_wishlist(cart_collection, user_id, product_id, 'remove')
+                return {"message": "Removed from wishlist", "is_favorite": False}
+            else:
+                # ADD (Like)
+                logger.info(f"Adding product {product_id} to wishlist for user {user_id}")
+                await update_user_wishlist(cart_collection, user_id, product_id, 'add')
+                return {"message": "Added to wishlist", "is_favorite": True}
+        except PyMongoError as e:
+            logger.error(f"Error toggling wishlist for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
+
+    @staticmethod
+    async def get_wishlist(user_id: str, cart_collection):
+        """
+        Returns the user's wishlist items.
+        """
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        
+        cart = await get_cart_by_user(cart_collection, user_id)
+
+        if not cart:
+            return []
+        
+        return cart.get("wishlist", [])
+
+    # --- 🛒 CART LOGIC ---
+    @staticmethod
+    async def add_to_cart(user_id: str, product_id: str, quantity: int, cart_collection):
+        """
+        Adds item to cart. If exists, increases quantity.
+        """
+        if quantity <= 0:
+            raise HTTPException(status_code=400, detail="Quantity must be positive")
+        
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid ID")
+
+        # Check stock limits
+        product = await fetch_product_by_id(products_collection(), product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Get current cart quantity to ensure total doesn't exceed stock
+        cart = await get_cart_by_user(cart_collection, user_id)
+        current_qty = 0
+        if cart:
+            for item in cart.get("items", []):
+                if str(item.get("product_id")) == str(product_id):
+                    current_qty = item.get("quantity", 0)
+                    break
+
+        if current_qty + quantity > product.get("stock", 0):
+            available = product.get("stock", 0) - current_qty
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot add {quantity} items. Only {available} more available in stock."
+            )
+
+        try:
+            result = await add_item_to_cart(cart_collection, user_id, product_id, quantity)
+        except PyMongoError as e:
+            logger.error(f"Error adding to cart for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
+
+        if result.modified_count == 0 and result.upserted_id is None and result.matched_count == 0:
+             logger.error(f"Failed to update cart for user {user_id}")
+             raise HTTPException(status_code=400, detail="Failed to update cart")
+            
+        logger.info(f"Product {product_id} added to cart for user {user_id}")
+        return await UserService.get_calculated_cart(user_id, cart_collection)
+
+    @staticmethod
+    async def remove_from_cart(user_id: str, product_id: str, cart_collection):
+        """
+        Removes an item completely from the cart.
+        """
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        
+        try:
+            result = await remove_item_from_cart(cart_collection, user_id, product_id)
+        except PyMongoError as e:
+            logger.error(f"Error removing from cart for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
+        
+        if result.modified_count == 0:
+            logger.error(f"Product {product_id} not found in cart for user {user_id}")
+            raise HTTPException(status_code=404, detail="Product not found in cart")
+            
+        logger.info(f"Product {product_id} removed from cart for user {user_id}")
+        return await UserService.get_calculated_cart(user_id, cart_collection)
+    
+    @staticmethod
+    async def update_cart_quantity(user_id: str, product_id: str, quantity: int, cart_collection):
+        if quantity <= 0:
+            raise HTTPException(status_code=400, detail="Quantity must be greater than zero")
+
+        if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid ID")
+
+        # Check stock limits
+        product = await fetch_product_by_id(products_collection(), product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        if quantity > product.get("stock", 0):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot update to {quantity} items. Only {product.get('stock', 0)} available in stock."
+            )
+
+        try:
+            result = await update_item_quantity(cart_collection, user_id, product_id, quantity)
+        except PyMongoError as e:
+            logger.error(f"Error updating cart quantity for user {user_id}: {e}")
+            raise HTTPException(status_code=500, detail="Database update failed")
+
+        if result.modified_count == 0:
+            logger.error(f"Product {product_id} not found in cart for user {user_id}")
+            raise HTTPException(
+                status_code=404,
+                detail="Product not found in cart"
+            )
+
+        logger.info(f"Cart quantity updated for product {product_id}, user {user_id}")
+        return await UserService.get_calculated_cart(user_id, cart_collection)
+
+    @staticmethod
+    async def get_cart(user_id: str, cart_collection):
+        """
+        Returns the user's cart items with dynamic summary.
+        """
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        return await UserService.get_calculated_cart(user_id, cart_collection)
+
+    @staticmethod
+    async def get_calculated_cart(user_id: str, cart_collection) -> dict:
+        cart = await get_cart_by_user(cart_collection, user_id)
+        cart_items = cart.get("items", []) if cart else []
+        
+        response_items = []
+        subtotal = 0.0
+        
+        for item in cart_items:
+            product = await fetch_product_by_id(products_collection(), item["product_id"], only_approved=False)
+            if product:
+                is_available = bool(product.get("is_active") and product.get("is_approved"))
+                price = float(product.get("price", 0.0))
+                qty = item["quantity"]
+                item_total = price * qty if is_available else 0.0
+                if is_available:
+                    subtotal += item_total
+                
+                response_items.append({
+                    "product_id": str(product["_id"]),
+                    "name": product["name"],
+                    "image": product.get("images", [""])[0] if product.get("images") else "",
+                    "price": price,
+                    "quantity": qty,
+                    "item_total": item_total,
+                    "available": is_available
+                })
+        
+        delivery_charge = 0.0 if subtotal >= 500.0 else 50.0
+        if subtotal == 0:
+            delivery_charge = 0.0
+            
+        gst_rate = 18
+        gst_amount = subtotal * 0.18
+        total = subtotal + delivery_charge + gst_amount
+        
+        summary = {
+            "item_count": len(response_items),
+            "subtotal": round(subtotal, 2),
+            "gst_rate": gst_rate,
+            "gst_amount": round(gst_amount, 2),
+            "delivery_charge": delivery_charge,
+            "free_delivery_eligible": subtotal >= 500.0,
+            "total": round(total, 2)
+        }
+        
+        wishlist_items = []
+        for w_item in cart.get("wishlist", []) if cart else []:
+            prod = await fetch_product_by_id(products_collection(), w_item["product_id"])
+            if prod:
+                wishlist_items.append({
+                    "product_id": str(prod["_id"]),
+                    "name": prod["name"],
+                    "image": prod.get("images", [""])[0] if prod.get("images") else "",
+                    "price": float(prod.get("price", 0.0)),
+                    "added_at": w_item.get("added_at")
+                })
+        
+        return {
+            "_id": str(cart["_id"]) if cart and "_id" in cart else None,
+            "user_id": user_id,
+            "items": response_items,
+            "summary": summary,
+            "wishlist": wishlist_items,
+            "updated_at": cart.get("updated_at") if cart else None
+        }
+    
+    @staticmethod
+    async def clear_cart(user_id: str, cart_collection):
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+
+        result = await clear_user_cart(cart_collection, user_id)
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Cart not found for user")
+
+        return {"message": "Cart cleared successfully"}
+
+
+```
+```diff:role_service.py
+from fastapi import HTTPException, status
+from pymongo.errors import PyMongoError
+from app.db.mongodb import get_users_collection, sellers_collection
+from app.services.audit_service import log_action
+from app.repo.role_helpers import get_user_by_id, update_user_role
+from app.repo.seller_helpers import update_seller_by_user_id
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
+async def promote_to_admin(user_id: str, performed_by: str):
+    user = await get_user_by_id(get_users_collection(), user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user.get("is_verified", False):
+        raise HTTPException(status_code=400, detail="User must be verified to be promoted to admin")
+        
+    if user.get("is_banned", False) or user.get("is_suspended", False):
+        raise HTTPException(status_code=400, detail="Cannot promote a banned or suspended user")
+
+    old_role = user.get("role", "user")
+    if old_role == "admin":
+        raise HTTPException(status_code=400, detail="User is already an admin")
+
+    logger.info(f"Promoting user {user_id} to admin by {performed_by}")
+    try:
+        await update_user_role(get_users_collection(), user_id, "admin")
+        
+        await log_action(
+            action="promoted_to_admin",
+            target_user_id=user_id,
+            performed_by=performed_by,
+            from_role=old_role,
+            to_role="admin"
+        )
+        return {"message": "User promoted to admin successfully"}
+    except PyMongoError as e:
+        logger.error(f"Error promoting user {user_id} to admin: {e}")
+        raise HTTPException(status_code=500, detail="Database update failed")
+
+async def demote_user(user_id: str, performed_by: str):
+    user = await get_user_by_id(get_users_collection(), user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    old_role = user.get("role", "user")
+    if old_role == "user":
+        raise HTTPException(status_code=400, detail="User is already at the lowest role")
+        
+    if old_role == "super_admin":
+        raise HTTPException(status_code=403, detail="Cannot demote a super admin")
+
+    logger.info(f"Demoting user {user_id} from {old_role} to user by {performed_by}")
+    try:
+        await update_user_role(get_users_collection(), user_id, "user")
+        
+        # If demoting a seller, we must also suspend their seller profile
+        if old_role == "seller":
+            await update_seller_by_user_id(sellers_collection(), str(user_id), {"is_suspended": True})
+
+        await log_action(
+            action="demoted",
+            target_user_id=user_id,
+            performed_by=performed_by,
+            from_role=old_role,
+            to_role="user"
+        )
+        return {"message": f"User demoted from {old_role} to user successfully"}
+    except PyMongoError as e:
+        logger.error(f"Error demoting user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Database update failed")
+
+async def ban_user(user_id: str, performed_by: str):
+    user = await get_user_by_id(get_users_collection(), user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    old_role = user.get("role", "user")
+    if old_role == "super_admin":
+        raise HTTPException(status_code=403, detail="Cannot ban a super admin")
+
+    logger.info(f"Banning user {user_id} by {performed_by}")
+    try:
+        await update_user_role(get_users_collection(), user_id, "user", is_banned=True)
+        
+        # If they were a seller, suspend their profile too
+        if old_role == "seller":
+            await update_seller_by_user_id(sellers_collection(), str(user_id), {"is_suspended": True})
+
+        await log_action(
+            action="user_banned",
+            target_user_id=user_id,
+            performed_by=performed_by,
+            from_role=old_role,
+            to_role="user"
+        )
+        return {"message": "User banned successfully"}
+    except PyMongoError as e:
+        logger.error(f"Error banning user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Database update failed")
+===
+from fastapi import HTTPException, status
+from pymongo.errors import PyMongoError
+from app.db.mongodb import get_users_collection, sellers_collection
+from app.services.audit_service import log_action
+from app.repo.role_helpers import get_user_by_id, update_user_role
+from app.repo.admin_helpers import update_seller_by_user_id
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
+async def promote_to_admin(user_id: str, performed_by: str):
+    user = await get_user_by_id(get_users_collection(), user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user.get("is_verified", False):
+        raise HTTPException(status_code=400, detail="User must be verified to be promoted to admin")
+        
+    if user.get("is_banned", False) or user.get("is_suspended", False):
+        raise HTTPException(status_code=400, detail="Cannot promote a banned or suspended user")
+
+    old_role = user.get("role", "user")
+    if old_role == "admin":
+        raise HTTPException(status_code=400, detail="User is already an admin")
+
+    logger.info(f"Promoting user {user_id} to admin by {performed_by}")
+    try:
+        await update_user_role(get_users_collection(), user_id, "admin")
+        
+        await log_action(
+            action="promoted_to_admin",
+            target_user_id=user_id,
+            performed_by=performed_by,
+            from_role=old_role,
+            to_role="admin"
+        )
+        return {"message": "User promoted to admin successfully"}
+    except PyMongoError as e:
+        logger.error(f"Error promoting user {user_id} to admin: {e}")
+        raise HTTPException(status_code=500, detail="Database update failed")
+
+async def demote_user(user_id: str, performed_by: str):
+    user = await get_user_by_id(get_users_collection(), user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    old_role = user.get("role", "user")
+    if old_role == "user":
+        raise HTTPException(status_code=400, detail="User is already at the lowest role")
+        
+    if old_role == "super_admin":
+        raise HTTPException(status_code=403, detail="Cannot demote a super admin")
+
+    logger.info(f"Demoting user {user_id} from {old_role} to user by {performed_by}")
+    try:
+        await update_user_role(get_users_collection(), user_id, "user")
+        
+        # If demoting a seller, we must also suspend their seller profile
+        if old_role == "seller":
+            await update_seller_by_user_id(sellers_collection(), str(user_id), {"is_suspended": True})
+
+        await log_action(
+            action="demoted",
+            target_user_id=user_id,
+            performed_by=performed_by,
+            from_role=old_role,
+            to_role="user"
+        )
+        return {"message": f"User demoted from {old_role} to user successfully"}
+    except PyMongoError as e:
+        logger.error(f"Error demoting user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Database update failed")
+
+async def ban_user(user_id: str, performed_by: str):
+    user = await get_user_by_id(get_users_collection(), user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    old_role = user.get("role", "user")
+    if old_role == "super_admin":
+        raise HTTPException(status_code=403, detail="Cannot ban a super admin")
+
+    if user.get("is_banned", False):
+        raise HTTPException(status_code=400, detail="User is already banned")
+
+    logger.info(f"Banning user {user_id} by {performed_by}")
+    try:
+        await update_user_role(get_users_collection(), user_id, "user", is_banned=True)
+        
+        # If they were a seller, suspend their profile too
+        if old_role == "seller":
+            await update_seller_by_user_id(sellers_collection(), str(user_id), {"is_suspended": True})
+
+        await log_action(
+            action="user_banned",
+            target_user_id=user_id,
+            performed_by=performed_by,
+            from_role=old_role,
+            to_role="user"
+        )
+        return {"message": "User banned successfully"}
+    except PyMongoError as e:
+        logger.error(f"Error banning user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Database update failed")
+```
+```diff:auth_service.py
+from pymongo.errors import PyMongoError
+from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, verify_token
+from app.repo.auth_helpers import count_users, insert_user, update_user, get_user_by_email, generate_tokens, update_user_by_email
+from app.core.time_utils import now_ist
+from app.utils.email import send_forget_password_email
+from fastapi import HTTPException, status, Response
+from app.utils.cookies import clear_refresh_cookie
+from app.services.otp_service import generate_and_store_otp, verify_user_otp
+from app.repo.otp_helpers import set_temp_password_token, get_temp_password_token, is_reset_blocked, is_reset_on_cooldown, increment_reset_send_count
+import logging
+import uuid
+from app.db.mongodb import profiles_collection, cart_collection, orders_collection
+from app.repo.profiles_helpers import create_empty_profile
+from app.repo.cart_helpers import create_empty_cart
+from app.repo.orders_helpers import init_user_orders
+
+logger = logging.getLogger("uvicorn.error")
+
+class AuthService:
+
+    @staticmethod
+    async def signup(user: dict, user_col):
+
+        # 1. Check if email exists
+        # Note: In a high-traffic cloud app, relying only on this Python check is risky 
+        # (Race Condition). You should also have a unique index in MongoDB.
+
+        existing = await get_user_by_email(user_col, user.email)
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        # 2. Hash Password
+        hashed = hash_password(user.password)
+        
+        roles = "super_admin" if await count_users(user_col) == 0 else "user"
+        # 3. Prepare Data
+        user_data = {
+            "username": user.username,
+            "email": user.email, 
+            "hashed_password": hashed, 
+            "refresh_token_hashed": None,
+            "role": roles, # Explicitly setting default role is safer
+            "is_verified": False,
+            "created_at": now_ist() # Store creation time and date for auditing
+        }
+        
+        # 4. Safe Database Insertion
+        try:
+
+            success, message, otp_token = await generate_and_store_otp(user.email)
+            if not success:
+                raise HTTPException(status_code=400, detail=message)
+
+            try:    
+                logger.info(f"OTP sent to {user.email}")
+
+                result = await insert_user(user_col, user_data)
+                # Logging for DevOps visibility
+                logger.info(f"Registered, Now please verify your email ")
+                return {"message": "User registered successfully, Please verify your email", "otp_token": otp_token}
+
+            except Exception as e:
+                logger.error(f"Error inserting user to DB: {e}")
+                raise HTTPException(status_code=500, detail="Failed to complete registration")
+            
+        
+        except PyMongoError as e:
+            logger.error(f"Signup DB Error: {e}")
+            raise HTTPException(status_code=500, detail="Signup failed due to server error")
+
+    @staticmethod
+    async def verify_otp(otp_token: str, otp: str, user_col):
+        is_valid, message, email = await verify_user_otp(otp_token, otp)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=message)
+            
+        user = await get_user_by_email(user_col, email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.get("is_verified"):
+            raise HTTPException(status_code=400, detail="Email is already verified")
+            
+        try:
+            access_token, refresh_token = await generate_tokens(user["_id"], user["email"], user["role"], user_col)
+            refresh_hash = hash_password(refresh_token)
+
+            # 1. Mark user as verified
+            await update_user(user_col, user["_id"], {"is_verified": True, "refresh_token_hashed": refresh_hash})
+            
+            # 2. Initialize User Data (Profile, Cart, Orders)
+            user_id_str = str(user["_id"])
+            await create_empty_profile(profiles_collection(), user_id_str, email)
+            await create_empty_cart(cart_collection(), user_id_str)
+            await init_user_orders(orders_collection(), user_id_str)
+
+            logger.info(f"User {email} verified and data initialized successfully")
+            return {"access_token": access_token, "refresh_token": refresh_token, "role": user["role"], "token_type": "bearer"}
+
+        except PyMongoError as e:
+            logger.error(f"Verify OTP DB Error: {e}")
+            raise HTTPException(status_code=500, detail="Failed to update verification status or initialize data")
+
+    @staticmethod
+    async def resend_otp(email: str, user_col):
+        user = await get_user_by_email(user_col, email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.get("is_verified"):
+            raise HTTPException(status_code=400, detail="Email is already verified")
+            
+        success, message, otp_token = await generate_and_store_otp(email)
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+            
+        logger.info(f"OTP resent to {email}")
+        return {"message": "OTP sent successfully.", "otp_token": otp_token}
+
+    @staticmethod
+    async def login(email: str, password: str, user_col):
+        # OAuth2PasswordRequestForm uses form fields "username" and "password"
+        user = await get_user_by_email(user_col, email)
+        
+        if not user or not verify_password(password, user["hashed_password"]):
+            logger.warning(f"Login failed for user: {email}")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+        if not user.get("is_verified", False):
+            logger.warning(f"Login failed: User {email} is not verified")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified. Please verify your OTP.")
+
+        access_token, refresh_token = await generate_tokens(user["_id"], user["email"], user["role"], user_col)
+
+        # Hash the refresh token before storing (recommended)
+        refresh_hash = hash_password(refresh_token)
+
+        try:
+            await update_user(user_col, user["_id"], {"refresh_token_hashed": refresh_hash})
+            logger.info(f"User {user['email']} logged in successfully")
+
+        except PyMongoError as e:
+            logger.error(f"Login DB Update Error: {e}")
+            raise HTTPException(status_code=500, detail="Login failed")
+
+        return {"access_token": access_token, "refresh_token": refresh_token, "role": user["role"], "token_type": "bearer"}
+
+    @staticmethod
+    async def refresh_token(actual_token: str, user_col):
+        payload = verify_token(actual_token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token structure")
+
+        email = payload.get("email")
+        user = await get_user_by_email(user_col, email)
+
+        # Validate User and Token
+        if not user or not user.get("refresh_token_hashed"):
+            logger.warning(f"Refresh failed: User {email} has no active token")
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+        if not verify_password(actual_token, user["refresh_token_hashed"]):
+            logger.critical(f"Security Alert: Reused/Invalid refresh token for {email}") # Critical Alert
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+        # Issue New Tokens
+        new_access, new_refresh = await generate_tokens(str(user["_id"]), email, user["role"], user_col)
+        new_refresh_hashed = hash_password(new_refresh)
+
+        try:
+            await update_user(user_col, user["_id"], {"refresh_token_hashed": new_refresh_hashed})
+            return {"access_token": new_access, "refresh_token": new_refresh, "role": user["role"], "token_type": "bearer"}
+        except PyMongoError as e:
+            logger.error(f"Refresh Token DB Update Error for {email}: {e}")
+            raise HTTPException(status_code=500, detail="Token refresh failed")
+
+    @staticmethod
+    async def logout(token: str, user_col):
+        payload = verify_token(token)
+        if not payload:
+            return {"message": "Logged out (Token expired)"}
+
+        email = payload.get("email")
+        try:
+            await update_user_by_email(user_col, email, {"refresh_token_hashed": None})
+        except PyMongoError as e:
+            logger.error(f"Logout DB Update Error for {email}: {e}")
+            # We still return success since the token is cleared on frontend anyway
+        
+        logger.info(f"User {email} logged out")
+        return {"message": "Logged out"}
+
+    @staticmethod
+    async def forget_password(email: str, user_col):
+        if await is_reset_blocked(email):
+            raise HTTPException(status_code=403, detail="Too many requests. Please try again later.")
+
+        if await is_reset_on_cooldown(email):
+            raise HTTPException(status_code=429, detail="Please wait before requesting another reset.")
+
+        user = await get_user_by_email(user_col, email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not user.get("is_verified", False):
+            raise HTTPException(status_code=403, detail="User is not verified")
+
+        token = str(uuid.uuid4())
+        await set_temp_password_token(email, token)
+
+        email_sent = await send_forget_password_email(email, token)
+        if not email_sent:
+            logger.error(f"Failed to send forget password email to {email}")
+            raise HTTPException(status_code=500, detail="Failed to send forget password email")
+
+        await increment_reset_send_count(email)
+
+        logger.info(f"Forget password email sent to {email}")
+        return {"message": "Forget password email sent successfully"}
+
+    @staticmethod
+    async def reset_password(email: str, token: str, new_password: str, user_col, response: Response):
+        user = await get_user_by_email(user_col, email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not user.get("is_verified", False):
+            raise HTTPException(status_code=403, detail="User is not verified")
+
+        temp_token = await get_temp_password_token(email)
+        if not temp_token or temp_token != token:
+            raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+        try:
+            await update_user(user_col, user["_id"], {"hashed_password": hash_password(new_password)})
+            await set_temp_password_token(email, None) 
+            
+            clear_refresh_cookie(response)
+            
+            logger.info(f"User {email} reset password successfully")
+            return {"message": "Password reset successful"}
+        except PyMongoError as e:
+            logger.error(f"Reset Password DB Update Error for {email}: {e}")
+            raise HTTPException(status_code=500, detail="Password reset failed")
+    
+    
+            
+===
+from pymongo.errors import PyMongoError
+from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, verify_token
+from app.repo.auth_helpers import count_users, insert_user, update_user, get_user_by_email, generate_tokens, update_user_by_email
+from app.core.time_utils import now_ist
+from app.utils.email import send_forget_password_email
+from fastapi import HTTPException, status, Response
+from app.utils.cookies import clear_refresh_cookie
+from app.services.otp_service import generate_and_store_otp, verify_user_otp
+from app.repo.otp_helpers import set_temp_password_token, get_temp_password_token, is_reset_blocked, is_reset_on_cooldown, increment_reset_send_count
+import logging
+import uuid
+from app.db.mongodb import profiles_collection, cart_collection
+from app.repo.profiles_helpers import create_empty_profile
+from app.repo.cart_helpers import create_empty_cart
+
+logger = logging.getLogger("uvicorn.error")
+
+class AuthService:
+
+    @staticmethod
+    async def signup(user: dict, user_col):
+
+        # 1. Check if email exists
+        # Note: In a high-traffic cloud app, relying only on this Python check is risky 
+        # (Race Condition). You should also have a unique index in MongoDB.
+
+        existing = await get_user_by_email(user_col, user.email)
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        # 2. Hash Password
+        hashed = hash_password(user.password)
+        
+        roles = "super_admin" if await count_users(user_col) == 0 else "user"
+        # 3. Prepare Data
+        user_data = {
+            "username": user.username,
+            "email": user.email, 
+            "hashed_password": hashed, 
+            "refresh_token_hashed": None,
+            "role": roles, # Explicitly setting default role is safer
+            "is_verified": False,
+            "created_at": now_ist() # Store creation time and date for auditing
+        }
+        
+        # 4. Safe Database Insertion
+        try:
+            success, message, otp_token = await generate_and_store_otp(user.email)
+            if not success:
+                raise HTTPException(status_code=400, detail=message)
+
+            logger.info(f"OTP sent to {user.email}")
+
+            result = await insert_user(user_col, user_data)
+            logger.info(f"Registered, Now please verify your email ")
+            return {"message": "User registered successfully, Please verify your email", "otp_token": otp_token}
+
+        except HTTPException:
+            raise  # Re-raise HTTP exceptions as-is
+        except PyMongoError as e:
+            logger.error(f"Signup DB Error: {e}")
+            raise HTTPException(status_code=500, detail="Signup failed due to server error")
+        except Exception as e:
+            logger.error(f"Error during signup: {e}")
+            raise HTTPException(status_code=500, detail="Failed to complete registration")
+
+    @staticmethod
+    async def verify_otp(otp_token: str, otp: str, user_col):
+        is_valid, message, email = await verify_user_otp(otp_token, otp)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=message)
+            
+        user = await get_user_by_email(user_col, email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.get("is_verified"):
+            raise HTTPException(status_code=400, detail="Email is already verified")
+            
+        try:
+            access_token, refresh_token = await generate_tokens(user["_id"], user["email"], user["role"], user_col)
+            refresh_hash = hash_password(refresh_token)
+
+            # 1. Mark user as verified
+            await update_user(user_col, user["_id"], {"is_verified": True, "refresh_token_hashed": refresh_hash})
+            
+            # 2. Initialize User Data (Profile, Cart)
+            user_id_str = str(user["_id"])
+            await create_empty_profile(profiles_collection(), user_id_str, email)
+            await create_empty_cart(cart_collection(), user_id_str)
+
+            logger.info(f"User {email} verified and data initialized successfully")
+            return {"access_token": access_token, "refresh_token": refresh_token, "role": user["role"], "token_type": "bearer"}
+
+        except PyMongoError as e:
+            logger.error(f"Verify OTP DB Error: {e}")
+            raise HTTPException(status_code=500, detail="Failed to update verification status or initialize data")
+
+    @staticmethod
+    async def resend_otp(email: str, user_col):
+        user = await get_user_by_email(user_col, email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.get("is_verified"):
+            raise HTTPException(status_code=400, detail="Email is already verified")
+            
+        success, message, otp_token = await generate_and_store_otp(email)
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+            
+        logger.info(f"OTP resent to {email}")
+        return {"message": "OTP sent successfully.", "otp_token": otp_token}
+
+    @staticmethod
+    async def login(email: str, password: str, user_col):
+        # OAuth2PasswordRequestForm uses form fields "username" and "password"
+        user = await get_user_by_email(user_col, email)
+        
+        if not user or not verify_password(password, user["hashed_password"]):
+            logger.warning(f"Login failed for user: {email}")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+        if not user.get("is_verified", False):
+            logger.warning(f"Login failed: User {email} is not verified")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified. Please verify your OTP.")
+
+        # Check blocked status
+        if user.get("is_banned", False):
+            logger.warning(f"Banned user attempt: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been banned by the administrator."
+            )
+
+        access_token, refresh_token = await generate_tokens(user["_id"], user["email"], user["role"], user_col)
+
+        # Hash the refresh token before storing (recommended)
+        refresh_hash = hash_password(refresh_token)
+
+        try:
+            await update_user(user_col, user["_id"], {"refresh_token_hashed": refresh_hash})
+            logger.info(f"User {user['email']} logged in successfully")
+
+        except PyMongoError as e:
+            logger.error(f"Login DB Update Error: {e}")
+            raise HTTPException(status_code=500, detail="Login failed")
+
+        return {"access_token": access_token, "refresh_token": refresh_token, "role": user["role"], "token_type": "bearer"}
+
+    @staticmethod
+    async def refresh_token(actual_token: str, user_col):
+        payload = verify_token(actual_token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token structure")
+
+        email = payload.get("email")
+        user = await get_user_by_email(user_col, email)
+
+        # Validate User and Token
+        if not user or not user.get("refresh_token_hashed"):
+            logger.warning(f"Refresh failed: User {email} has no active token")
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+        if not verify_password(actual_token, user["refresh_token_hashed"]):
+            logger.critical(f"Security Alert: Reused/Invalid refresh token for {email}") # Critical Alert
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+        # Issue New Tokens
+        new_access, new_refresh = await generate_tokens(str(user["_id"]), email, user["role"], user_col)
+        new_refresh_hashed = hash_password(new_refresh)
+
+        try:
+            await update_user(user_col, user["_id"], {"refresh_token_hashed": new_refresh_hashed})
+            return {"access_token": new_access, "refresh_token": new_refresh, "role": user["role"], "token_type": "bearer"}
+        except PyMongoError as e:
+            logger.error(f"Refresh Token DB Update Error for {email}: {e}")
+            raise HTTPException(status_code=500, detail="Token refresh failed")
+
+    @staticmethod
+    async def logout(token: str, user_col):
+        payload = verify_token(token)
+        if not payload:
+            return {"message": "Logged out (Token expired)"}
+
+        email = payload.get("email")
+        try:
+            await update_user_by_email(user_col, email, {"refresh_token_hashed": None})
+        except PyMongoError as e:
+            logger.error(f"Logout DB Update Error for {email}: {e}")
+            # We still return success since the token is cleared on frontend anyway
+        
+        logger.info(f"User {email} logged out")
+        return {"message": "Logged out"}
+
+    @staticmethod
+    async def forget_password(email: str, user_col):
+        if await is_reset_blocked(email):
+            raise HTTPException(status_code=403, detail="Too many requests. Please try again later.")
+
+        if await is_reset_on_cooldown(email):
+            raise HTTPException(status_code=429, detail="Please wait before requesting another reset.")
+
+        user = await get_user_by_email(user_col, email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not user.get("is_verified", False):
+            raise HTTPException(status_code=403, detail="User is not verified")
+
+        token = str(uuid.uuid4())
+        await set_temp_password_token(email, token)
+
+        email_sent = await send_forget_password_email(email, token)
+        if not email_sent:
+            logger.error(f"Failed to send forget password email to {email}")
+            raise HTTPException(status_code=500, detail="Failed to send forget password email")
+
+        await increment_reset_send_count(email)
+
+        logger.info(f"Forget password email sent to {email}")
+        return {"message": "Forget password email sent successfully"}
+
+    @staticmethod
+    async def reset_password(email: str, token: str, new_password: str, user_col, response: Response):
+        user = await get_user_by_email(user_col, email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not user.get("is_verified", False):
+            raise HTTPException(status_code=403, detail="User is not verified")
+
+        temp_token = await get_temp_password_token(email)
+        if not temp_token or temp_token != token:
+            raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+        try:
+            await update_user(user_col, user["_id"], {"hashed_password": hash_password(new_password)})
+            await set_temp_password_token(email, None) 
+            
+            clear_refresh_cookie(response)
+            
+            logger.info(f"User {email} reset password successfully")
+            return {"message": "Password reset successful"}
+        except PyMongoError as e:
+            logger.error(f"Reset Password DB Update Error for {email}: {e}")
+            raise HTTPException(status_code=500, detail="Password reset failed")
+    
+    
+            
+```
+```diff:seller_helpers.py
+import logging
+from bson import ObjectId
+from pymongo.errors import PyMongoError
+from fastapi import HTTPException
+from datetime import datetime
+
+logger = logging.getLogger("uvicorn.error")
+
+async def insert_seller_product(collection, product_data: dict) -> dict:
+    try:
+        result = await collection.insert_one(product_data)
+        product_data["_id"] = result.inserted_id
+        return product_data
+    except PyMongoError as e:
+        logger.error(f"DB Error inserting product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_products(collection, seller_id: str, filters: dict = None, skip: int = 0, limit: int = 10):
+    try:
+        query = {"seller_id": seller_id, "is_deleted": False}
+        if filters:
+            query.update(filters)
+        cursor = collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        items = await cursor.to_list(length=limit)
+        total = await collection.count_documents(query)
+        return items, total
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller products: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_product_by_id(collection, product_id: str, seller_id: str):
+    try:
+        product = await collection.find_one({"_id": ObjectId(product_id), "seller_id": seller_id, "is_deleted": False})
+        return product
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_seller_product(collection, product_id: str, seller_id: str, update_data: dict):
+    try:
+        update_data["updated_at"] = datetime.utcnow()
+        result = await collection.update_one(
+            {"_id": ObjectId(product_id), "seller_id": seller_id},
+            {"$set": update_data}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating seller product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def soft_delete_seller_product(collection, product_id: str, seller_id: str):
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(product_id), "seller_id": seller_id},
+            {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error deleting seller product: {e}")
+        logger.error(f"DB Error deleting seller product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_product_by_slug(collection, seller_id: str, slug: str):
+    try:
+        return await collection.find_one({"seller_id": seller_id, "slug": slug})
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching product by slug: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_orders(collection, seller_id: str, skip: int = 0, limit: int = 10):
+    try:
+        pipeline = [
+            {"$match": {"items.seller_id": seller_id}},
+            {"$addFields": {
+                "items": {
+                    "$filter": {
+                        "input": "$items",
+                        "as": "item",
+                        "cond": {"$eq": ["$$item.seller_id", seller_id]}
+                    }
+                }
+            }},
+            {"$sort": {"created_at": -1}},
+            {"$skip": skip},
+            {"$limit": limit}
+        ]
+        
+        count_pipeline = [
+            {"$match": {"items.seller_id": seller_id}},
+            {"$count": "total"}
+        ]
+        
+        cursor = collection.aggregate(pipeline)
+        items = await cursor.to_list(length=limit)
+        
+        count_cursor = collection.aggregate(count_pipeline)
+        count_result = await count_cursor.to_list(length=1)
+        total = count_result[0]["total"] if count_result else 0
+        
+        return items, total
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller orders: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_order_by_id(collection, order_id: str, seller_id: str):
+    try:
+        pipeline = [
+            {"$match": {"_id": ObjectId(order_id), "items.seller_id": seller_id}},
+            {"$addFields": {
+                "items": {
+                    "$filter": {
+                        "input": "$items",
+                        "as": "item",
+                        "cond": {"$eq": ["$$item.seller_id", seller_id]}
+                    }
+                }
+            }}
+        ]
+        cursor = collection.aggregate(pipeline)
+        result = await cursor.to_list(length=1)
+        return result[0] if result else None
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller order by id: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_seller_order_item_status(collection, order_id: str, seller_id: str, new_status: str):
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(order_id)},
+            {
+                "$set": {
+                    "items.$[elem].status": new_status,
+                    "updated_at": datetime.utcnow()
+                }
+            },
+            array_filters=[{"elem.seller_id": seller_id}]
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating seller order status: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_dashboard_stats(product_collection, order_collection, seller_id: str):
+    try:
+        products = await product_collection.find({"seller_id": seller_id}).to_list(length=None)
+        active_products = sum(1 for p in products if p.get("is_active") and p.get("is_approved"))
+        pending_products = sum(1 for p in products if not p.get("is_approved"))
+        low_stock = sum(1 for p in products if p.get("stock", 0) < 10)
+        
+        pipeline = [
+            {"$match": {"items.seller_id": seller_id}},
+            {"$unwind": "$items"},
+            {"$match": {"items.seller_id": seller_id}}
+        ]
+        orders = await order_collection.aggregate(pipeline).to_list(length=None)
+        
+        total_revenue = 0
+        this_month_revenue = 0
+        
+        now = datetime.utcnow()
+        start_of_month = datetime(now.year, now.month, 1)
+        
+        for o in orders:
+            item = o["items"]
+            price = item.get("price", 0)
+            quantity = item.get("quantity", 1)
+            revenue = price * quantity
+            total_revenue += revenue
+            
+            created_at = o.get("created_at")
+            if created_at and created_at >= start_of_month:
+                this_month_revenue += revenue
+        
+        return {
+            "products": {
+                "active": active_products,
+                "pending": pending_products,
+                "low_stock": low_stock
+            },
+            "orders": {
+                "total": len(orders),
+            },
+            "revenue": {
+                "total": total_revenue,
+                "this_month": this_month_revenue
+            }
+        }
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching dashboard stats: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+# --- Restored Admin/Profile Helpers ---
+
+async def get_seller_by_user_id(collection, user_id: str):
+    try:
+        return await collection.find_one({"user_id": user_id})
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller by user id: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def insert_seller(collection, data: dict):
+    try:
+        result = await collection.insert_one(data)
+        data["_id"] = result.inserted_id
+        return data
+    except PyMongoError as e:
+        logger.error(f"DB Error inserting seller: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_seller_by_user_id(collection, user_id: str, data: dict):
+    try:
+        result = await collection.update_one(
+            {"user_id": user_id},
+            {"$set": data}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating seller by user id: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_seller_by_object_id(collection, obj_id, data: dict):
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(obj_id)},
+            {"$set": data}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating seller by obj id: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_pending_sellers(collection, limit: int, skip: int):
+    try:
+        cursor = collection.find({"application_status": "pending"}).skip(skip).limit(limit)
+        items = await cursor.to_list(length=limit)
+        for item in items:
+            item["_id"] = str(item["_id"])
+        return items
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching pending sellers: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+===
+import logging
+from bson import ObjectId
+from pymongo.errors import PyMongoError
+from fastapi import HTTPException
+from datetime import datetime
+
+logger = logging.getLogger("uvicorn.error")
+
+async def insert_seller_product(collection, product_data: dict) -> dict:
+    try:
+        result = await collection.insert_one(product_data)
+        product_data["_id"] = result.inserted_id
+        return product_data
+    except PyMongoError as e:
+        logger.error(f"DB Error inserting product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_products(collection, seller_id: str, filters: dict = None, skip: int = 0, limit: int = 10):
+    try:
+        query = {"seller_id": seller_id, "is_deleted": False}
+        if filters:
+            query.update(filters)
+        cursor = collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        items = await cursor.to_list(length=limit)
+        total = await collection.count_documents(query)
+        return items, total
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller products: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_product_by_id(collection, product_id: str, seller_id: str):
+    try:
+        product = await collection.find_one({"_id": ObjectId(product_id), "seller_id": seller_id, "is_deleted": False})
+        return product
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_seller_product(collection, product_id: str, seller_id: str, update_data: dict):
+    try:
+        update_data["updated_at"] = datetime.utcnow()
+        result = await collection.update_one(
+            {"_id": ObjectId(product_id), "seller_id": seller_id},
+            {"$set": update_data}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating seller product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def soft_delete_seller_product(collection, product_id: str, seller_id: str):
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(product_id), "seller_id": seller_id},
+            {"$set": {"is_deleted": True, "updated_at": datetime.utcnow()}}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error deleting seller product: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_product_by_slug(collection, seller_id: str, slug: str):
+    try:
+        return await collection.find_one({"seller_id": seller_id, "slug": slug})
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching product by slug: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_orders(collection, seller_id: str, skip: int = 0, limit: int = 10):
+    try:
+        pipeline = [
+            {"$match": {"items.seller_id": seller_id}},
+            {"$addFields": {
+                "items": {
+                    "$filter": {
+                        "input": "$items",
+                        "as": "item",
+                        "cond": {"$eq": ["$$item.seller_id", seller_id]}
+                    }
+                }
+            }},
+            {"$sort": {"created_at": -1}},
+            {"$skip": skip},
+            {"$limit": limit}
+        ]
+        
+        count_pipeline = [
+            {"$match": {"items.seller_id": seller_id}},
+            {"$count": "total"}
+        ]
+        
+        cursor = collection.aggregate(pipeline)
+        items = await cursor.to_list(length=limit)
+        
+        count_cursor = collection.aggregate(count_pipeline)
+        count_result = await count_cursor.to_list(length=1)
+        total = count_result[0]["total"] if count_result else 0
+        
+        return items, total
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller orders: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_order_by_id(collection, order_id: str, seller_id: str):
+    try:
+        pipeline = [
+            {"$match": {"_id": ObjectId(order_id), "items.seller_id": seller_id}},
+            {"$addFields": {
+                "items": {
+                    "$filter": {
+                        "input": "$items",
+                        "as": "item",
+                        "cond": {"$eq": ["$$item.seller_id", seller_id]}
+                    }
+                }
+            }}
+        ]
+        cursor = collection.aggregate(pipeline)
+        result = await cursor.to_list(length=1)
+        return result[0] if result else None
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller order by id: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_seller_order_item_status(collection, order_id: str, seller_id: str, new_status: str):
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(order_id)},
+            {
+                "$set": {
+                    "items.$[elem].status": new_status,
+                    "updated_at": datetime.utcnow()
+                }
+            },
+            array_filters=[{"elem.seller_id": seller_id}]
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating seller order status: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_seller_dashboard_stats(product_collection, order_collection, seller_id: str):
+    try:
+        products = await product_collection.find({"seller_id": seller_id}).to_list(length=None)
+        active_products = sum(1 for p in products if p.get("is_active") and p.get("is_approved"))
+        pending_products = sum(1 for p in products if not p.get("is_approved"))
+        low_stock = sum(1 for p in products if p.get("stock", 0) < 10)
+        
+        pipeline = [
+            {"$match": {"items.seller_id": seller_id}},
+            {"$unwind": "$items"},
+            {"$match": {"items.seller_id": seller_id}},
+            {"$match": {"items.status": {"$nin": ["cancelled"]}}},
+            {"$sort": {"created_at": -1}},
+            
+        ]
+        orders = await order_collection.aggregate(pipeline).to_list(length=None)
+        
+        total_revenue = 0
+        this_month_revenue = 0
+        
+        now = datetime.utcnow()
+        start_of_month = datetime(now.year, now.month, 1)
+        
+        for o in orders:
+            item = o["items"]
+            price = item.get("price", 0)
+            quantity = item.get("quantity", 1)
+            revenue = price * quantity
+            total_revenue += revenue
+            
+            created_at = o.get("created_at")
+            if created_at and created_at >= start_of_month:
+                this_month_revenue += revenue
+        
+        return {
+            "products": {
+                "active": active_products,
+                "pending": pending_products,
+                "low_stock": low_stock
+            },
+            "orders": {
+                "total": len(orders),
+            },
+            "revenue": {
+                "total": total_revenue,
+                "this_month": this_month_revenue
+            }
+        }
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching dashboard stats: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+# --- Restored Admin/Profile Helpers ---
+
+async def get_seller_by_user_id(collection, user_id: str):
+    try:
+        return await collection.find_one({"user_id": user_id})
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching seller by user id: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def insert_seller(collection, data: dict):
+    try:
+        result = await collection.insert_one(data)
+        data["_id"] = result.inserted_id
+        return data
+    except PyMongoError as e:
+        logger.error(f"DB Error inserting seller: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_seller_by_user_id(collection, user_id: str, data: dict):
+    try:
+        result = await collection.update_one(
+            {"user_id": user_id},
+            {"$set": data}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating seller by user id: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_seller_by_object_id(collection, obj_id, data: dict):
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(obj_id)},
+            {"$set": data}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error updating seller by obj id: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def get_pending_sellers(collection, limit: int, skip: int):
+    try:
+        cursor = collection.find({"application_status": "pending"}).skip(skip).limit(limit)
+        items = await cursor.to_list(length=limit)
+        for item in items:
+            item["_id"] = str(item["_id"])
+        return items
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching pending sellers: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+```
+```diff:seller_service.py
+import logging
+from fastapi import HTTPException
+from app.repo import seller_helpers
+from app.models.product_model import ProductCreate, ProductUpdate, ProductStockUpdate, ProductToggleRequest
+from app.utils.discount import calculate_discount_price
+from app.models.orders_model import OrderItemStatusUpdate
+from app.models.seller_model import SellerProfileUpdate
+from app.db.mongodb import products_collection, orders_collection, sellers_collection
+from datetime import datetime
+from bson import ObjectId
+import re
+
+def generate_slug(name: str) -> str:
+    # Convert to lowercase and replace non-alphanumeric characters with hyphens
+    slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+    return slug
+
+logger = logging.getLogger("uvicorn.error")
+
+class SellerService:
+    @staticmethod
+    async def create_product(seller_id: str, product_data: ProductCreate):
+        slug = generate_slug(product_data.name)
+        existing_product = await seller_helpers.get_product_by_slug(products_collection(), seller_id, slug)
+
+        data = product_data.model_dump()
+        data["seller_id"] = seller_id
+        data["slug"] = slug
+        data["is_approved"] = False
+        data["updated_at"] = datetime.utcnow()
+        
+        # Calculate final price
+        actual_price = data.get("actual_price", 0)
+        discount_percent = data.get("discount_percent", 0)
+        data["price"] = calculate_discount_price(actual_price, discount_percent)
+
+        if existing_product:
+            if not existing_product.get("is_deleted", False):
+                raise HTTPException(status_code=409, detail="A product with this name already exists. Please edit the existing listing.")
+            else:
+                # Restore soft-deleted product
+                data["is_deleted"] = False
+                data["is_active"] = True
+                
+                success = await seller_helpers.update_seller_product(products_collection(), str(existing_product["_id"]), seller_id, data)
+                if not success:
+                    raise HTTPException(status_code=500, detail="Failed to restore product")
+                
+                return {
+                    "message": "Product restored and waiting for approval",
+                    "product_id": str(existing_product["_id"])
+                }
+
+        # New product
+        data["is_active"] = True
+        data["is_deleted"] = False
+        data["avg_rating"] = 0.0
+        data["review_count"] = 0
+        data["created_at"] = datetime.utcnow()
+        data["updated_at"] = None 
+
+        result = await seller_helpers.insert_seller_product(products_collection(), data)
+        result["_id"] = str(result["_id"])
+        return {
+            "message": "Product created successfully and waiting for approval",
+            "product_id": str(result["_id"]),
+            "product_data": result
+        }
+
+    @staticmethod
+    async def get_products(seller_id: str, page: int = 1, limit: int = 10):
+        skip = (page - 1) * limit
+        items, total = await seller_helpers.get_seller_products(products_collection(), seller_id, skip=skip, limit=limit)
+        for item in items:
+            item["_id"] = str(item["_id"])
+        return {"items": items, "total": total, "page": page, "limit": limit}
+  
+    @staticmethod
+    async def get_product_by_id(seller_id: str, product_id: str):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+        product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        product["_id"] = str(product["_id"])
+        return product
+
+    @staticmethod
+    async def update_product(seller_id: str, product_id: str, product_data: ProductUpdate):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+            
+        existing_product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not existing_product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        update_data = product_data.model_dump(exclude_unset=True)
+        
+        if "name" in update_data:
+            new_slug = generate_slug(update_data["name"])
+            if new_slug != existing_product.get("slug"):
+                duplicate_check = await seller_helpers.get_product_by_slug(products_collection(), seller_id, new_slug)
+                if duplicate_check and not duplicate_check.get("is_deleted", False):
+                    raise HTTPException(status_code=409, detail="A product with this name already exists.")
+            update_data["slug"] = new_slug
+
+        # Recalculate price if actual_price or discount_percent changes
+        if "actual_price" in update_data or "discount_percent" in update_data:
+            new_actual_price = update_data.get("actual_price", existing_product.get("actual_price"))
+            new_discount_percent = update_data.get("discount_percent", existing_product.get("discount_percent", 0))
+            update_data["price"] = calculate_discount_price(new_actual_price, new_discount_percent)
+
+        for field in ["is_approved", "is_deleted", "seller_id", "avg_rating", "review_count", "product_likes", "created_at", "updated_at", "_id", "id"]:
+            update_data.pop(field, None)
+        
+        # Ensure updated_at is always current
+        update_data["updated_at"] = datetime.utcnow()
+        
+        success = await seller_helpers.update_seller_product(products_collection(), product_id, seller_id, update_data)
+        if not success:
+            raise HTTPException(status_code=404, detail="No changes made")
+        return {"message": "Product updated successfully"}
+
+    @staticmethod
+    async def toggle_product(seller_id: str, product_id: str, toggle_data: ProductToggleRequest):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+            
+        existing_product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not existing_product:
+            raise HTTPException(status_code=404, detail="Product not found")
+            
+        success = await seller_helpers.update_seller_product(products_collection(), product_id, seller_id, {"is_active": toggle_data.is_active})
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"message": "Product active status toggled"}
+
+    @staticmethod
+    async def update_stock(seller_id: str, product_id: str, stock_data: ProductStockUpdate):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+            
+        existing_product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not existing_product:
+            raise HTTPException(status_code=404, detail="Product not found")
+            
+        success = await seller_helpers.update_seller_product(products_collection(), product_id, seller_id, {"stock": stock_data.stock})
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"message": "Product stock updated"}
+
+    @staticmethod
+    async def delete_product(seller_id: str, product_id: str):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+            
+        existing_product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not existing_product:
+            raise HTTPException(status_code=404, detail="Product not found")
+            
+        success = await seller_helpers.soft_delete_seller_product(products_collection(), product_id, seller_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"message": "Product deleted successfully"}
+
+    @staticmethod
+    async def get_orders(seller_id: str, page: int = 1, limit: int = 10):
+        skip = (page - 1) * limit
+        items, total = await seller_helpers.get_seller_orders(orders_collection(), seller_id, skip=skip, limit=limit)
+        for item in items:
+            item["_id"] = str(item["_id"])
+            if "user_id" in item:
+                item["user_id"] = str(item["user_id"])
+        return {"items": items, "total": total, "page": page, "limit": limit}
+
+    @staticmethod
+    async def get_order_by_id(seller_id: str, order_id: str):
+        if not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid order ID")
+        order = await seller_helpers.get_seller_order_by_id(orders_collection(), order_id, seller_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        order["_id"] = str(order["_id"])
+        if "user_id" in order:
+            order["user_id"] = str(order["user_id"])
+        
+        if "shipping_address" in order and "mobile" in order["shipping_address"]:
+            del order["shipping_address"]["mobile"]
+            
+        seller_total = sum(item.get("price", 0) * item.get("quantity", 1) for item in order.get("items", []))
+        order["seller_total"] = seller_total
+        
+        return order
+
+    @staticmethod
+    async def update_order_status(seller_id: str, order_id: str, status_data: OrderItemStatusUpdate):
+        if not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid order ID")
+        success = await seller_helpers.update_seller_order_item_status(orders_collection(), order_id, seller_id, status_data.status.value)
+        if not success:
+            raise HTTPException(status_code=404, detail="Order item not found")
+        return {"message": f"Order item status updated to {status_data.status.value}"}
+
+    @staticmethod
+    async def update_profile(seller_id: str, profile_data: SellerProfileUpdate):
+        update_data = profile_data.model_dump(exclude_unset=True)
+        if not update_data:
+             return {"message": "No fields to update"}
+             
+        update_data["updated_at"] = datetime.utcnow()
+        
+        # Use user_id as that's what's passed from the token
+        result = await sellers_collection().update_one(
+            {"user_id": seller_id},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Seller profile not found")
+        
+        if result.modified_count == 0:
+            return {"message": "No changes made to profile"}
+            
+        return {"message": "Profile updated successfully"}
+        
+    @staticmethod
+    async def get_profile(seller_id: str):
+        profile = await seller_helpers.get_seller_by_user_id(sellers_collection(), seller_id)
+        if not profile:
+            raise HTTPException(status_code=404, detail="Seller profile not found")
+        profile["_id"] = str(profile["_id"])
+        return profile
+
+    @staticmethod
+    async def get_dashboard(seller_id: str):
+        stats = await seller_helpers.get_seller_dashboard_stats(products_collection(), orders_collection(), seller_id)
+        return stats
+
+
+
+===
+import logging
+from fastapi import HTTPException
+from app.repo import seller_helpers
+from app.models.product_model import ProductCreate, ProductUpdate, ProductStockUpdate, ProductToggleRequest
+from app.utils.discount import calculate_discount_price
+from app.models.orders_model import OrderItemStatusUpdate
+from app.models.seller_model import SellerProfileUpdate
+from app.db.mongodb import products_collection, orders_collection, sellers_collection
+from datetime import datetime
+from bson import ObjectId
+import re
+
+def generate_slug(name: str) -> str:
+    # Convert to lowercase and replace non-alphanumeric characters with hyphens
+    slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+    return slug
+
+logger = logging.getLogger("uvicorn.error")
+
+class SellerService:
+    @staticmethod
+    async def create_product(seller_id: str, product_data: ProductCreate):
+        slug = generate_slug(product_data.name)
+        existing_product = await seller_helpers.get_product_by_slug(products_collection(), seller_id, slug)
+
+        data = product_data.model_dump()
+        data["seller_id"] = seller_id
+        data["slug"] = slug
+        data["is_approved"] = False
+        data["updated_at"] = datetime.utcnow()
+        
+        # Calculate final price
+        actual_price = data.get("actual_price", 0)
+        discount_percent = data.get("discount_percent", 0)
+        data["price"] = calculate_discount_price(actual_price, discount_percent)
+
+        if existing_product:
+            if not existing_product.get("is_deleted", False):
+                raise HTTPException(status_code=409, detail="A product with this name already exists. Please edit the existing listing.")
+            else:
+                # Restore soft-deleted product
+                data["is_deleted"] = False
+                data["is_active"] = True
+                
+                success = await seller_helpers.update_seller_product(products_collection(), str(existing_product["_id"]), seller_id, data)
+                if not success:
+                    raise HTTPException(status_code=500, detail="Failed to restore product")
+                
+                return {
+                    "message": "Product restored and waiting for approval",
+                    "product_id": str(existing_product["_id"])
+                }
+
+        # New product
+        data["is_active"] = True
+        data["is_deleted"] = False
+        data["avg_rating"] = 0.0
+        data["review_count"] = 0
+        data["created_at"] = datetime.utcnow()
+        data["updated_at"] = data["created_at"]
+
+        result = await seller_helpers.insert_seller_product(products_collection(), data)
+        result["_id"] = str(result["_id"])
+        return {
+            "message": "Product created successfully and waiting for approval",
+            "product_id": str(result["_id"]),
+            "product_data": result
+        }
+
+    @staticmethod
+    async def get_products(seller_id: str, page: int = 1, limit: int = 10):
+        skip = (page - 1) * limit
+        items, total = await seller_helpers.get_seller_products(products_collection(), seller_id, skip=skip, limit=limit)
+        for item in items:
+            item["_id"] = str(item["_id"])
+        return {"items": items, "total": total, "page": page, "limit": limit}
+  
+    @staticmethod
+    async def get_product_by_id(seller_id: str, product_id: str):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+        product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        product["_id"] = str(product["_id"])
+        return product
+
+    @staticmethod
+    async def update_product(seller_id: str, product_id: str, product_data: ProductUpdate):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+            
+        existing_product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not existing_product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        update_data = product_data.model_dump(exclude_unset=True)
+        
+        if "name" in update_data:
+            new_slug = generate_slug(update_data["name"])
+            if new_slug != existing_product.get("slug"):
+                duplicate_check = await seller_helpers.get_product_by_slug(products_collection(), seller_id, new_slug)
+                if duplicate_check and not duplicate_check.get("is_deleted", False):
+                    raise HTTPException(status_code=409, detail="A product with this name already exists.")
+            update_data["slug"] = new_slug
+
+        # Recalculate price if actual_price or discount_percent changes
+        if "actual_price" in update_data or "discount_percent" in update_data:
+            new_actual_price = update_data.get("actual_price", existing_product.get("actual_price"))
+            new_discount_percent = update_data.get("discount_percent", existing_product.get("discount_percent", 0))
+            update_data["price"] = calculate_discount_price(new_actual_price, new_discount_percent)
+
+        for field in ["is_approved", "is_deleted", "seller_id", "avg_rating", "review_count", "product_likes", "created_at", "updated_at", "_id", "id"]:
+            update_data.pop(field, None)
+        
+        # Ensure updated_at is always current
+        update_data["updated_at"] = datetime.utcnow()
+        
+        success = await seller_helpers.update_seller_product(products_collection(), product_id, seller_id, update_data)
+        if not success:
+            raise HTTPException(status_code=404, detail="No changes made")
+        return {"message": "Product updated successfully"}
+
+    @staticmethod
+    async def toggle_product(seller_id: str, product_id: str, toggle_data: ProductToggleRequest):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+            
+        existing_product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not existing_product:
+            raise HTTPException(status_code=404, detail="Product not found")
+            
+        success = await seller_helpers.update_seller_product(products_collection(), product_id, seller_id, {"is_active": toggle_data.is_active})
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"message": "Product active status toggled"}
+
+    @staticmethod
+    async def update_stock(seller_id: str, product_id: str, stock_data: ProductStockUpdate):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+            
+        existing_product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not existing_product:
+            raise HTTPException(status_code=404, detail="Product not found")
+            
+        success = await seller_helpers.update_seller_product(products_collection(), product_id, seller_id, {"stock": stock_data.stock})
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"message": "Product stock updated"}
+
+    @staticmethod
+    async def delete_product(seller_id: str, product_id: str):
+        if not ObjectId.is_valid(product_id):
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+            
+        existing_product = await seller_helpers.get_seller_product_by_id(products_collection(), product_id, seller_id)
+        if not existing_product:
+            raise HTTPException(status_code=404, detail="Product not found")
+            
+        success = await seller_helpers.soft_delete_seller_product(products_collection(), product_id, seller_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"message": "Product deleted successfully"}
+
+    @staticmethod
+    async def get_orders(seller_id: str, page: int = 1, limit: int = 10):
+        skip = (page - 1) * limit
+        items, total = await seller_helpers.get_seller_orders(orders_collection(), seller_id, skip=skip, limit=limit)
+        for item in items:
+            item["_id"] = str(item["_id"])
+            if "user_id" in item:
+                item["user_id"] = str(item["user_id"])
+        return {"items": items, "total": total, "page": page, "limit": limit}
+
+    @staticmethod
+    async def get_order_by_id(seller_id: str, order_id: str):
+        if not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid order ID")
+        order = await seller_helpers.get_seller_order_by_id(orders_collection(), order_id, seller_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        order["_id"] = str(order["_id"])
+        if "user_id" in order:
+            order["user_id"] = str(order["user_id"])
+        
+        if "shipping_address" in order and "mobile" in order["shipping_address"]:
+            del order["shipping_address"]["mobile"]
+            
+        seller_total = sum(item.get("price", 0) * item.get("quantity", 1) for item in order.get("items", []))
+        order["seller_total"] = seller_total
+        
+        return order
+
+    @staticmethod
+    async def update_order_status(seller_id: str, order_id: str, status_data: OrderItemStatusUpdate):
+        if not ObjectId.is_valid(order_id):
+            raise HTTPException(status_code=400, detail="Invalid order ID")
+        success = await seller_helpers.update_seller_order_item_status(orders_collection(), order_id, seller_id, status_data.status.value)
+        if not success:
+            raise HTTPException(status_code=404, detail="Order item not found")
+        return {"message": f"Order item status updated to {status_data.status.value}"}
+
+    @staticmethod
+    async def update_profile(seller_id: str, profile_data: SellerProfileUpdate):
+        update_data = profile_data.model_dump(exclude_unset=True)
+        if not update_data:
+             return {"message": "No fields to update"}
+             
+        update_data["updated_at"] = datetime.utcnow()
+        
+        # Use user_id as that's what's passed from the token
+        result = await sellers_collection().update_one(
+            {"user_id": seller_id},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Seller profile not found")
+        
+        if result.modified_count == 0:
+            return {"message": "No changes made to profile"}
+            
+        return {"message": "Profile updated successfully"}
+        
+    @staticmethod
+    async def get_profile(seller_id: str):
+        profile = await seller_helpers.get_seller_by_user_id(sellers_collection(), seller_id)
+        if not profile:
+            raise HTTPException(status_code=404, detail="Seller profile not found")
+        profile["_id"] = str(profile["_id"])
+        return profile
+
+    @staticmethod
+    async def get_dashboard(seller_id: str):
+        stats = await seller_helpers.get_seller_dashboard_stats(products_collection(), orders_collection(), seller_id)
+        return stats
+
+
+
+```
+```diff:time_utils.py
+from datetime import datetime
+import pytz
+
+tz_india = pytz.timezone('Asia/Kolkata')
+
+def now_ist(format_str: str = "%Y-%m-%d %I:%M:%S %p") -> str:
+    """Returns current date and time in IST formatted as per given format string."""
+    now_india = datetime.now(tz_india)
+    return now_india.strftime(format_str)
+
+    
+===
+from datetime import datetime, timezone
+import pytz
+
+tz_india = pytz.timezone('Asia/Kolkata')
+
+def utc_now() -> datetime:
+    """Returns current UTC time as a timezone-aware datetime.
+    Replaces deprecated datetime.utcnow() (deprecated since Python 3.12).
+    """
+    return datetime.now(timezone.utc)
+
+def now_ist(format_str: str = "%Y-%m-%d %I:%M:%S %p") -> str:
+    """Returns current date and time in IST formatted as per given format string."""
+    now_india = datetime.now(tz_india)
+    return now_india.strftime(format_str)
+
+    
+```
+```diff:security.py
+from datetime import datetime, timedelta
+from typing import Optional, Dict, Any
+from jose import jwt, JWTError
+from passlib.context import CryptContext
+from app.core.config import settings
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    encoded = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return encoded
+
+def create_refresh_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS))
+    to_encode.update({"exp": expire})
+    encoded = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return encoded
+
+def verify_token(token: str) -> Optional[Dict[str, Any]]:
+    try:
+        payload = jwt.decode(
+            token, 
+            settings.JWT_SECRET, 
+            algorithms=[settings.JWT_ALGORITHM],
+            audience="Anozon",
+            issuer="Anozon"
+        )
+        return payload
+    
+    except JWTError as e:
+        logger.error(f"JWT Verification Failed: {e}")
+        return None
+
+    
+
+===
+from datetime import timedelta
+from typing import Optional, Dict, Any
+from jose import jwt, JWTError
+from passlib.context import CryptContext
+from app.core.config import settings
+from app.core.time_utils import utc_now
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    expire = utc_now() + (expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    encoded = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return encoded
+
+def create_refresh_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    expire = utc_now() + (expires_delta or timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS))
+    to_encode.update({"exp": expire})
+    encoded = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return encoded
+
+def verify_token(token: str) -> Optional[Dict[str, Any]]:
+    try:
+        payload = jwt.decode(
+            token, 
+            settings.JWT_SECRET, 
+            algorithms=[settings.JWT_ALGORITHM],
+            audience="Anozon",
+            issuer="Anozon"
+        )
+        return payload
+    
+    except JWTError as e:
+        logger.error(f"JWT Verification Failed: {e}")
+        return None
+
+    
+
+```
+```diff:auth_helpers.py
+from pymongo.errors import PyMongoError
+from app.core.security import create_access_token, create_refresh_token
+from datetime import datetime
+from fastapi import HTTPException
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
+
+# Helper functions
+async def get_user_by_email(collection, email: str):
+    try:
+        return await collection.find_one({"email": email})
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching user {email}: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def generate_tokens(id: str, email: str, role: str, user_col):
+    try: 
+        access_token = create_access_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": datetime.utcnow() })
+        refresh_token = create_refresh_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": datetime.utcnow()})
+        
+        return access_token, refresh_token
+
+    except Exception as e:
+        logger.error(f"Token generation error: {e}")
+        raise HTTPException(status_code=500, detail="Token generation failed")
+
+async def count_users(collection):
+    try: 
+        count = await collection.count_documents({})
+        return count
+    except PyMongoError as e:
+        logger.error(f"DB Error counting users: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def insert_user(collection, user_data: dict):
+    try: 
+        result = await collection.insert_one(user_data)
+        return result
+    except PyMongoError as e:
+        logger.error(f"DB Error inserting user: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_user(collection, user_id: str, update_data: dict):
+    try: 
+        result = await collection.update_one({"_id": user_id}, {"$set": update_data})
+        return result
+    except PyMongoError as e:
+        logger.error(f"DB Error updating user: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def delete_user(collection, user_id: str):
+    try: 
+        result = await collection.delete_one({"_id": user_id})
+        return result
+    except PyMongoError as e:
+        logger.error(f"DB Error deleting user: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_user_by_email(collection, email: str, update_data: dict):
+    try: 
+        result = await collection.update_one({"email": email}, {"$set": update_data})
+        return result
+    except PyMongoError as e:
+        logger.error(f"DB Error updating user by email: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+===
+from bson.objectid import ObjectId
+from pymongo.errors import PyMongoError
+from app.core.security import create_access_token, create_refresh_token
+from app.core.time_utils import utc_now
+from fastapi import HTTPException
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
+
+# Helper functions
+async def get_user_by_email(collection, email: str):
+    try:
+        return await collection.find_one({"email": email})
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching user {email}: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def generate_tokens(id: str, email: str, role: str, user_col):
+    try: 
+        access_token = create_access_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": utc_now() })
+        refresh_token = create_refresh_token({"_id": str(id), "email": email, "role": role, "iss": "Anozon", "aud": "Anozon", "iat": utc_now()})
+        
+        return access_token, refresh_token
+
+    except Exception as e:
+        logger.error(f"Token generation error: {e}")
+        raise HTTPException(status_code=500, detail="Token generation failed")
+
+async def count_users(collection):
+    try: 
+        count = await collection.count_documents({})
+        return count
+    except PyMongoError as e:
+        logger.error(f"DB Error counting users: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def insert_user(collection, user_data: dict):
+    try: 
+        result = await collection.insert_one(user_data)
+        return result
+    except PyMongoError as e:
+        logger.error(f"DB Error inserting user: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_user(collection, user_id: str, update_data: dict):
+    try: 
+        result = await collection.update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
+        return result
+    except PyMongoError as e:
+        logger.error(f"DB Error updating user: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def delete_user(collection, user_id: str):
+    try: 
+        result = await collection.delete_one({"_id": user_id})
+        return result
+    except PyMongoError as e:
+        logger.error(f"DB Error deleting user: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def update_user_by_email(collection, email: str, update_data: dict):
+    try: 
+        result = await collection.update_one({"email": email}, {"$set": update_data})
+        return result
+    except PyMongoError as e:
+        logger.error(f"DB Error updating user by email: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+```

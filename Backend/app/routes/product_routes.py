@@ -2,9 +2,8 @@ from fastapi import APIRouter, HTTPException, Query, Path
 from typing import Optional
 from app.services.product_service import ProductService
 from app.models.product_model import PaginatedProductResponse, ProductResponse
-import requests
 
-router = APIRouter(tags=["public product routes"])
+router = APIRouter(tags=["Public Product Routes"])
 
 @router.get("/products", response_model=PaginatedProductResponse)
 async def get_products(
@@ -69,16 +68,4 @@ async def get_products_by_category(
     if not products_page.items:
         raise HTTPException(status_code=404, detail=f"No products found in category: {category}")
     return products_page
-
-@router.get("ollama/ai/chat")
-async def chat_with_ollama_ai(message: str = Query(..., description="Message to send to Ollama AI")):
-    try:
-        response = requests.post(
-            "http://localhost:11434/api/v1/chat",
-            json={"model": "ollama/ai", "messages": [{"role": "user", "content": message}]}
-        )
-        return response.json()
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Error communicating with Ollama AI: {str(e)}")
-
 

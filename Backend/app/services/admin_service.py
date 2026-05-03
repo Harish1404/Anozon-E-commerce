@@ -1,10 +1,10 @@
 from fastapi import HTTPException, status
 from pymongo.errors import PyMongoError
 from datetime import datetime
-from app.db.mongodb import sellers_collection, get_users_collection
+from app.db.mongodb import sellers_collection, get_users_collection, products_collection
+from app.core.time_utils import utc_now
 from app.models.seller_model import SellerApplicationRequest, SellerProfile, SellerResponse
 from app.services.audit_service import log_action
-import logging
 from app.repo.role_helpers import get_user_by_id, update_user_role
 from app.repo.admin_helpers import (
     get_seller_by_user_id,
@@ -15,8 +15,13 @@ from app.repo.admin_helpers import (
     get_pending_products,
     update_product_approval_status
 )
-from app.db.mongodb import products_collection
+from app.repo.seller_redis_helpers import (
+    is_seller_apply_blocked,
+    increment_seller_apply_count,
+    get_seller_apply_attempts_remaining
+)
 from app.models.product_model import ProductResponse
+import logging
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -32,15 +37,29 @@ async def apply_for_seller(user_id: str, payload: SellerApplicationRequest):
         
     if user.get("is_banned", False):
         raise HTTPException(status_code=400, detail="Banned users cannot apply")
-        
+
+    # Check if rate limited
+    if await is_seller_apply_blocked(user_id):
+        raise HTTPException(status_code=429, detail="Too many applications. Try again after 30 days")
+
     # Check if application already exists
     existing = await get_seller_by_user_id(sellers_collection(), user_id)
     if existing:
-        if existing.get("application_status") == "pending":
-            raise HTTPException(status_code=400, detail="Application already pending")
-        if existing.get("application_status") == "approved":
+        app_status = existing.get("application_status")
+
+        if app_status == "pending":
+            raise HTTPException(status_code=400, detail="Application already under review")
+        if app_status == "approved":
             raise HTTPException(status_code=400, detail="You are already an approved seller")
-        # If rejected, they can re-apply. We'll update the existing document.
+        if existing.get("is_suspended"):
+            raise HTTPException(status_code=400, detail="Account suspended, contact support")
+
+        # Status is "rejected" — rate limit the reapplication
+        count = await increment_seller_apply_count(user_id)
+        if count >= 3:
+            raise HTTPException(status_code=429, detail="Too many applications. Try again after 30 days")
+
+        # Update existing doc back to pending
         await update_seller_by_object_id(
             sellers_collection(),
             existing["_id"],
@@ -51,12 +70,20 @@ async def apply_for_seller(user_id: str, payload: SellerApplicationRequest):
                 "business_address": payload.business_address.model_dump(),
                 "application_status": "pending",
                 "rejection_reason": None,
-                "updated_at": datetime.utcnow()
+                "updated_at": utc_now()
             }
+        )
+
+        await log_action(
+            action="seller_reapplied",
+            target_user_id=user_id,
+            performed_by=user_id,
+            from_role=user.get("role", "user"),
+            to_role=user.get("role", "user")
         )
         return {"message": "Application resubmitted successfully"}
 
-    # Create new profile
+    # Create new profile (first application — no rate limit count)
     profile = SellerProfile(
         user_id=user_id,
         email=user.get("email"),
@@ -69,10 +96,40 @@ async def apply_for_seller(user_id: str, payload: SellerApplicationRequest):
     logger.info(f"User {user_id} applied for seller profile")
     try:
         await insert_seller(sellers_collection(), profile.model_dump(by_alias=True, exclude={"id"}))
+
+        await log_action(
+            action="seller_application_submitted",
+            target_user_id=user_id,
+            performed_by=user_id,
+            from_role=user.get("role", "user"),
+            to_role=user.get("role", "user")
+        )
         return {"message": "Seller application submitted successfully"}
     except PyMongoError as e:
         logger.error(f"Error submitting seller application for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to submit application")
+
+
+async def get_seller_application_status(user_id: str):
+    """Get the current seller application status for a user."""
+    existing = await get_seller_by_user_id(sellers_collection(), user_id)
+    if not existing:
+        return {
+            "application_status": None,
+            "submitted_at": None,
+            "reviewed_at": None,
+            "rejection_reason": None,
+            "reapply_attempts_remaining": 3
+        }
+
+    remaining = await get_seller_apply_attempts_remaining(user_id)
+    return {
+        "application_status": existing.get("application_status"),
+        "submitted_at": existing.get("created_at"),
+        "reviewed_at": existing.get("reviewed_at"),
+        "rejection_reason": existing.get("rejection_reason"),
+        "reapply_attempts_remaining": remaining
+    }
 
 async def get_pending_applications(limit: int = 50, skip: int = 0):
     apps = await get_pending_sellers(sellers_collection(), limit, skip)
@@ -95,8 +152,8 @@ async def approve_seller(target_user_id: str, admin_id: str):
             {
                 "application_status": "approved",
                 "reviewed_by": admin_id,
-                "reviewed_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
+                "reviewed_at": utc_now(),
+                "updated_at": utc_now()
             }
         )
         
@@ -133,8 +190,8 @@ async def reject_seller(target_user_id: str, admin_id: str, reason: str):
                 "application_status": "rejected",
                 "rejection_reason": reason,
                 "reviewed_by": admin_id,
-                "reviewed_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
+                "reviewed_at": utc_now(),
+                "updated_at": utc_now()
             }
         )
         
@@ -169,9 +226,9 @@ async def suspend_seller(target_user_id: str, admin_id: str, reason: str):
             {
                 "is_suspended": True,
                 "suspend_reason": reason,
-                "suspended_at": datetime.utcnow(),
+                "suspended_at": utc_now(),
                 "suspended_by": admin_id,
-                "updated_at": datetime.utcnow()
+                "updated_at": utc_now()
             }
         )
         
@@ -208,9 +265,9 @@ async def unsuspend_seller(target_user_id: str, admin_id: str, reason: str):
             {
                 "is_suspended": False,
                 "unsuspend_reason": reason,
-                "unsuspend_at": datetime.utcnow(),
+                "unsuspend_at": utc_now(),
                 "unsuspend_by": admin_id,
-                "updated_at": datetime.utcnow()
+                "updated_at": utc_now()
             }
         )
         

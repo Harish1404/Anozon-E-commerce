@@ -21,4 +21,5 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 # Prevent duplicate logs from uvicorn
-logger.propagate = False
+logger.propagate = True
+

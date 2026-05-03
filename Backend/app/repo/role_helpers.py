@@ -15,7 +15,7 @@ async def get_user_by_id(collection, user_id: str):
 async def update_user_role(collection, user_id: str, new_role: str, is_banned: bool = None):
     try:
         update_doc = {"role": new_role}
-        if is_banned != None:
+        if is_banned is not None:
             update_doc["is_banned"] = is_banned
             
         result = await collection.update_one(

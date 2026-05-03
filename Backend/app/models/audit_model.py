@@ -1,32 +1,37 @@
 from pydantic import BaseModel, Field, BeforeValidator
 from typing import Optional, Annotated
-from enum import Enum
 from datetime import datetime
+from app.core.time_utils import utc_now
 from bson import ObjectId
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
-class AuditAction(str, Enum):
-    promoted_to_admin = "promoted_to_admin"
-    promoted_to_seller = "promoted_to_seller"
-    demoted = "demoted"
-    seller_approved = "seller_approved"
-    seller_rejected = "seller_rejected"
-    seller_suspended = "seller_suspended"
-    seller_unsuspended = "seller_unsuspended"
-    user_banned = "user_banned"
-    product_approved = "product_approved"
-    product_rejected = "product_rejected"
+
+class AuditPerformedBy(BaseModel):
+    user_id: str
+    name: str
+    email: str
+    role: str
+
+
+class AuditTarget(BaseModel):
+    user_id: str
+    name: str
+    email: str
+    role_before: str
+    role_after: Optional[str] = None
+
 
 class AuditLog(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    action: AuditAction
-    target_user_id: PyObjectId
-    performed_by: PyObjectId
-    from_role: str
-    to_role: Optional[str] = None
+    performed_by: AuditPerformedBy
+    target: AuditTarget
+    action: str
+    module: str
+    description: str
     reason: Optional[str] = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=utc_now)
+
 
 class AuditLogResponse(AuditLog):
     class Config:

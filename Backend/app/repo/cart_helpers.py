@@ -1,6 +1,7 @@
 from datetime import datetime
 from bson import ObjectId
 from pymongo.errors import PyMongoError
+from app.core.time_utils import utc_now
 import logging
 
 logger = logging.getLogger("uvicorn.error")
@@ -11,7 +12,7 @@ def cart_to_db(user_id: str) -> dict:
         "user_id": ObjectId(user_id),
         "items": [],
         "wishlist": [],
-        "updated_at": datetime.utcnow()
+        "updated_at": utc_now()
     }
 
 async def create_empty_cart(collection, user_id: str):
@@ -41,13 +42,13 @@ async def add_item_to_cart(collection, user_id: str, product_id: str, quantity: 
         if exists:
             result = await collection.update_one(
                 {"user_id": ObjectId(user_id), "items.product_id": product_id},
-                {"$inc": {"items.$.quantity": quantity}, "$set": {"updated_at": datetime.utcnow()}}
+                {"$inc": {"items.$.quantity": quantity}, "$set": {"updated_at": utc_now()}}
             )
         else:
             new_item = {"product_id": product_id, "quantity": quantity}
             result = await collection.update_one(
                 {"user_id": ObjectId(user_id)},
-                {"$push": {"items": new_item}, "$set": {"updated_at": datetime.utcnow()}}
+                {"$push": {"items": new_item}, "$set": {"updated_at": utc_now()}}
             )
         return result
     except PyMongoError as e:
@@ -59,7 +60,7 @@ async def remove_item_from_cart(collection, user_id: str, product_id: str):
     try:
         result = await collection.update_one(
             {"user_id": ObjectId(user_id)},
-            {"$pull": {"items": {"product_id": product_id}}, "$set": {"updated_at": datetime.utcnow()}}
+            {"$pull": {"items": {"product_id": product_id}}, "$set": {"updated_at": utc_now()}}
         )
         return result
     except PyMongoError as e:
@@ -71,7 +72,7 @@ async def update_item_quantity(collection, user_id: str, product_id: str, quanti
     try:
         result = await collection.update_one(
             {"user_id": ObjectId(user_id), "items.product_id": product_id},
-            {"$set": {"items.$.quantity": quantity, "updated_at": datetime.utcnow()}}
+            {"$set": {"items.$.quantity": quantity, "updated_at": utc_now()}}
         )
         return result
     except PyMongoError as e:
@@ -83,7 +84,7 @@ async def clear_user_cart(collection, user_id: str):
     try:
         result = await collection.update_one(
             {"user_id": ObjectId(user_id)},
-            {"$set": {"items": [], "updated_at": datetime.utcnow()}}
+            {"$set": {"items": [], "updated_at": utc_now()}}
         )
         return result
     except PyMongoError as e:
@@ -99,17 +100,17 @@ async def update_user_wishlist(collection, user_id: str, product_id: str, action
         if action == 'add':
             exists = await collection.find_one({"user_id": ObjectId(user_id), "wishlist.product_id": product_id})
             if not exists:
-                new_item = {"product_id": product_id, "added_at": datetime.utcnow()}
+                new_item = {"product_id": product_id, "added_at": utc_now()}
                 await collection.update_one(
                     {"user_id": ObjectId(user_id)},
-                    {"$push": {"wishlist": new_item}, "$set": {"updated_at": datetime.utcnow()}}
+                    {"$push": {"wishlist": new_item}, "$set": {"updated_at": utc_now()}}
                 )
                 return True
             return False # Already in wishlist
         else:
             result = await collection.update_one(
                 {"user_id": ObjectId(user_id)},
-                {"$pull": {"wishlist": {"product_id": product_id}}, "$set": {"updated_at": datetime.utcnow()}}
+                {"$pull": {"wishlist": {"product_id": product_id}}, "$set": {"updated_at": utc_now()}}
             )
             return result.modified_count > 0
     except PyMongoError as e:

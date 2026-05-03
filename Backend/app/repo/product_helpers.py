@@ -142,9 +142,31 @@ async def update_product_likes(collection, product_id: str, user_id: str, action
             )
             if result.modified_count > 0:
                 await collection.update_one(
-                    {"_id": ObjectId(product_id)},
+                    {"_id": ObjectId(product_id), "product_likes": {"$gt": 0}},
                     {"$inc": {"product_likes": -1}}
                 )
     except PyMongoError as e:
         logger.error(f"DB Error updating product likes {product_id}: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def decrement_product_stock(collection, product_id: str, quantity: int) -> bool:
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(product_id), "stock": {"$gte": quantity}},
+            {"$inc": {"stock": -quantity}}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error decrementing stock for {product_id}: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+async def increment_product_stock(collection, product_id: str, quantity: int) -> bool:
+    try:
+        result = await collection.update_one(
+            {"_id": ObjectId(product_id)},
+            {"$inc": {"stock": quantity}}
+        )
+        return result.modified_count > 0
+    except PyMongoError as e:
+        logger.error(f"DB Error incrementing stock for {product_id}: {e}")
         raise HTTPException(status_code=500, detail="Database error")

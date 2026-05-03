@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, BeforeValidator
 from typing import Optional, Annotated
 from enum import Enum
 from datetime import datetime
+from app.core.time_utils import utc_now
 from bson import ObjectId
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
@@ -29,7 +30,7 @@ class UserProfile(BaseModel):
     mobile: Optional[str] = None
     avatar_url: Optional[str] = None
     addresses: list[Address] = []
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=utc_now)
 
 
 class ProfileResponse(UserProfile):

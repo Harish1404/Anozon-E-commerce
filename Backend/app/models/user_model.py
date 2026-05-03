@@ -50,8 +50,9 @@ class UserCreateInternal(UserRegister):
 # 5. Database Model (What actually gets saved)
 class UserInDB(UserBase):
     hashed_password: str
-    role: UserRole = UserRole.user  # Default to user if missing
+    role: UserRole = UserRole.user
     is_verified: bool = False
+    is_banned: bool = False
     refresh_token_hashed: Optional[str] = None
     
     # Optional: Timestamps (Good for auditing)

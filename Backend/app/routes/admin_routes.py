@@ -49,6 +49,8 @@ async def suspend_active_seller(
 ):
     email = current_user.get("email")
     admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
     return await suspend_seller(target_user_id, str(admin_user["_id"]), payload.suspend_reason)
 
 @router.post("/sellers/{target_user_id}/unsuspend")
@@ -59,6 +61,8 @@ async def unsuspend_active_seller(
 ):
     email = current_user.get("email")
     admin_user = await get_users_collection().find_one({"email": email})
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
     return await unsuspend_seller(target_user_id, str(admin_user["_id"]), payload.unsuspend_reason)
 
 @router.post("/users/{target_user_id}/ban")

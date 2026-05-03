@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, BeforeValidator, EmailStr
 from typing import Optional, Annotated
 from enum import Enum
 from datetime import datetime
+from app.core.time_utils import utc_now
 from bson import ObjectId
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
@@ -67,8 +68,8 @@ class SellerProfile(BaseModel):
     unsuspend_at: Optional[datetime] = None
     unsuspend_by: Optional[PyObjectId] = None
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
 
 class SellerResponse(SellerProfile):
     class Config:
@@ -78,4 +79,11 @@ class SellerProfileUpdate(BaseModel):
     pan_number: Optional[str] = None
     business_address: Optional[BusinessAddress] = None
     business_name: Optional[str] = None
+
+
+class SellerMinimalResponse(BaseModel):
+    business_name: str
+    business_type: str
+    rating: float
+
 

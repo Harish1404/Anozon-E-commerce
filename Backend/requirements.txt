@@ -3,7 +3,7 @@ fastapi
 fastapi-mail
 uvicorn[standard]
 starlette
-requests
+httpx
 
 # Database
 motor
@@ -26,7 +26,15 @@ pydantic-settings
 email-validator
 
 
-# Email
+# Test
+pytest
+pytest-asyncio
+pytest-mock
+pytest-cov
+pytest-xdist
+pytest-timeout
+pytest-filter-plugins
+
 
 
 # Utilities
