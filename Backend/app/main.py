@@ -45,7 +45,7 @@ async def health_check():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "[IP_ADDRESS]", "http://[IP_ADDRESS]"],
+    allow_origins=["http://localhost:5173", "[IP_ADDRESS]", "http://[IP_ADDRESS]"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
