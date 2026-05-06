@@ -1,6 +1,6 @@
 // services/order.service.ts
 import api from "@/lib/axios"
-import { Order, PaymentMethod } from "@/types"
+import { Order, PaymentMethod, PaginatedOrderResponse } from "@/types"
 
 export const orderService = {
   placeOrder: (address_id: string, payment_method: PaymentMethod) =>

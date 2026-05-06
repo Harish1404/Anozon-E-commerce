@@ -5,12 +5,13 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import Link from "next/link"
-import { Eye, EyeOff, Loader2, ShoppingBag } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useLogin } from "@/hooks/useAuthHook"
+import Image from "next/image"
 
 const loginSchema = z.object({
     email: z.string().email("Enter a valid email address"),
@@ -53,11 +54,15 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4 py-10">
             <div className="w-full max-w-md">
-                <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-                        <ShoppingBag className="h-6 w-6" />
+                <div className="flex flex-col items-center mb-8">
+                    <div className="h-20 w-auto mb-4">
+                        <img
+                            src="/anozon.png"
+                            alt="Anozon Logo"
+                            className="h-full w-auto object-contain"
+                        />
                     </div>
-                    <div>
+                    <div className="text-center">
                         <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">Welcome back</p>
                         <h1 className="text-2xl font-semibold">Sign in to Anozon</h1>
                     </div>

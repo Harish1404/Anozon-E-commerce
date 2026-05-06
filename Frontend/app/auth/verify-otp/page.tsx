@@ -76,11 +76,18 @@ export default function VerifyOtpPage() {
         <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4 py-10">
             <div className="w-full max-w-md">
                 {/* Logo */}
-                <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                        <ShoppingBag className="size-5" />
+                <div className="flex flex-col items-center mb-8">
+                    <div className="h-20 w-auto mb-4">
+                        <img
+                            src="/anozon.png"
+                            alt="Anozon Logo"
+                            className="h-full w-auto object-contain"
+                        />
                     </div>
-                    <span className="text-xl font-semibold tracking-tight">Anozon</span>
+                    <div className="text-center">
+                        <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">Verify identity</p>
+                        <h1 className="text-2xl font-semibold">Account Security</h1>
+                    </div>
                 </div>
 
                 <Card>
