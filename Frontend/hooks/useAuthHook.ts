@@ -8,45 +8,41 @@ import api from "@/lib/axios"
 
 
 export function useSignup() {
+    const { setOtpToken, setPendingEmail } = useAuthStore()
     const router = useRouter()
 
     return useMutation({
         mutationFn: ({ username, email, password }: { username: string; email: string; password: string }) =>
             authService.signup(username, email, password),
-        onSuccess: () => {
+        onSuccess: (res, variables) => {
+            setOtpToken(res.data.otp_token)
+            setPendingEmail(variables.email)
             router.push("/auth/verify-otp")
         }
     })
 }
 
 export function useVerifyOtp() {
-    const { setToken, setAuth } = useAuthStore()
+    const { setToken, setAuth, otpToken } = useAuthStore()
     const router = useRouter()
 
-    useMutation({
-        mutationFn: ({ email, otp }: { email: string; otp: string }) =>
-            authService.verifyOtp(email, otp),
+    return useMutation({
+        mutationFn: ({ otp }: { otp: string }) => {
+            if (!otpToken) throw new Error("OTP token missing. Please sign up again.")
+            return authService.verifyOtp(otpToken, otp)
+        },
         onSuccess: async (res) => {
             setToken(res.data.access_token)
-
             api.defaults.headers.common["Authorization"] = `Bearer ${res.data.access_token}`
-
             const { data: user } = await authService.me()
             setAuth(res.data.access_token, user)
-            
-            if (res.data.role === "admin") {
-                router.push("/admin/dashboard")
-            }
-            else if (res.data.role === "user") {
-                router.push("/user/dashboard")
-            }
-            else router.push("/")
+            router.push("/")
         }
     })
 }
 
 export function useLogin() {
-    const { setToken, setAuth } = useAuthStore()
+    const { setToken, setAuth, setOtpToken, setPendingEmail } = useAuthStore()
     const router = useRouter()
 
     return useMutation({
@@ -54,19 +50,33 @@ export function useLogin() {
             authService.login(email, password),
         onSuccess: async (res) => {
             setToken(res.data.access_token)
-
             api.defaults.headers.common["Authorization"] = `Bearer ${res.data.access_token}`
 
             const { data: user } = await authService.me()
             setAuth(res.data.access_token, user)
-            
+
             if (res.data.role === "admin") {
                 router.push("/admin/dashboard")
+            } else if (res.data.role === "user") {
+                router.push("/")
+            } else router.push("/")
+        },
+        onError: async (error: any) => {
+            const detail = error?.response?.data?.detail ?? ""
+            if (error?.response?.status === 403 && detail.includes("not verified")) {
+                const email = error.config?.data
+                    ? new URLSearchParams(error.config.data).get("username")
+                    : null
+                if (!email) return
+                try {
+                    const res = await authService.resendOtp(email)
+                    setOtpToken(res.data.otp_token)
+                    setPendingEmail(email)
+                    router.push("/auth/verify-otp")
+                } catch {
+                    // resend failed — let the error surface to the UI
+                }
             }
-            else if (res.data.role === "user") {
-                router.push("/user/dashboard")
-            }
-            else router.push("/")
         }
     })
 }

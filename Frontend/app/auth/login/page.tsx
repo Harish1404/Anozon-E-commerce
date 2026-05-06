@@ -33,10 +33,22 @@ export default function LoginPage() {
         login({ email: data.email, password: data.password })
     }
 
-    const serverError =
-        error && "response" in (error as any)
-            ? (error as any).response?.data?.detail ?? "Unable to sign in."
-            : null
+    const serverError = (() => {
+        if (!error) return null
+
+        const res = (error as any).response
+
+        if (!res) return (error as any).message ?? "Unable to sign in."
+        if (res.status === 403) return "Your email is not verified. Redirecting to verification…"
+
+        const detail = res.data?.detail
+
+        if (!detail) return "Unable to sign in."
+        if (typeof detail === "string") return detail
+        if (Array.isArray(detail)) return detail.map((d: any) => d.msg ?? JSON.stringify(d)).join(", ")
+            
+        return "Unable to sign in."
+    })()
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4 py-10">
@@ -70,7 +82,7 @@ export default function LoginPage() {
                                 <Input
                                     id="email"
                                     type="email"
-                                    placeholder="you@example.com"
+                                    placeholder="Enter your Email Address"
                                     autoComplete="email"
                                     aria-invalid={!!errors.email}
                                     {...register("email")}

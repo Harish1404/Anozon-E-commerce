@@ -10,6 +10,7 @@ from app.repo.product_helpers import (
     count_products,
     fetch_products,
     fetch_product_by_id,
+    fetch_product_by_slug,
     fetch_categories,
 )
 from app.db.mongodb import sellers_collection
@@ -100,6 +101,27 @@ class ProductService:
                         "rating": seller.get("rating", 0.0)
                     }
             
+            return serialized_product
+        return None
+
+    @staticmethod
+    async def get_product_by_slug(slug: str):
+        product = await fetch_product_by_slug(products_collection(), slug)
+        if product:
+            serialized_product = ProductService.serialize(product)
+            reviews_data = await ReviewService.get_product_reviews(str(product["_id"]), page=1, limit=5)
+            serialized_product["recent_reviews"] = reviews_data.get("reviews", [])
+
+            seller_id = product.get("seller_id")
+            if seller_id:
+                seller = await sellers_collection().find_one({"user_id": str(seller_id)})
+                if seller:
+                    serialized_product["seller_details"] = {
+                        "business_name": seller.get("business_name"),
+                        "business_type": seller.get("business_type"),
+                        "rating": seller.get("rating", 0.0)
+                    }
+
             return serialized_product
         return None
 

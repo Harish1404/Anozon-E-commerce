@@ -45,6 +45,13 @@ async def search_products_route(
     """Search products by name or description"""
     return await ProductService.search_products(q, page, limit)
 
+@router.get("/products/slug/{slug}", response_model=ProductResponse)
+async def get_product_by_slug(slug: str = Path(..., description="The slug of the product to view")):
+    product = await ProductService.get_product_by_slug(slug)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
 @router.get("/products/{product_id}", response_model=ProductResponse)
 async def get_product_details(product_id: str = Path(..., description="The ID of the product to view")):
     product = await ProductService.get_product_by_id(product_id)

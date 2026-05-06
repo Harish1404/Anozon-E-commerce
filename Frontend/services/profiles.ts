@@ -10,11 +10,11 @@ export const profileService = {
     api.put("/users/profile", data),
 
   addAddress: (address: Omit<Address, "address_id">) =>
-    api.post("/users/profile/address", address),
+    api.post("/users/addresses", address),
 
   updateAddress: (address_id: string, data: Partial<Address>) =>
-    api.put(`/users/profile/address/${address_id}`, data),
+    api.put(`/users/addresses/${address_id}`, data),
 
   deleteAddress: (address_id: string) =>
-    api.delete(`/users/profile/address/${address_id}`)
+    api.delete(`/users/addresses/${address_id}`)
 }

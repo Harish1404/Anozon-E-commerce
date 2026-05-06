@@ -102,6 +102,17 @@ async def fetch_product_by_id(collection, product_id: str, only_approved: bool =
         logger.error(f"DB Error fetching product {product_id}: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
+async def fetch_product_by_slug(collection, slug: str, only_approved: bool = True):
+    try:
+        query = {"slug": slug, "is_deleted": False}
+        if only_approved:
+            query["is_approved"] = True
+            query["is_active"] = True
+        return await collection.find_one(query)
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching product by slug {slug}: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
 async def fetch_categories(collection):
     try:
         categories = await collection.distinct("category")

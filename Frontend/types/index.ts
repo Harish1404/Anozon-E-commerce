@@ -37,6 +37,7 @@ export interface Address {
   city: string
   state: string
   pincode: string
+  mobile: string
   is_default: boolean
 }
 
@@ -60,15 +61,32 @@ export interface Product {
   slug: string
   description: string
   category: string
+  actual_price: number
+  discount_percent: number
   price: number
-  discount_price: number | null
   stock: number
-  images: string[]
+  image_urls: string[]
   is_active: boolean
   is_approved: boolean
   avg_rating: number
   review_count: number
+  product_likes: number
+  recent_reviews?: Review[]
+  seller_details?: {
+    business_name?: string
+    business_type?: string
+    rating?: number
+  }
   created_at: string
+  updated_at: string
+}
+
+export interface PaginatedProductResponse {
+  items: Product[]
+  total: number
+  page: number
+  limit: number
+  pages: number
 }
 
 // ── Reviews ───────────────────────────────────────────────────────────────

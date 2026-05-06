@@ -5,11 +5,17 @@ export const authService = {
     signup: (username: string, email: string, password: string) =>
       api.post("/auth/signup", { username, email, password }),
 
-    login: (email: string, password: string) =>
-        api.post<AuthResponse>("/auth/login", { email, password }),
+    login: (email: string, password: string) => {
+        const form = new URLSearchParams()
+        form.append("username", email)
+        form.append("password", password)
+        return api.post<AuthResponse>("/auth/login", form, {
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        })
+    },
 
-    verifyOtp: (email: string, otp: string) =>
-        api.post<AuthResponse>("/auth/verify-otp", { email, otp }),
+    verifyOtp: (otp_token: string, otp: string) =>
+        api.post<AuthResponse>("/auth/verify-otp", { otp_token, otp }),
 
     resendOtp: (email: string) =>
         api.post("/auth/resend-otp", { email }),
