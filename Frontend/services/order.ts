@@ -15,6 +15,6 @@ export const orderService = {
   getOrder: (order_id: string) =>
     api.get<Order>(`/users/orders/${order_id}`),
 
-  cancelOrder: (order_id: string) =>
-    api.patch(`/users/orders/${order_id}/cancel`)
+  cancelOrder: (order_id: string, product_id?: string) =>
+    api.patch(`/users/orders/${order_id}/cancel`, null, { params: { product_id } })
 }

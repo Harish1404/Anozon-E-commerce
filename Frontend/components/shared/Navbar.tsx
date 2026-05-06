@@ -7,10 +7,12 @@ import { useLogout } from "@/hooks/useAuthHook"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { LogOut, User, ShoppingBag, ShoppingCart, Package } from "lucide-react"
+import { useCart } from "@/hooks/useCart"
 
 export function Navbar() {
   const { user } = useAuthStore()
   const { mutate: logout, isPending } = useLogout()
+  const { data: cart } = useCart()
   const router = useRouter()
 
   const initials = user?.email
@@ -29,8 +31,15 @@ export function Navbar() {
           <Link href="/" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
             Shop
           </Link>
-          <Link href="/cart" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 flex items-center gap-1.5">
-            <ShoppingCart className="size-4" />
+          <Link href="/cart" className="relative rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 flex items-center gap-1.5">
+            <div className="relative">
+              <ShoppingCart className="size-4" />
+              {cart && cart.summary.item_count > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white ring-2 ring-white">
+                  {cart.summary.item_count > 99 ? "99+" : cart.summary.item_count}
+                </span>
+              )}
+            </div>
             Cart
           </Link>
           <Link href="/orders" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 flex items-center gap-1.5">

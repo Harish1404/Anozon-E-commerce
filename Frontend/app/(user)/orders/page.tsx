@@ -1,7 +1,8 @@
 "use client"
 
 import { useOrders } from "@/hooks/useOrders"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
+import Link from "next/link"
 
 export default function OrdersPage() {
   const { data: orders, isLoading, isError } = useOrders()
@@ -39,9 +40,9 @@ export default function OrdersPage() {
                   {order.items.length} item{order.items.length > 1 ? "s" : ""}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <Button variant="secondary" size="sm" disabled>
+                  <Link href={`/orders/${order._id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
                     View details
-                  </Button>
+                  </Link>
                 </div>
               </div>
             ))}
