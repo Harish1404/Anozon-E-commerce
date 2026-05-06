@@ -9,8 +9,14 @@ export const orderService = {
   buyNow: (product_id: string, quantity: number, address_id: string, payment_method: PaymentMethod) =>
     api.post<{ message: string; order_id: string }>("/users/orders/buy-now", { product_id, quantity, address_id, payment_method }),
 
-  getOrders: (params?: { status?: string; date_from?: string; date_to?: string }) =>
-    api.get<Order[]>("/users/orders", { params }),
+  getOrders: (params?: { 
+    status?: string; 
+    page?: number; 
+    limit?: number; 
+    year?: number; 
+    month?: number 
+  }) =>
+    api.get<PaginatedOrderResponse>("/users/orders", { params }),
 
   getOrder: (order_id: string) =>
     api.get<Order>(`/users/orders/${order_id}`),

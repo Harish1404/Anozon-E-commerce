@@ -11,6 +11,7 @@ from app.utils.order_utils import compute_order_status
 from app.core.time_utils import utc_now
 import logging
 from datetime import datetime
+from typing import Optional
 
 
 logger = logging.getLogger("uvicorn.error")
@@ -259,11 +260,40 @@ class OrderService:
         return {"message": "Order placed successfully", "order_id": order_id}
 
     @staticmethod
-    async def get_user_orders(user_id: str, status: str = None):
+    async def get_user_orders(
+        user_id: str, 
+        status: str = None, 
+        page: int = 1, 
+        limit: int = 10,
+        year: Optional[int] = None,
+        month: Optional[int] = None
+    ):
         if not ObjectId.is_valid(user_id):
             raise HTTPException(status_code=400, detail="Invalid user ID")
         
-        orders = await get_user_orders_from_db(orders_collection(), user_id, status)
+        skip = (page - 1) * limit
+        date_from = None
+        date_to = None
+
+        if year:
+            from calendar import monthrange
+            if month:
+                date_from = datetime(year, month, 1)
+                last_day = monthrange(year, month)[1]
+                date_to = datetime(year, month, last_day, 23, 59, 59)
+            else:
+                date_from = datetime(year, 1, 1)
+                date_to = datetime(year, 12, 31, 23, 59, 59)
+        
+        orders, total_count = await get_user_orders_from_db(
+            orders_collection(), 
+            user_id, 
+            status, 
+            skip, 
+            limit, 
+            date_from, 
+            date_to
+        )
         
         # Serialize ObjectIds for response
         for order in orders:
@@ -273,7 +303,13 @@ class OrderService:
                 item["product_id"] = str(item["product_id"])
                 item["seller_id"] = str(item["seller_id"])
                 
-        return orders
+        return {
+            "items": orders,
+            "total": total_count,
+            "page": page,
+            "limit": limit,
+            "pages": (total_count + limit - 1) // limit
+        }
 
     @staticmethod
     async def get_order_by_id(user_id: str, order_id: str):

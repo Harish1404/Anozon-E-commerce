@@ -2,13 +2,18 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { orderService } from "@/services/order"
-import { Order, PaymentMethod } from "@/types"
+import { Order, PaymentMethod, PaginatedOrderResponse } from "@/types"
 
-export function useOrders(status?: string) {
-  return useQuery<Order[]>({
-    queryKey: ["orders", status],
-    queryFn: () => orderService.getOrders({ status }).then((res) => res.data),
-    enabled: status !== undefined || status === undefined,
+export function useOrders(options: { 
+  status?: string; 
+  page?: number; 
+  limit?: number; 
+  year?: number; 
+  month?: number 
+} = {}) {
+  return useQuery<PaginatedOrderResponse>({
+    queryKey: ["orders", options],
+    queryFn: () => orderService.getOrders(options).then((res) => res.data),
   })
 }
 

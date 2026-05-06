@@ -173,6 +173,14 @@ export interface Order {
   updated_at: string
 }
 
+export interface PaginatedOrderResponse {
+  items: Order[]
+  total: number
+  page: number
+  limit: number
+  pages: number
+}
+
 // ── Seller ────────────────────────────────────────────────────────────────
 
 export interface SellerProfile {

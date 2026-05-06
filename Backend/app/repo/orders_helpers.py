@@ -19,16 +19,32 @@ async def create_order_in_db(orders_collection, order_data: dict) -> str:
         logger.error(f"Error creating order: {e}")
         raise e
 
-async def get_user_orders_from_db(orders_collection, user_id: str, status: Optional[str] = None) -> list:
-    """Fetches orders for a specific user, optionally filtered by status."""
+async def get_user_orders_from_db(
+    orders_collection, 
+    user_id: str, 
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 10,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None
+) -> tuple[list, int]:
+    """Fetches orders for a specific user with pagination and optional filtering."""
     try:
         query = {"user_id": ObjectId(user_id)}
         if status:
             query["order_status"] = status
+        
+        if date_from or date_to:
+            query["created_at"] = {}
+            if date_from:
+                query["created_at"]["$gte"] = date_from
+            if date_to:
+                query["created_at"]["$lte"] = date_to
             
-        cursor = orders_collection.find(query).sort("created_at", -1)
-        orders = await cursor.to_list(length=100)
-        return orders
+        total_count = await orders_collection.count_documents(query)
+        cursor = orders_collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        orders = await cursor.to_list(length=limit)
+        return orders, total_count
     except PyMongoError as e:
         logger.error(f"Error fetching orders for user {user_id}: {e}")
         raise e

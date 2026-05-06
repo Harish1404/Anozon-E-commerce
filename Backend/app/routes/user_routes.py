@@ -145,11 +145,22 @@ async def toggle_favorite(
 
 @router.get("/orders")
 async def get_user_orders(
-    status: str = Query(None, description="Filter by order status"),
+    status: Optional[str] = Query(None, description="Filter by order status"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
     current_user = Depends(get_current_user)
 ):
-    """List all own orders"""
-    return await OrderService.get_user_orders(str(current_user["_id"]), status)
+    """List all own orders with pagination and filtering"""
+    return await OrderService.get_user_orders(
+        str(current_user["_id"]), 
+        status=status,
+        page=page,
+        limit=limit,
+        year=year,
+        month=month
+    )
 
 @router.get("/orders/{order_id}")
 async def get_order_detail(
