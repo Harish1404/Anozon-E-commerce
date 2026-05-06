@@ -156,8 +156,8 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
         
         {product.recent_reviews?.length ? (
           <div className="grid gap-6 sm:grid-cols-2">
-            {product.recent_reviews.map((review) => (
-              <ReviewCard key={review._id} review={review} />
+            {product.recent_reviews.map((review, index) => (
+              <ReviewCard key={review._id || index} review={review} />
             ))}
           </div>
         ) : (

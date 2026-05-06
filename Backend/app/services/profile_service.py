@@ -53,9 +53,10 @@ class ProfileService:
         if not update_data:
             return {"message": "No data to update"}
             
-        success = await update_profile_db(profiles_collection(), user_id, update_data)
-        if not success:
-            logger.error(f"Failed to update profile for user {user_id}")
+        try:
+            await update_profile_db(profiles_collection(), user_id, update_data)
+        except Exception as e:
+            logger.error(f"Failed to update profile for user {user_id}: {e}")
             raise HTTPException(status_code=500, detail="Failed to update profile")
             
         return {"message": "Profile updated successfully"}

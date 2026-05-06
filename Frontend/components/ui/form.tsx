@@ -3,24 +3,46 @@
 import * as React from "react"
 import { Controller, FormProvider, useFormContext } from "react-hook-form"
 
+import { cn } from "@/lib/utils"
+
 export const Form = FormProvider
 
 export const FormField = Controller
 
-export function FormItem({ children }: { children: React.ReactNode }) {
-  return <div className="space-y-2">{children}</div>
-}
+export const FormItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => {
+    return <div ref={ref} className={cn("space-y-2", className)} {...props} />
+  }
+)
+FormItem.displayName = "FormItem"
 
-export function FormLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium">{children}</label>
-}
+export const FormLabel = React.forwardRef<HTMLLabelElement, React.LabelHTMLAttributes<HTMLLabelElement>>(
+  ({ className, ...props }, ref) => {
+    return <label ref={ref} className={cn("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", className)} {...props} />
+  }
+)
+FormLabel.displayName = "FormLabel"
 
-export function FormControl({ children }: { children: React.ReactNode }) {
-  return <div>{children}</div>
-}
+export const FormControl = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => {
+    return <div ref={ref} className={cn(className)} {...props} />
+  }
+)
+FormControl.displayName = "FormControl"
 
-export function FormMessage({ children }: { children?: React.ReactNode }) {
-  if (!children) return null
-  return <p className="text-sm text-red-500">{children}</p>
-}
+export const FormMessage = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
+  ({ className, children, ...props }, ref) => {
+    if (!children) return null
+    return (
+      <p
+        ref={ref}
+        className={cn("text-sm font-medium text-destructive", className)}
+        {...props}
+      >
+        {children}
+      </p>
+    )
+  }
+)
+FormMessage.displayName = "FormMessage"
 

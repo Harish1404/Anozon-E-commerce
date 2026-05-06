@@ -36,7 +36,9 @@ function InlineField({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
 
-  useEffect(() => { setDraft(value) }, [value])
+  useEffect(() => {
+    setDraft(value)
+  }, [value])
 
   const save = () => { onSave?.(draft); setEditing(false) }
   const cancel = () => { setDraft(value); setEditing(false) }
@@ -54,7 +56,9 @@ function InlineField({
             onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel() }}
           />
         ) : (
-          <p className="mt-0.5 text-sm font-medium text-slate-800">{value || <span className="text-slate-400 italic">Not set</span>}</p>
+          <p className="mt-0.5 text-sm font-medium text-slate-800 truncate" title={value}>
+            {value || <span className="text-slate-400 italic">Not set</span>}
+          </p>
         )}
       </div>
       {editable && (
@@ -180,10 +184,12 @@ export default function ProfilePage() {
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
+  const [isEditingAvatar, setIsEditingAvatar] = useState(false)
+  const [avatarUrlDraft, setAvatarUrlDraft] = useState("")
 
   const initials = user?.username?.slice(0, 2).toUpperCase() ?? "?"
 
-  const handleSaveField = (field: "full_name" | "mobile", value: string) => {
+  const handleSaveField = (field: "full_name" | "mobile" | "avatar_url", value: string) => {
     updateProfile.mutate({ [field]: value })
   }
 
@@ -206,25 +212,79 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16 space-y-4">
+      <div className="mx-auto max-w-3xl px-4 py-16 space-y-4">
         {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-2xl bg-slate-100 animate-pulse" />)}
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 space-y-6">
+    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 space-y-6">
 
       {/* Avatar + name header */}
-      <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <Avatar size="lg" className="size-16 text-lg">
-          <AvatarImage src={profile?.avatar_url ?? undefined} />
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-        <div>
-          <p className="text-lg font-semibold text-slate-900">{profile?.full_name || user?.username}</p>
-          <p className="text-sm text-slate-500">{user?.email}</p>
-          <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium capitalize text-slate-600">{user?.role}</span>
+      <div className="flex flex-col sm:flex-row items-center gap-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="relative group">
+          <Avatar className="size-32 text-4xl shadow-md ring-4 ring-slate-50 transition-all group-hover:opacity-90">
+            <AvatarImage src={profile?.avatar_url ?? undefined} />
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <button 
+            onClick={() => {
+              setAvatarUrlDraft(profile?.avatar_url ?? "")
+              setIsEditingAvatar(true)
+            }}
+            className="absolute bottom-0 right-0 rounded-full bg-slate-900 p-2 text-white shadow-lg transition-transform hover:scale-110 active:scale-95"
+          >
+            <Pencil className="size-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 text-center sm:text-left space-y-3">
+          {isEditingAvatar ? (
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-slate-700">Enter Avatar URL</Label>
+              <div className="flex items-center gap-2">
+                <Input 
+                  value={avatarUrlDraft}
+                  onChange={(e) => setAvatarUrlDraft(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="h-10 text-sm"
+                  autoFocus
+                />
+                <Button 
+                  size="sm" 
+                  onClick={() => {
+                    handleSaveField("avatar_url", avatarUrlDraft)
+                    setIsEditingAvatar(false)
+                  }}
+                >
+                  <Check className="size-4" />
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => setIsEditingAvatar(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div>
+                <p className="text-3xl font-bold tracking-tight text-slate-900">{profile?.full_name || user?.username}</p>
+                <p className="text-slate-500 font-medium">{user?.email}</p>
+              </div>
+              <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                <span className="inline-block rounded-full bg-slate-900 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-white shadow-sm">
+                  {user?.role}
+                </span>
+                <span className="inline-block rounded-full bg-slate-100 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  {profile?.addresses?.length ?? 0} Saved Addresses
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -245,6 +305,11 @@ export default function ProfilePage() {
           label="Mobile"
           value={profile?.mobile ?? ""}
           onSave={(v) => handleSaveField("mobile", v)}
+        />
+        <InlineField
+          label="Avatar URL"
+          value={profile?.avatar_url ?? ""}
+          onSave={(v) => handleSaveField("avatar_url", v)}
         />
       </section>
 

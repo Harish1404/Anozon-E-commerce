@@ -8,14 +8,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { LogOut, User, ShoppingBag, ShoppingCart, Package } from "lucide-react"
 import { useCart } from "@/hooks/useCart"
+import { useProfile } from "@/hooks/useProfile"
 
 export function Navbar() {
   const { user } = useAuthStore()
   const { mutate: logout, isPending } = useLogout()
   const { data: cart } = useCart()
+  const { data: profile } = useProfile()
   const router = useRouter()
 
-  const initials = user?.email
+  const initials = profile?.full_name
+    ? profile.full_name.slice(0, 2).toUpperCase()
+    : user?.email
     ? user.email.slice(0, 2).toUpperCase()
     : "?"
 
@@ -51,14 +55,16 @@ export function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger className="ml-2 flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Avatar size="default">
-                  <AvatarImage src={undefined} />
+                  <AvatarImage src={profile?.avatar_url ?? undefined} />
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuGroup>
                   <DropdownMenuLabel className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium text-foreground">{user.email}</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {profile?.full_name || user.email.split("@")[0]}
+                    </span>
                     <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>

@@ -4,10 +4,10 @@ import { Order, PaymentMethod } from "@/types"
 
 export const orderService = {
   placeOrder: (address_id: string, payment_method: PaymentMethod) =>
-    api.post<Order>("/users/orders", { address_id, payment_method }),
+    api.post<{ message: string; order_id: string }>("/users/orders", { address_id, payment_method }),
 
   buyNow: (product_id: string, quantity: number, address_id: string, payment_method: PaymentMethod) =>
-    api.post<Order>("/users/orders/buy-now", { product_id, quantity, address_id, payment_method }),
+    api.post<{ message: string; order_id: string }>("/users/orders/buy-now", { product_id, quantity, address_id, payment_method }),
 
   getOrders: (params?: { status?: string; date_from?: string; date_to?: string }) =>
     api.get<Order[]>("/users/orders", { params }),

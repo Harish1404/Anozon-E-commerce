@@ -116,7 +116,7 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-semibold text-slate-900 mb-8">Checkout</h1>
-      
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-8 lg:grid-cols-[1fr_400px]">
           <div className="space-y-8">
@@ -132,7 +132,7 @@ export default function CheckoutPage() {
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                           className="space-y-3"
                         >
                           {profile.addresses.map((address) => (
@@ -175,7 +175,7 @@ export default function CheckoutPage() {
                     <FormControl>
                       <RadioGroup
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                         className="space-y-3"
                       >
                         <FormItem className="flex items-center space-x-3 space-y-0 rounded-2xl border border-slate-200 p-4 transition-colors hover:bg-slate-50 cursor-pointer">
@@ -203,14 +203,14 @@ export default function CheckoutPage() {
           <div className="space-y-6">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sticky top-24">
               <h2 className="text-xl font-semibold text-slate-900 mb-6">Order Summary</h2>
-              
+
               {isBuyNow && product ? (
                 <div className="mb-6 flex gap-4 pb-6 border-b border-slate-100">
-                   <img src={product.image_urls?.[0] || "/placeholder.png"} alt={product.name} className="h-16 w-16 rounded-xl object-cover" />
-                   <div>
-                     <p className="font-medium text-sm text-slate-900 line-clamp-2">{product.name}</p>
-                     <p className="text-xs text-slate-500 mt-1">Qty: {buyNowQuantity}</p>
-                   </div>
+                  <img src={product.image_urls?.[0] || "/placeholder.png"} alt={product.name} className="h-16 w-16 rounded-xl object-cover" />
+                  <div>
+                    <p className="font-medium text-sm text-slate-900 line-clamp-2">{product.name}</p>
+                    <p className="text-xs text-slate-500 mt-1">Qty: {buyNowQuantity}</p>
+                  </div>
                 </div>
               ) : null}
 
@@ -236,7 +236,7 @@ export default function CheckoutPage() {
                   <span>₹{summary.total.toFixed(2)}</span>
                 </div>
               </div>
-              
+
               <Button type="submit" size="lg" className="mt-8 w-full rounded-2xl" disabled={isSubmitting || !profile.addresses?.length}>
                 {isSubmitting ? "Processing..." : "Place Order"}
               </Button>

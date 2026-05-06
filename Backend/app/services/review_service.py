@@ -100,6 +100,7 @@ class ReviewService:
         public_reviews = []
         for r in reviews:
             public_reviews.append({
+                "_id": str(r.get("_id")),
                 "reviewer_name": r.get("name", "Anonymous"),
                 "quality": r.get("quality", ""),
                 "rating": r.get("rating"),
@@ -136,6 +137,7 @@ class ReviewService:
         seller_reviews = []
         for r in reviews:
             seller_reviews.append({
+                "_id": str(r.get("_id")),
                 "reviewer_name": r.get("name", "Anonymous"),
                 "quality": r.get("quality", ""),
                 "rating": r.get("rating"),
