@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useCallback } from "react"
+import { useRef, useState, useCallback, useEffect } from "react"
 import { ShoppingBag, Loader2 } from "lucide-react"
 import { useVerifyOtp, useResendOtp } from "@/hooks/useAuthHook"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -16,6 +16,10 @@ export default function VerifyOtpPage() {
     const { mutate: resendOtp, isPending: isResending } = useResendOtp()
     const otpToken = useAuthStore((s) => s.otpToken)
     const { setOtpToken } = useAuthStore()
+    
+    useEffect(() => {
+        document.title = "Anozon - Verify OTP"
+    }, [])
 
     const focusNext = (index: number) => inputRefs.current[index + 1]?.focus()
     const focusPrev = (index: number) => inputRefs.current[index - 1]?.focus()
@@ -79,7 +83,7 @@ export default function VerifyOtpPage() {
                 <div className="flex flex-col items-center mb-8">
                     <div className="h-20 w-auto mb-4">
                         <img
-                            src="/anozon.png"
+                            src="/anozon2.png"
                             alt="Anozon Logo"
                             className="h-full w-auto object-contain"
                         />

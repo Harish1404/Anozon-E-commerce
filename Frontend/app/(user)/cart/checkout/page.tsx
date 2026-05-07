@@ -27,6 +27,10 @@ export default function CheckoutPage() {
 
   const placeOrder = usePlaceOrder()
   const buyNow = useBuyNow()
+  
+  useEffect(() => {
+    document.title = "Anozon - Checkout"
+  }, [])
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),

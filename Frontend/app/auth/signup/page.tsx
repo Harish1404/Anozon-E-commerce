@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -40,6 +40,10 @@ type SignupForm = z.infer<typeof signupSchema>
 export default function SignupPage() {
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
+    
+    useEffect(() => {
+        document.title = "Anozon - Signup"
+    }, [])
 
     const { mutate: signup, isPending, error } = useSignup()
 
@@ -62,11 +66,14 @@ export default function SignupPage() {
         <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
             <div className="w-full max-w-md">
                 {/* Logo */}
-                <div className="flex items-center justify-center gap-2 mb-8">
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                        <ShoppingBag className="size-5" />
-                    </div>
-                    <span className="text-xl font-semibold tracking-tight">Anozon</span>
+                <div className="flex justify-center ">
+                    <Link href="/">
+                        <img
+                            src="/anozon2.png"
+                            alt="Anozon Logo"
+                            className="h-20 w-auto object-contain"
+                        />
+                    </Link>
                 </div>
 
                 <Card>

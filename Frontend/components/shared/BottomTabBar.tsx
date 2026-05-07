@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Home, Search, ShoppingCart, Menu, User, Package, LogOut } from "lucide-react"
+import { Home, ShoppingCart, Menu, User, Package, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCart } from "@/hooks/useCart"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -18,7 +18,7 @@ export function BottomTabBar() {
 
   const tabs = [
     { label: "Home", icon: Home, href: "/" },
-    { label: "Search", icon: Search, href: "/search" },
+    { label: "Orders", icon: Package, href: "/orders" },
     { 
       label: "Cart", 
       icon: ShoppingCart, 
@@ -34,7 +34,7 @@ export function BottomTabBar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 pb-safe backdrop-blur-xl md:hidden">
-      <div className="flex h-16 items-center justify-around px-2">
+      <div className="grid grid-cols-4 h-16 items-center">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href
           const Icon = tab.icon
@@ -44,21 +44,21 @@ export function BottomTabBar() {
               key={tab.label}
               href={tab.href}
               className={cn(
-                "group relative flex flex-col items-center gap-1 px-3 py-1 transition-colors",
+                "relative flex flex-col items-center justify-center h-full transition-colors",
                 isActive ? "text-primary" : "text-slate-500 hover:text-slate-900"
               )}
             >
-              <div className="relative">
+              <div className="relative w-6 h-6">
                 <Icon className={cn("size-6", isActive && "fill-primary/10")} />
-                {tab.badge && tab.badge > 0 && (
+                {tab.badge && tab.badge > 0 ? (
                   <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white ring-2 ring-white">
                     {formatBadge(tab.badge)}
                   </span>
-                )}
+                ) : null}
               </div>
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <span className="text-[10px] font-medium mt-1 leading-none">{tab.label}</span>
               {isActive && (
-                <span className="absolute -top-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
+                <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
               )}
             </Link>
           )
@@ -66,9 +66,11 @@ export function BottomTabBar() {
 
         {/* Hamburger Menu Trigger */}
         <Sheet>
-          <SheetTrigger className="group relative flex flex-col items-center gap-1 px-3 py-1 transition-colors text-slate-500 hover:text-slate-900 outline-none">
-            <Menu className="size-6" />
-            <span className="text-[10px] font-medium">Menu</span>
+          <SheetTrigger className="relative flex flex-col items-center justify-center h-full transition-colors text-slate-500 hover:text-slate-900 outline-none">
+            <div className="w-6 h-6 flex items-center justify-center">
+              <Menu className="size-6" />
+            </div>
+            <span className="text-[10px] font-medium mt-1 leading-none">Menu</span>
           </SheetTrigger>
           <SheetContent side="right" className="w-[300px] sm:w-[400px]">
             <SheetHeader className="mb-6 border-b border-slate-100 pb-4">

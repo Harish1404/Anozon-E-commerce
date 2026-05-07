@@ -22,6 +22,10 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   const cancelOrder = useCancelOrder()
   const router = useRouter()
 
+  React.useEffect(() => {
+    document.title = "Anozon - Order Details"
+  }, [])
+
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancelTarget, setCancelTarget] = useState<{ type: 'order' } | { type: 'item', productId: string, productName: string } | null>(null)
 

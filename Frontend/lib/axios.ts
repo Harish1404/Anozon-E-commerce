@@ -68,7 +68,7 @@ api.interceptors.response.use(
       try {
         // Call refresh endpoint (cookie-based)
         const res = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+          `${baseURL}/auth/refresh`,
           {},
           { withCredentials: true }
         );

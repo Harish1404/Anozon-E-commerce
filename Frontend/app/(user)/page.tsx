@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useProducts } from "@/hooks/useProducts"
 import { useAddToCart } from "@/hooks/useCart"
 import { ProductGrid } from "@/components/product/ProductGrid"
@@ -11,6 +11,10 @@ export default function HomePage() {
   const [search, setSearch] = useState("")
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
+  
+  useEffect(() => {
+    document.title = "Anozon - Home"
+  }, [])
 
   const productsQuery = useProducts({ search: query, page, limit: 12 })
   const addToCart = useAddToCart()

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useCart, useUpdateCart, useRemoveFromCart } from "@/hooks/useCart"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -14,6 +14,10 @@ export default function CartPage() {
   const { data: cart, isLoading, isError } = useCart()
   const updateCart = useUpdateCart()
   const removeFromCart = useRemoveFromCart()
+  
+  useEffect(() => {
+    document.title = "Anozon - Cart"
+  }, [])
   
   const [page, setPage] = useState(1)
 

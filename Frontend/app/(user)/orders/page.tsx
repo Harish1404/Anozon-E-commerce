@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useOrders } from "@/hooks/useOrders"
 import { OrderCard } from "@/components/orders/OrderCard"
 import { OrderSkeleton } from "@/components/orders/OrderSkeleton"
@@ -26,7 +26,16 @@ const YEAR_OPTIONS = [
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("orders")
   const [year, setYear] = useState("current_month")
-  const [page, setPage] = useState(1)
+    const [page, setPage] = useState(1)
+    
+    useEffect(() => {
+        const labels: Record<string, string> = {
+            orders: "Orders",
+            buy_again: "Order Again",
+            cancelled: "Cancelled Orders"
+        }
+        document.title = `Anozon - ${labels[activeTab] || "Orders"}`
+    }, [activeTab])
 
   const getFilterOptions = () => {
     const now = new Date()

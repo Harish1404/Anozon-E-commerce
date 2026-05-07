@@ -181,13 +181,17 @@ export default function ProfilePage() {
   const updateAddress = useUpdateAddress()
   const deleteAddress = useDeleteAddress()
   const user = useAuthStore((s) => s.user)
+  
+  useEffect(() => {
+    document.title = "Anozon - Profile"
+  }, [])
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
   const [isEditingAvatar, setIsEditingAvatar] = useState(false)
   const [avatarUrlDraft, setAvatarUrlDraft] = useState("")
 
-  const initials = user?.username?.slice(0, 2).toUpperCase() ?? "?"
+  const initials = user?.email?.slice(0, 2).toUpperCase() ?? "?"
 
   const handleSaveField = (field: "full_name" | "mobile" | "avatar_url", value: string) => {
     updateProfile.mutate({ [field]: value })
@@ -272,7 +276,7 @@ export default function ProfilePage() {
           ) : (
             <>
               <div>
-                <p className="text-3xl font-bold tracking-tight text-slate-900">{profile?.full_name || user?.username}</p>
+                <p className="text-3xl font-bold tracking-tight text-slate-900">{profile?.full_name || user?.email}</p>
                 <p className="text-slate-500 font-medium">{user?.email}</p>
               </div>
               <div className="flex flex-wrap justify-center sm:justify-start gap-2">

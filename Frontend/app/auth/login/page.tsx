@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -23,6 +23,10 @@ type LoginForm = z.infer<typeof loginSchema>
 export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false)
     const { mutate: login, isPending, error } = useLogin()
+    
+    useEffect(() => {
+        document.title = "Anozon - Login"
+    }, [])
 
     const {
         register,
@@ -55,7 +59,7 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4 py-10">
             <div className="w-full max-w-md">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="h-20 w-auto mb-4">
+                    <div className="h-20 w-auto ">
                         <img
                             src="/anozon.png"
                             alt="Anozon Logo"
