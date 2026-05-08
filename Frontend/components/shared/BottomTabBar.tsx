@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Home, ShoppingCart, Menu, User, Package, LogOut } from "lucide-react"
+import { Home, ShoppingCart, Menu, User, Package, LogOut, LayoutDashboard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCart } from "@/hooks/useCart"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -95,6 +95,15 @@ export function BottomTabBar() {
                     <Package className="size-5" />
                     <span className="font-medium">My Orders</span>
                   </Link>
+                  {user.role === "seller" && (
+                    <Link 
+                      href="/seller/dashboard" 
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                    >
+                      <LayoutDashboard className="size-5" />
+                      <span className="font-medium">Seller Dashboard</span>
+                    </Link>
+                  )}
                   <button
                     onClick={() => logout()}
                     disabled={isPending}

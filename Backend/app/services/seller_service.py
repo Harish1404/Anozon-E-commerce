@@ -183,6 +183,13 @@ class SellerService:
 
         items = serialize_mongo(items)
 
+        # Compute seller_total for each order in the list
+        for order in items:
+            order["seller_total"] = sum(
+                item.get("price", 0) * item.get("quantity", 1)
+                for item in order.get("items", [])
+            )
+
         return {"items": items, "total": total, "page": page, "limit": limit}
 
     @staticmethod
@@ -298,7 +305,9 @@ class SellerService:
 
     @staticmethod
     async def get_dashboard(seller_id: str):
-        stats = await seller_helpers.get_seller_dashboard_stats(products_collection(), orders_collection(), seller_id)
+        stats = await seller_helpers.get_seller_dashboard_stats(
+            products_collection(), orders_collection(), sellers_collection(), seller_id
+        )
         return stats
 
 

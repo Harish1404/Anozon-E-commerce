@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional, Annotated
 from app.services.user_service import UserService
 from app.services.product_service import ProductService

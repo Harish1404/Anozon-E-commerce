@@ -55,11 +55,13 @@ export function useLogin() {
             const { data: user } = await authService.me()
             setAuth(res.data.access_token, user)
 
-            if (res.data.role === "admin") {
+            if (res.data.role === "admin" || res.data.role === "super_admin") {
                 router.push("/admin/dashboard")
-            } else if (res.data.role === "user") {
+            } else if (res.data.role === "seller") {
+                router.push("/seller/dashboard")
+            } else {
                 router.push("/")
-            } else router.push("/")
+            }
         },
         onError: async (error: any) => {
             const detail = error?.response?.data?.detail ?? ""

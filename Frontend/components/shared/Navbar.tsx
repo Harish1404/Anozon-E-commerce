@@ -6,7 +6,8 @@ import { useAuthStore } from "@/store/useAuthStore"
 import { useLogout } from "@/hooks/useAuthHook"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { LogOut, User, ShoppingBag, ShoppingCart, Package } from "lucide-react"
+import { LogOut, User, ShoppingBag, ShoppingCart, Package, Bell, LayoutDashboard } from "lucide-react"
+import { toast } from "sonner"
 import { useCart } from "@/hooks/useCart"
 import { useProfile } from "@/hooks/useProfile"
 
@@ -52,8 +53,18 @@ export function Navbar() {
           </Link>
 
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger className="ml-2 flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <div className="flex items-center">
+              {/* Notification bell */}
+              <button 
+                onClick={() => toast.info("Notifications coming soon!")}
+                className="ml-2 flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors relative outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Bell className="size-5" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
+              </button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger className="ml-2 flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Avatar size="default">
                   <AvatarImage src={profile?.avatar_url ?? undefined} />
                   <AvatarFallback>{initials}</AvatarFallback>
@@ -73,6 +84,12 @@ export function Navbar() {
                   <User className="size-4" />
                   Profile
                 </DropdownMenuItem>
+                {user.role === "seller" && (
+                  <DropdownMenuItem onClick={() => router.push("/seller/dashboard")} className="cursor-pointer gap-2 text-indigo-600 focus:text-indigo-700 focus:bg-indigo-50">
+                    <LayoutDashboard className="size-4" />
+                    Seller Dashboard
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
@@ -85,6 +102,7 @@ export function Navbar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           ) : (
             <Link
               href="/auth/login"

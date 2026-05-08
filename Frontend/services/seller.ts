@@ -1,6 +1,7 @@
-// services/seller.service.ts
+// services/seller.ts
 import api from "@/lib/axios"
-import { Product, SellerDashboard, SellerProfile, Order, OrderStatus } from "@/types"
+import { SellerDashboard, SellerProfile, ItemStatus, PaginatedSellerProductResponse, PaginatedSellerOrderResponse } from "@/types"
+import { Product } from "@/types"
 
 export const sellerService = {
   // Dashboard
@@ -8,47 +9,43 @@ export const sellerService = {
     api.get<SellerDashboard>("/seller/dashboard"),
 
   // Products
-  getProducts: (params?: { status?: string; search?: string; stock_lt?: number }) =>
-    api.get<Product[]>("/seller/products", { params }),
+  getProducts: (params?: { page?: number; limit?: number }) =>
+    api.get<PaginatedSellerProductResponse>("/seller/products", { params }),
 
   getProduct: (product_id: string) =>
     api.get<Product>(`/seller/products/${product_id}`),
 
-  createProduct: (data: Partial<Product>) =>
-    api.post<Product>("/seller/products", data),
+  createProduct: (data: Record<string, unknown>) =>
+    api.post<{ message: string; product_id: string; product_data?: Product }>("/seller/products", data),
 
-  updateProduct: (product_id: string, data: Partial<Product>) =>
-    api.put(`/seller/products/${product_id}`, data),
+  updateProduct: (product_id: string, data: Record<string, unknown>) =>
+    api.put<{ message: string }>(`/seller/products/${product_id}`, data),
 
-  toggleProduct: (product_id: string) =>
-    api.patch(`/seller/products/${product_id}/toggle`),
+  // is_active must be sent in body — backend requires it
+  toggleProduct: (product_id: string, is_active: boolean) =>
+    api.patch<{ message: string }>(`/seller/products/${product_id}/toggle`, { is_active }),
 
   updateStock: (product_id: string, stock: number) =>
-    api.patch(`/seller/products/${product_id}/stock`, { stock }),
+    api.patch<{ message: string }>(`/seller/products/${product_id}/stock`, { stock }),
 
   deleteProduct: (product_id: string) =>
-    api.delete(`/seller/products/${product_id}`),
+    api.delete<{ message: string }>(`/seller/products/${product_id}`),
 
   // Orders
-  getOrders: (params?: { status?: string }) =>
-    api.get<Order[]>("/seller/orders", { params }),
+  getOrders: (params?: { page?: number; limit?: number }) =>
+    api.get<PaginatedSellerOrderResponse>("/seller/orders", { params }),
 
   getOrder: (order_id: string) =>
     api.get(`/seller/orders/${order_id}`),
 
-  updateItemStatus: (order_id: string, product_id: string, item_status: OrderStatus) =>
-    api.patch(`/seller/orders/${order_id}/items/${product_id}`, { item_status }),
+  // URL includes /status suffix — required by backend route
+  updateItemStatus: (order_id: string, product_id: string, item_status: ItemStatus) =>
+    api.patch(`/seller/orders/${order_id}/items/${product_id}/status`, { item_status }),
 
   // Profile
   getProfile: () =>
     api.get<SellerProfile>("/seller/profile"),
 
   updateProfile: (data: Partial<SellerProfile>) =>
-    api.put("/seller/profile", data),
-
-  applyAsSeller: (data: Partial<SellerProfile>) =>
-    api.post("/seller/apply", data),
-
-  getApplicationStatus: () =>
-    api.get("/seller/apply/status")
+    api.put<{ message: string }>("/seller/profile", data),
 }

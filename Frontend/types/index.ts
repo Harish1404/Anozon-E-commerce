@@ -183,6 +183,8 @@ export interface PaginatedOrderResponse {
 
 // ── Seller ────────────────────────────────────────────────────────────────
 
+export type ItemStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"
+
 export interface SellerProfile {
   _id: string
   user_id: string
@@ -198,7 +200,31 @@ export interface SellerProfile {
   total_products: number
   total_orders: number
   rating: number | null
+  total_reviews?: number
   created_at: string
+}
+
+export interface WeeklyRevenueEntry {
+  day: string
+  revenue: number
+  is_today: boolean
+}
+
+export interface TopProduct {
+  product_id: string
+  name: string
+  image: string
+  units_sold: number
+  revenue: number
+}
+
+export interface RecentOrderEntry {
+  order_id: string
+  created_at: string
+  item_count: number
+  seller_total: number
+  order_status: OrderStatus
+  buyer_first_name: string
 }
 
 export interface SellerDashboard {
@@ -208,21 +234,64 @@ export interface SellerDashboard {
     pending_approval: number
     out_of_stock: number
     low_stock: number
+    hidden: number
   }
   orders: {
     total: number
     confirmed: number
     shipped: number
     delivered: number
+    cancelled: number
   }
   revenue: {
     all_time: number
     this_month: number
     this_week: number
+    today: number
   }
+  weekly_revenue: WeeklyRevenueEntry[]
+  top_products: TopProduct[]
+  recent_orders: RecentOrderEntry[]
   store: {
     avg_rating: number
     total_reviews: number
   }
 }
 
+export interface SellerOrderItem {
+  product_id: string
+  seller_id: string
+  name: string
+  image: string
+  price: number
+  quantity: number
+  item_total: number
+  item_status: ItemStatus
+  status_updated_at?: string | null
+}
+
+export interface SellerOrder {
+  _id: string
+  items: SellerOrderItem[]
+  shipping_address: Omit<ShippingAddress, "mobile">
+  order_status: OrderStatus
+  seller_total: number
+  payment_status: PaymentStatus
+  payment_method: PaymentMethod
+  created_at: string
+  updated_at: string
+}
+
+export interface PaginatedSellerProductResponse {
+  items: Product[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface PaginatedSellerOrderResponse {
+  items: SellerOrder[]
+  total: number
+  page: number
+  limit: number
+}
