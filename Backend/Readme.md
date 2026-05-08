@@ -7,6 +7,8 @@ FastAPI backend for the Anozon e-commerce platform.
 
 ---
 
+
+
 ## Tech Stack
 
 | Layer | Technology |

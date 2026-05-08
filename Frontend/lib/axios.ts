@@ -7,10 +7,22 @@ const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const api = axios.create({
     baseURL,
     withCredentials: true,
+    timeout: 5000,
     headers: {
         "Content-Type": "application/json",
     },
 });
+
+const AUTH_ENDPOINTS = [
+    "/auth/login",
+    "/auth/refresh",
+    "/auth/signup",
+    "/auth/logout",
+    "/auth/verify-otp",
+    "/auth/resend-otp",
+    "/auth/forgot-password",
+    "/auth/reset-password"
+];
 
 // Queue process
 
@@ -48,6 +60,10 @@ api.interceptors.response.use(
 
     // If unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Don't refresh for auth endpoints
+      if (AUTH_ENDPOINTS.some(endpoint => originalRequest.url?.includes(endpoint))) {
+        return Promise.reject(error);
+      }
       // If already refreshing → queue request
       if (isRefreshing) {
         return new Promise<string>((resolve, reject) => {
@@ -92,11 +108,16 @@ api.interceptors.response.use(
         }
 
         return api(originalRequest);
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         processQueue(refreshError, null);
 
         // Logout user
         useAuthStore.getState().logout();
+
+        // Shield user from technical backend errors
+        if (refreshError.response?.status === 401) {
+            return Promise.reject(new Error("Your session has expired. Please log in again."));
+        }
 
         return Promise.reject(refreshError);
       } finally {
