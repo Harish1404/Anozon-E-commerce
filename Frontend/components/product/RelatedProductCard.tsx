@@ -16,12 +16,12 @@ export function RelatedProductCard({ product, onAddToCart }: RelatedProductCardP
     <div className="group relative flex flex-col overflow-hidden rounded-xl bg-background border border-border hover:border-foreground/30 transition-colors duration-200">
 
       {/* Image */}
-      <div className="relative aspect-square overflow-hidden bg-muted flex items-center justify-center p-2">
+      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
         <Link href={`/products/${product._id}`} className="block h-full w-full">
           <img
             src={imageUrl}
             alt={product.name}
-            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </Link>
 
@@ -59,15 +59,19 @@ export function RelatedProductCard({ product, onAddToCart }: RelatedProductCardP
 
       {/* Body */}
       <div className="flex flex-col gap-1 p-2 flex-1">
+        <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
+          {product.category}
+        </span>
+
         <Link
           href={`/products/${product._id}`}
-          className="text-[11px] font-medium text-foreground hover:text-primary transition-colors line-clamp-2 leading-snug h-8"
+          className="text-[11px] font-medium text-foreground hover:text-foreground/70 transition-colors truncate leading-tight"
         >
           {product.name}
         </Link>
 
-        <div className="flex items-center gap-1.5 mt-auto">
-          <span className="text-xs font-bold text-foreground">
+        <div className="flex items-baseline gap-1 flex-wrap mt-auto pt-0.5">
+          <span className="text-xs font-semibold text-foreground">
             ₹{product.price.toLocaleString()}
           </span>
           {product.actual_price > product.price && (
@@ -77,11 +81,12 @@ export function RelatedProductCard({ product, onAddToCart }: RelatedProductCardP
           )}
         </div>
 
-        {/* Add to cart — minimal */}
+        {/* Add to cart — always visible, compact */}
         <button
           onClick={() => onAddToCart(product._id)}
-          className="mt-1 w-full py-1.5 text-[10px] font-semibold bg-primary/5 text-primary border border-primary/20 rounded hover:bg-primary hover:text-white transition-all"
+          className="mt-1 w-full flex items-center justify-center gap-1 py-1.5 text-[10px] font-medium bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors active:scale-[0.98]"
         >
+          <ShoppingCart className="size-2.5" />
           Add to cart
         </button>
       </div>

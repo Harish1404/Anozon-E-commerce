@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useProducts } from "@/hooks/useProducts"
 import { useAddToCart } from "@/hooks/useCart"
@@ -20,6 +20,12 @@ export function RelatedProducts({ category, currentProductId }: RelatedProductsP
 
   const { data, isLoading } = useProducts({ category, limit: 25 })
 
+  // Reset page to 1 and scroll to top when product or category changes
+  useEffect(() => {
+    setPage(1)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [currentProductId, category])
+
   const relatedProducts = useMemo(() => {
     if (!data) return []
     return data.items.filter((p) => p._id !== currentProductId)
@@ -35,10 +41,10 @@ export function RelatedProducts({ category, currentProductId }: RelatedProductsP
     return (
       <div className="space-y-4">
         <div className="h-5 w-40 bg-muted animate-pulse rounded" />
-        {/* Desktop skeleton: 6 cols */}
-        <div className="hidden sm:grid grid-cols-6 gap-3">
+        {/* Desktop skeleton: 3 cols */}
+        <div className="hidden sm:grid grid-cols-3 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="aspect-square bg-muted animate-pulse rounded-xl" />
+            <div key={i} className="aspect-[4/5] bg-muted animate-pulse rounded-xl" />
           ))}
         </div>
         {/* Mobile skeleton: 2 cols */}
@@ -68,26 +74,23 @@ export function RelatedProducts({ category, currentProductId }: RelatedProductsP
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
               size="icon"
               disabled={page === 1}
               onClick={() => setPage((p) => p - 1)}
-              className="h-8 w-8 rounded-md"
+              className="h-9 w-9 rounded-full border-transparent bg-foreground text-background transition-all hover:bg-foreground/90 hover:scale-105 active:scale-95 disabled:opacity-20 disabled:scale-100"
               aria-label="Previous page"
             >
               <ChevronLeft className="size-4" />
             </Button>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {page} / {totalPages}
-            </span>
             <Button
               variant="outline"
               size="icon"
               disabled={page === totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="h-8 w-8 rounded-md"
+              className="h-9 w-9 rounded-full border-transparent bg-foreground text-background transition-all hover:bg-foreground/90 hover:scale-105 active:scale-95 disabled:opacity-20 disabled:scale-100"
               aria-label="Next page"
             >
               <ChevronRight className="size-4" />
@@ -98,10 +101,13 @@ export function RelatedProducts({ category, currentProductId }: RelatedProductsP
 
       {/* 
         Grid layout:
-        - Mobile  (<640px): 2 columns
-        - Desktop (≥640px): 6 columns for compact Amazon-style look
+        - Mobile  (<640px): 2 columns, shows 4 visible + scroll hint
+        - Desktop (≥640px): 3 columns, shows all 6
       */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 sm:gap-3">
+      <div 
+        key={page}
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3 animate-in fade-in duration-500"
+      >
         {paginatedProducts.map((product) => (
           <RelatedProductCard
             key={product._id}
