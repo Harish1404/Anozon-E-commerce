@@ -30,12 +30,12 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-background">
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.3em] text-slate-500">Shop</p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-slate-900">Browse today's best offers</h1>
+            <p className="text-sm font-medium uppercase tracking-[0.3em] text-muted-foreground">Shop</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">Browse today's best offers</h1>
           </div>
           <div className="flex w-full max-w-md items-center gap-2">
             <Input
@@ -50,11 +50,11 @@ export default function HomePage() {
         {productsQuery.isLoading ? (
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="h-80 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm animate-pulse" />
+              <div key={index} className="h-80 rounded-3xl border border-border bg-card p-4 shadow-sm animate-pulse" />
             ))}
           </div>
         ) : productsQuery.isError ? (
-          <div className="rounded-3xl border border-red-200 bg-red-50 p-8 text-red-700">
+          <div className="rounded-3xl border border-destructive/30 bg-destructive/10 p-8 text-destructive">
             Unable to load products. Please try again.
           </div>
         ) : (
@@ -65,7 +65,7 @@ export default function HomePage() {
         )}
 
         <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Showing {productsQuery.data?.items.length ?? 0} of {productsQuery.data?.total ?? 0} products
           </p>
           <div className="flex items-center gap-2">
@@ -77,7 +77,7 @@ export default function HomePage() {
             >
               Previous
             </Button>
-            <span className="text-sm text-slate-700">Page {page} / {totalPages}</span>
+            <span className="text-sm text-foreground">Page {page} / {totalPages}</span>
             <Button
               variant="secondary"
               size="sm"

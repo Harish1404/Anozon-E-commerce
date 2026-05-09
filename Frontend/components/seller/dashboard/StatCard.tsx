@@ -28,7 +28,7 @@ export function StatCard({ label, value, icon: Icon, color = "indigo", subtitle,
   const card = (
     <div
       className={cn(
-        "relative flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm",
+        "relative flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm",
         "hover:-translate-y-0.5 hover:shadow-md transition-all duration-200",
         href && "cursor-pointer"
       )}
@@ -40,10 +40,10 @@ export function StatCard({ label, value, icon: Icon, color = "indigo", subtitle,
 
       {/* Text */}
       <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
         <p className={cn("mt-0.5 text-2xl font-bold leading-none", c.value)}>{value}</p>
         {subtitle && (
-          <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
         )}
       </div>
     </div>

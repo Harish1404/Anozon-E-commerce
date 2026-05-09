@@ -50,12 +50,12 @@ export default function SellerOrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6">
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Orders</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Manage your incoming orders</p>
+          <h1 className="text-xl font-bold text-foreground">Orders</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage your incoming orders</p>
         </div>
 
         {/* Tabs */}
@@ -69,15 +69,15 @@ export default function SellerOrdersPage() {
                 className={cn(
                   "shrink-0 flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition-colors",
                   tab === t.key
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-card border border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                 )}
               >
                 {t.label}
                 {t.key !== "all" && count > 0 && (
                   <span className={cn(
                     "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                    tab === t.key ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    tab === t.key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
                   )}>
                     {count}
                   </span>
@@ -91,13 +91,13 @@ export default function SellerOrdersPage() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-20 rounded-2xl bg-slate-200 animate-pulse" />
+              <div key={i} className="h-20 rounded-2xl bg-muted animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white py-16">
-            <ShoppingBag className="size-10 text-slate-300" />
-            <p className="text-sm text-slate-500">{EMPTY_MESSAGES[tab] ?? "No orders"}</p>
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card py-16">
+            <ShoppingBag className="size-10 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">{EMPTY_MESSAGES[tab] ?? "No orders"}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -113,15 +113,15 @@ export default function SellerOrdersPage() {
             <button
               disabled={page === 1}
               onClick={() => setPage(page - 1)}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-40"
             >
               Previous
             </button>
-            <span className="text-sm text-slate-500">Page {page} of {totalPages}</span>
+            <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
             <button
               disabled={page === totalPages}
               onClick={() => setPage(page + 1)}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-40"
             >
               Next
             </button>

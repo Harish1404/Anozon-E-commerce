@@ -20,7 +20,7 @@ import { useAuthStore } from "@/store/useAuthStore"
 
 // Skeleton for a card
 function CardSkeleton({ className = "" }: { className?: string }) {
-  return <div className={`rounded-2xl bg-slate-200 animate-pulse ${className}`} />
+  return <div className={`rounded-2xl bg-muted animate-pulse ${className}`} />
 }
 
 export default function SellerDashboardPage() {
@@ -32,30 +32,30 @@ export default function SellerDashboardPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
 
         {/* ── Welcome Banner ─────────────────────────────────────────── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">
+            <h1 className="text-xl font-bold text-foreground">
               Good {getGreeting()}, {user?.email?.split("@")[0] ?? "Seller"} 👋
             </h1>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5">
               {format(new Date(), "EEEE, d MMMM yyyy")}
             </p>
           </div>
           <div className="flex gap-2">
             <Link
               href="/seller/products/new"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
             >
               <Package className="size-4" />
               Add Product
             </Link>
             <Link
               href="/seller/orders"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               <ShoppingBag className="size-4" />
               Orders

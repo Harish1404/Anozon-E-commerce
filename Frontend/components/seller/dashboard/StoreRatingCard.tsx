@@ -13,9 +13,9 @@ export function StoreRatingCard({ avg_rating, total_reviews }: StoreRatingCardPr
   const hasHalf = rating - fullStars >= 0.5
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm h-full flex flex-col">
-      <h3 className="text-sm font-semibold text-slate-800">Store Rating</h3>
-      <p className="text-xs text-slate-500 mt-0.5">Based on customer reviews</p>
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm h-full flex flex-col">
+      <h3 className="text-sm font-semibold text-foreground">Store Rating</h3>
+      <p className="text-xs text-muted-foreground mt-0.5">Based on customer reviews</p>
 
       <div className="flex-1 flex flex-col items-center justify-center gap-3 py-4">
         {/* Big rating number */}
@@ -36,7 +36,7 @@ export function StoreRatingCard({ avg_rating, total_reviews }: StoreRatingCardPr
                     ? "fill-amber-400 text-amber-400"
                     : half
                     ? "fill-amber-200 text-amber-400"
-                    : "fill-slate-100 text-slate-300"
+                    : "fill-muted text-muted-foreground/40"
                 }`}
               />
             )
@@ -44,7 +44,7 @@ export function StoreRatingCard({ avg_rating, total_reviews }: StoreRatingCardPr
         </div>
 
         {/* Review count */}
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           {total_reviews > 0
             ? `${total_reviews} review${total_reviews !== 1 ? "s" : ""}`
             : "No reviews yet"}

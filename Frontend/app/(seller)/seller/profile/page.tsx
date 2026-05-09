@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils"
 function ProfileSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-12 rounded-xl bg-slate-200" />
-      <div className="h-64 rounded-2xl bg-slate-200" />
+      <div className="h-12 rounded-xl bg-muted" />
+      <div className="h-64 rounded-2xl bg-muted" />
     </div>
   )
 }
@@ -70,12 +70,12 @@ export default function SellerProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6">
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Seller Profile</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Manage your business information</p>
+          <h1 className="text-xl font-bold text-foreground">Seller Profile</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage your business information</p>
         </div>
 
         {isLoading ? (
@@ -87,8 +87,8 @@ export default function SellerProfilePage() {
 
             <div className="grid gap-5 lg:grid-cols-3">
               {/* Profile form */}
-              <div className="lg:col-span-2 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-                <h2 className="text-sm font-semibold text-slate-800 mb-5 border-b border-slate-100 pb-4">
+              <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <h2 className="text-sm font-semibold text-foreground mb-5 border-b border-border pb-4">
                   Business Information
                 </h2>
                 <SellerProfileForm
@@ -101,23 +101,23 @@ export default function SellerProfilePage() {
               {/* Read-only info panel */}
               <div className="space-y-4">
                 {/* Store stats */}
-                <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                  <h3 className="text-sm font-semibold text-slate-800 mb-4">Store Overview</h3>
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-foreground mb-4">Store Overview</h3>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Package className="size-3.5" /> Total Products
                       </div>
-                      <span className="text-sm font-semibold text-slate-800">{profile.total_products}</span>
+                      <span className="text-sm font-semibold text-foreground">{profile.total_products}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <ShoppingBag className="size-3.5" /> Total Orders
                       </div>
-                      <span className="text-sm font-semibold text-slate-800">{profile.total_orders}</span>
+                      <span className="text-sm font-semibold text-foreground">{profile.total_orders}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Star className="size-3.5" /> Store Rating
                       </div>
                       <span className="text-sm font-semibold text-amber-600">
@@ -125,10 +125,10 @@ export default function SellerProfilePage() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Calendar className="size-3.5" /> Member Since
                       </div>
-                      <span className="text-sm font-semibold text-slate-800">
+                      <span className="text-sm font-semibold text-foreground">
                         {format(new Date(profile.created_at), "MMM yyyy")}
                       </span>
                     </div>
@@ -136,8 +136,8 @@ export default function SellerProfilePage() {
                 </div>
 
                 {/* Application status */}
-                <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                  <h3 className="text-sm font-semibold text-slate-800 mb-3">Application Status</h3>
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Application Status</h3>
                   <span className={cn(
                     "inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize",
                     profile.application_status === "approved" ? "bg-emerald-100 text-emerald-700" :

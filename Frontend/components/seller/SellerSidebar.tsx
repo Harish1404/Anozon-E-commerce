@@ -12,9 +12,15 @@ import {
   ChevronRight,
   X,
   LogOut,
+  Bell,
+  Menu,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLogout } from "@/hooks/useAuthHook"
+import { useAuthStore } from "@/store/useAuthStore"
+import { useSellerProfile } from "@/hooks/useSeller"
+import { ThemeToggle } from "@/components/shared/ThemeToggle"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 interface NavItem {
   label: string
@@ -34,6 +40,7 @@ interface SellerSidebarProps {
   onCollapse: (v: boolean) => void
   mobileOpen: boolean
   onMobileClose: () => void
+  onMobileOpen: () => void
 }
 
 export function SellerSidebar({
@@ -41,34 +48,62 @@ export function SellerSidebar({
   onCollapse,
   mobileOpen,
   onMobileClose,
+  onMobileOpen,
 }: SellerSidebarProps) {
   const pathname = usePathname()
   const { mutate: logout, isPending } = useLogout()
+  const { user } = useAuthStore()
+  const { data: profile } = useSellerProfile()
+
+  const initials = profile?.business_name
+    ? profile.business_name.slice(0, 2).toUpperCase()
+    : user?.email
+    ? user.email.slice(0, 2).toUpperCase()
+    : "S"
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
-      {/* Logo row */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-slate-800">
+      {/* Logo + profile row */}
+      <div className={cn("flex items-center gap-3 px-3 py-4 border-b border-white/10", collapsed ? "justify-center" : "")}>
         {!collapsed && (
-          <span className="text-lg font-bold tracking-tight text-white">
-            Anozon <span className="text-indigo-400 text-xs font-medium ml-1">Seller</span>
-          </span>
+          <>
+            <Avatar className="h-9 w-9 shrink-0">
+              <AvatarFallback className="bg-[#7F77DD] text-white text-sm font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1 nav-item">
+              <p className="text-sm font-semibold truncate">
+                {profile?.business_name ?? "My Store"}
+              </p>
+              <p className="text-xs truncate opacity-70">{user?.email}</p>
+            </div>
+            {/* Desktop collapse */}
+            <button
+              onClick={() => onCollapse(true)}
+              className="hidden md:flex h-7 w-7 items-center justify-center rounded-lg transition-colors shrink-0 nav-item"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            {/* Mobile close */}
+            <button
+              onClick={onMobileClose}
+              className="md:hidden flex h-7 w-7 items-center justify-center rounded-lg transition-colors shrink-0 nav-item"
+            >
+              <X className="size-4" />
+            </button>
+          </>
         )}
-        {/* Desktop collapse toggle */}
-        <button
-          onClick={() => onCollapse(!collapsed)}
-          className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors ml-auto"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
-        </button>
-        {/* Mobile close */}
-        <button
-          onClick={onMobileClose}
-          className="md:hidden flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-        >
-          <X className="size-4" />
-        </button>
+        {collapsed && (
+          <button
+            onClick={() => onCollapse(false)}
+            className="hidden md:flex h-9 w-9 items-center justify-center rounded-lg transition-colors nav-item"
+            aria-label="Expand sidebar"
+          >
+            <ChevronRight className="size-5" />
+          </button>
+        )}
       </div>
 
       {/* Nav links */}
@@ -81,38 +116,75 @@ export function SellerSidebar({
               href={item.href}
               onClick={onMobileClose}
               className={cn(
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
-                active
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                "nav-item group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                active && "active"
               )}
               title={collapsed ? item.label : undefined}
             >
-              <item.icon className={cn("size-5 shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-white")} />
+              <item.icon className="size-5 shrink-0" />
               {!collapsed && <span className="truncate">{item.label}</span>}
             </Link>
           )
         })}
       </nav>
 
-      {/* Divider + Switch to Store + Logout */}
-      <div className="border-t border-slate-800 px-2 py-4 space-y-1">
+      {/* Bottom section */}
+      <div className="border-t border-white/10 px-2 py-4 space-y-1">
+        {/* Theme toggle */}
+        {!collapsed && (
+          <div className="nav-item flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium">
+            <ThemeToggle />
+            <span className="truncate">Theme</span>
+          </div>
+        )}
+        {collapsed && (
+          <div className="flex justify-center py-2">
+            <ThemeToggle />
+          </div>
+        )}
+
+        {/* Notification */}
+        <button
+          className="nav-item group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200"
+          title={collapsed ? "Notifications" : undefined}
+        >
+          <div className="relative">
+            <Bell className="size-5 shrink-0" />
+            <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-orange-400" />
+          </div>
+          {!collapsed && <span className="truncate">Notifications</span>}
+        </button>
+
+        {/* User Profile (personal details) */}
+        <Link
+          href="/profile"
+          onClick={onMobileClose}
+          className="nav-item group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200"
+          title={collapsed ? "User Profile" : undefined}
+        >
+          <User className="size-5 shrink-0" />
+          {!collapsed && <span className="truncate">User Profile</span>}
+        </Link>
+
+        {/* Switch to Store */}
         <Link
           href="/"
           onClick={onMobileClose}
-          className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-150"
+          className="nav-item group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200"
           title={collapsed ? "Switch to Store" : undefined}
         >
-          <Store className="size-5 shrink-0 text-slate-400 group-hover:text-white" />
+          <Store className="size-5 shrink-0" />
           {!collapsed && <span className="truncate">Switch to Store</span>}
         </Link>
+
+        {/* Logout */}
         <button
           onClick={() => logout()}
           disabled={isPending}
-          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-400 hover:bg-rose-500/10 hover:text-rose-500 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="nav-item group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium !text-red-500 hover:bg-red-500/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           title={collapsed ? "Logout" : undefined}
         >
-          <LogOut className="size-5 shrink-0 text-rose-400 group-hover:text-rose-500" />
+          <LogOut className="size-5 shrink-0" />
           {!collapsed && <span className="truncate">{isPending ? "Logging out..." : "Logout"}</span>}
         </button>
       </div>
@@ -121,10 +193,22 @@ export function SellerSidebar({
 
   return (
     <>
+      {/* Mobile hamburger — floats top-left when sidebar is closed */}
+      <button
+        onClick={onMobileOpen}
+        className={cn(
+          "fixed top-4 left-4 z-30 md:hidden flex h-10 w-10 items-center justify-center rounded-xl bg-card border border-border text-foreground shadow-lg transition-all duration-300",
+          mobileOpen ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}
+        aria-label="Open menu"
+      >
+        <Menu className="size-5" />
+      </button>
+
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden md:flex flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300 shrink-0",
+          "sidebar hidden md:flex flex-col shrink-0 transition-all duration-300",
           collapsed ? "w-[64px]" : "w-[240px]"
         )}
       >
@@ -143,7 +227,7 @@ export function SellerSidebar({
       {/* Mobile drawer */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[240px] flex flex-col bg-slate-900 border-r border-slate-800 transition-transform duration-300 md:hidden",
+          "sidebar fixed inset-y-0 left-0 z-50 w-[260px] flex flex-col transition-transform duration-300 md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

@@ -42,29 +42,29 @@ export function SellerProfileForm({ profile, onSubmit, isLoading }: SellerProfil
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* ── Business Details ────────────────────────────────────── */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-800 mb-4">Business Details</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-4">Business Details</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Business Name */}
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Business Name <span className="text-rose-500">*</span>
             </label>
             <input
               {...register("business_name")}
               placeholder="Your business or brand name"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
             />
             <FieldError message={errors.business_name?.message} />
           </div>
 
           {/* Business Type */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Business Type <span className="text-rose-500">*</span>
             </label>
             <select
               {...register("business_type")}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition bg-white"
+              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
             >
               <option value="individual">Individual</option>
               <option value="company">Company</option>
@@ -75,13 +75,13 @@ export function SellerProfileForm({ profile, onSubmit, isLoading }: SellerProfil
 
           {/* GSTIN */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              GSTIN <span className="text-xs text-slate-400">(optional)</span>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              GSTIN <span className="text-xs text-muted-foreground">(optional)</span>
             </label>
             <input
               {...register("gstin")}
               placeholder="22AAAAA0000A1Z5"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
             />
             <FieldError message={errors.gstin?.message} />
           </div>
@@ -89,55 +89,55 @@ export function SellerProfileForm({ profile, onSubmit, isLoading }: SellerProfil
       </div>
 
       {/* ── Business Address ─────────────────────────────────────── */}
-      <div className="border-t border-slate-100 pt-6">
-        <h3 className="text-sm font-semibold text-slate-800 mb-4">Business Address</h3>
+      <div className="border-t border-border pt-6">
+        <h3 className="text-sm font-semibold text-foreground mb-4">Business Address</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Line 1 */}
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Address Line 1 <span className="text-rose-500">*</span>
             </label>
             <input
               {...register("line1")}
               placeholder="Street, building, floor"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
             />
             <FieldError message={errors.line1?.message} />
           </div>
 
           {/* Line 2 */}
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Address Line 2 <span className="text-xs text-slate-400">(optional)</span>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Address Line 2 <span className="text-xs text-muted-foreground">(optional)</span>
             </label>
             <input
               {...register("line2")}
               placeholder="Area, landmark"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
             />
           </div>
 
           {/* City */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               City <span className="text-rose-500">*</span>
             </label>
             <input
               {...register("city")}
               placeholder="Mumbai"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
             />
             <FieldError message={errors.city?.message} />
           </div>
 
           {/* State */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               State <span className="text-rose-500">*</span>
             </label>
             <select
               {...register("state")}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition bg-white"
+              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
             >
               <option value="">Select state…</option>
               {INDIAN_STATES.map((s) => (
@@ -149,14 +149,14 @@ export function SellerProfileForm({ profile, onSubmit, isLoading }: SellerProfil
 
           {/* Pincode */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Pincode <span className="text-rose-500">*</span>
             </label>
             <input
               {...register("pincode")}
               placeholder="400001"
               maxLength={6}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
             />
             <FieldError message={errors.pincode?.message} />
           </div>
@@ -164,11 +164,11 @@ export function SellerProfileForm({ profile, onSubmit, isLoading }: SellerProfil
       </div>
 
       {/* Submit */}
-      <div className="flex justify-end border-t border-slate-100 pt-5">
+      <div className="flex justify-end border-t border-border pt-5">
         <button
           type="submit"
           disabled={isLoading || !isDirty}
-          className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+          className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
         >
           {isLoading ? "Saving…" : "Save Changes"}
         </button>

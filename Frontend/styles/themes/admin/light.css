@@ -1,0 +1,13 @@
+:root[data-theme="admin"] {
+  --brand-primary:        #591515ff;
+  --brand-accent:         #E24B4A;
+  --brand-surface:        #FFFFFF;
+  --brand-surface-alt:    #FCEBEB;
+  --brand-border:         #F7C1C1;
+  --brand-text-primary:   #2C2C2A;
+  --brand-text-secondary: #5F5E5A;
+  --brand-cta:            #A32D2D;
+  --brand-cta-fg:         #FFFFFF;
+  --brand-destructive:    #791F1F;
+  --brand-warning:        #BA7517;
+}

@@ -36,7 +36,7 @@ export function useUpdateSellerProfile() {
           city: data.city,
           state: data.state,
           pincode: data.pincode,
-          mobile: "",
+          country: "India",
         },
       }
       return sellerService.updateProfile(payload).then((res) => res.data)
@@ -46,7 +46,13 @@ export function useUpdateSellerProfile() {
       toast.success("Profile updated successfully")
     },
     onError: (error: any) => {
-      const msg = error?.response?.data?.detail ?? "Failed to update profile"
+      let msg = "Failed to update profile"
+      const detail = error?.response?.data?.detail
+      if (typeof detail === "string") {
+        msg = detail
+      } else if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
+        msg = detail[0].msg
+      }
       toast.error(msg)
     },
   })

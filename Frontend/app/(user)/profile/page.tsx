@@ -181,7 +181,7 @@ export default function ProfilePage() {
   const updateAddress = useUpdateAddress()
   const deleteAddress = useDeleteAddress()
   const user = useAuthStore((s) => s.user)
-  
+
   useEffect(() => {
     document.title = "Anozon - Profile"
   }, [])
@@ -232,7 +232,7 @@ export default function ProfilePage() {
             <AvatarImage src={profile?.avatar_url ?? undefined} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
-          <button 
+          <button
             onClick={() => {
               setAvatarUrlDraft(profile?.avatar_url ?? "")
               setIsEditingAvatar(true)
@@ -248,15 +248,15 @@ export default function ProfilePage() {
             <div className="space-y-3">
               <Label className="text-sm font-semibold text-slate-700">Enter Avatar URL</Label>
               <div className="flex items-center gap-2">
-                <Input 
+                <Input
                   value={avatarUrlDraft}
                   onChange={(e) => setAvatarUrlDraft(e.target.value)}
                   placeholder="https://example.com/image.jpg"
                   className="h-10 text-sm"
                   autoFocus
                 />
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={() => {
                     handleSaveField("avatar_url", avatarUrlDraft)
                     setIsEditingAvatar(false)
@@ -264,9 +264,9 @@ export default function ProfilePage() {
                 >
                   <Check className="size-4" />
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
+                <Button
+                  size="sm"
+                  variant="ghost"
                   onClick={() => setIsEditingAvatar(false)}
                 >
                   <X className="size-4" />

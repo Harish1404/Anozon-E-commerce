@@ -6,7 +6,6 @@ import { useAuthStore } from "@/store/useAuthStore"
 import { authService } from "@/services/auth"
 import api from "@/lib/axios"
 import { SellerSidebar } from "@/components/seller/SellerSidebar"
-import { SellerNavbar } from "@/components/seller/SellerNavbar"
 
 export default function SellerLayout({ children }: { children: ReactNode }) {
   return <SellerShell>{children}</SellerShell>
@@ -54,33 +53,28 @@ function SellerShell({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
+      <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
-          <p className="text-sm text-slate-400">Loading dashboard…</p>
+          <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading dashboard…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      {/* Sidebar */}
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Sidebar — the only navigation */}
       <SellerSidebar
         collapsed={collapsed}
         onCollapse={setCollapsed}
         mobileOpen={sidebarOpen}
         onMobileClose={() => setSidebarOpen(false)}
+        onMobileOpen={() => setSidebarOpen(true)}
       />
 
-      {/* Main column */}
-      <div
-        className="flex flex-1 flex-col min-w-0 overflow-hidden transition-all duration-300"
-      >
-        <SellerNavbar
-          onMenuClick={() => setSidebarOpen(true)}
-          sidebarCollapsed={collapsed}
-        />
+      {/* Main column — no navbar */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden transition-all duration-300">
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>

@@ -1,0 +1,30 @@
+/* Sidebar uses deep brand primary as background */
+[data-theme="seller"] .sidebar {
+  background-color: var(--brand-primary);
+  border-right: 1px solid var(--brand-border);
+}
+[data-theme="seller"].dark .sidebar {
+  background-color: var(--brand-surface-alt);
+}
+[data-theme="seller"] .sidebar .nav-item {
+  color: var(--brand-surface);
+  opacity: 0.75;
+}
+[data-theme="seller"].dark .sidebar .nav-item {
+  color: var(--brand-text-primary);
+}
+[data-theme="seller"] .sidebar .nav-item.active,
+[data-theme="seller"] .sidebar .nav-item:hover {
+  opacity: 1;
+  background-color: color-mix(in srgb, var(--brand-accent) 15%, transparent);
+}
+
+/* Teal for success/revenue states in charts */
+[data-theme="seller"] .stat-positive {
+  color: var(--brand-teal);
+}
+
+/* Rounded buttons — creative tools feel */
+[data-theme="seller"] .btn-primary {
+  border-radius: 8px;
+}

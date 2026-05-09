@@ -11,6 +11,16 @@ export function AuthBootstrap() {
     const queryClient = useQueryClient()
 
     useEffect(() => {
+        // Apply saved theme before first paint to prevent flash
+        const theme = localStorage.getItem("anozon-theme")
+        if (theme === "dark") {
+            document.documentElement.classList.add("dark")
+        } else if (theme === "light") {
+            document.documentElement.classList.remove("dark")
+        } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+            document.documentElement.classList.add("dark")
+        }
+
         console.log("AuthBootstrap: refreshing...")
         authService.refresh()
             .then(async (res) => {

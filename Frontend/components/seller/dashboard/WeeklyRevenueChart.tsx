@@ -36,11 +36,11 @@ export function WeeklyRevenueChart({ data }: WeeklyRevenueChartProps) {
   }))
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-800">Weekly Revenue</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Last 7 days</p>
+          <h3 className="text-sm font-semibold text-foreground">Weekly Revenue</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Last 7 days</p>
         </div>
       </div>
 
@@ -58,7 +58,7 @@ export function WeeklyRevenueChart({ data }: WeeklyRevenueChartProps) {
               y1={line.y}
               x2={W - PADDING_RIGHT}
               y2={line.y}
-              stroke="#e2e8f0"
+              className="stroke-border"
               strokeWidth={1}
               strokeDasharray={i === 0 ? undefined : "4 3"}
             />
@@ -68,7 +68,7 @@ export function WeeklyRevenueChart({ data }: WeeklyRevenueChartProps) {
               textAnchor="end"
               dominantBaseline="middle"
               fontSize={9}
-              fill="#94a3b8"
+              className="fill-muted-foreground"
             >
               {i === 0 ? "₹0" : line.label}
             </text>
@@ -91,7 +91,7 @@ export function WeeklyRevenueChart({ data }: WeeklyRevenueChartProps) {
                 width={barW}
                 height={chartH}
                 rx={6}
-                fill="#f1f5f9"
+                className="fill-muted/50"
               />
               {/* Actual bar */}
               <rect
@@ -110,7 +110,7 @@ export function WeeklyRevenueChart({ data }: WeeklyRevenueChartProps) {
                 textAnchor="middle"
                 fontSize={10}
                 fontWeight={isToday ? "700" : "500"}
-                fill={isToday ? "#6366f1" : "#64748b"}
+                className={isToday ? "fill-primary" : "fill-muted-foreground"}
               >
                 {entry.day}
               </text>
@@ -122,7 +122,7 @@ export function WeeklyRevenueChart({ data }: WeeklyRevenueChartProps) {
                   textAnchor="middle"
                   fontSize={9}
                   fontWeight="600"
-                  fill="#6366f1"
+                  className="fill-primary"
                 >
                   {formatAmount(entry.revenue)}
                 </text>
@@ -134,12 +134,12 @@ export function WeeklyRevenueChart({ data }: WeeklyRevenueChartProps) {
         {/* Gradient defs */}
         <defs>
           <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#6366f1" />
+            <stop offset="0%" stopColor="var(--brand-accent, #818cf8)" />
+            <stop offset="100%" stopColor="var(--brand-cta, #6366f1)" />
           </linearGradient>
           <linearGradient id="todayGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#a5b4fc" />
-            <stop offset="100%" stopColor="#4f46e5" />
+            <stop offset="0%" stopColor="var(--brand-primary, #a5b4fc)" />
+            <stop offset="100%" stopColor="var(--brand-teal, #4f46e5)" />
           </linearGradient>
         </defs>
       </svg>

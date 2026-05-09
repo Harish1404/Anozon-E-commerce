@@ -185,6 +185,15 @@ export interface PaginatedOrderResponse {
 
 export type ItemStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"
 
+export interface BusinessAddress {
+  line1: string
+  line2?: string
+  city: string
+  state: string
+  pincode: string
+  country: string
+}
+
 export interface SellerProfile {
   _id: string
   user_id: string
@@ -193,7 +202,7 @@ export interface SellerProfile {
   business_type: "individual" | "company" | "partnership"
   gstin: string | null
   pan_number: string | null
-  business_address: Omit<Address, "address_id" | "label" | "is_default">
+  business_address: BusinessAddress
   application_status: ApplicationStatus
   rejection_reason: string | null
   is_suspended: boolean

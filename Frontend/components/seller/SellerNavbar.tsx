@@ -35,11 +35,11 @@ export function SellerNavbar({ onMenuClick }: SellerNavbarProps) {
     : "S"
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/90 backdrop-blur-xl px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/90 backdrop-blur-xl px-4 md:px-6">
       {/* Hamburger — mobile only */}
       <button
         onClick={onMenuClick}
-        className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+        className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent transition-colors"
         aria-label="Open menu"
       >
         <Menu className="size-5" />
@@ -48,7 +48,7 @@ export function SellerNavbar({ onMenuClick }: SellerNavbarProps) {
       {/* Business name — center */}
       <div className="flex-1 flex justify-center">
         {profile?.business_name && (
-          <span className="text-sm font-semibold text-slate-700 truncate max-w-xs">
+          <span className="text-sm font-semibold text-foreground truncate max-w-xs">
             {profile.business_name}
           </span>
         )}
@@ -57,16 +57,16 @@ export function SellerNavbar({ onMenuClick }: SellerNavbarProps) {
       {/* Right actions */}
       <div className="flex items-center gap-2">
         {/* Notification bell (static) */}
-        <button className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors relative">
+        <button className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors relative">
           <Bell className="size-5" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-indigo-500" />
+          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
         </button>
 
         {/* Avatar dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-full">
+          <DropdownMenuTrigger className="outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full">
             <Avatar className="h-9 w-9 cursor-pointer">
-              <AvatarFallback className="bg-indigo-600 text-white text-sm font-semibold">
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>

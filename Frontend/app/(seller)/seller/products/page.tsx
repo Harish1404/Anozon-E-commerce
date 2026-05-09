@@ -43,19 +43,19 @@ export default function SellerProductsPage() {
   const totalPages = data ? Math.ceil(data.total / LIMIT) : 1
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Products</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <h1 className="text-xl font-bold text-foreground">Products</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
               {data ? `${data.total} product${data.total !== 1 ? "s" : ""} in your store` : "Loading…"}
             </p>
           </div>
           <Link
             href="/seller/products/new"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm w-fit"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm w-fit"
           >
             <Plus className="size-4" />
             Create Product
@@ -73,8 +73,8 @@ export default function SellerProductsPage() {
                 className={cn(
                   "shrink-0 rounded-xl px-3.5 py-2 text-xs font-medium transition-colors whitespace-nowrap",
                   tab === t.key
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-card border border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                 )}
               >
                 {t.label}
@@ -84,13 +84,13 @@ export default function SellerProductsPage() {
 
           {/* Search */}
           <div className="relative sm:w-56">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search products…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
+              className="w-full rounded-xl border border-border bg-card py-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
             />
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function SellerProductsPage() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 rounded-2xl bg-slate-200 animate-pulse" />
+              <div key={i} className="h-16 rounded-2xl bg-muted animate-pulse" />
             ))}
           </div>
         ) : (
@@ -112,17 +112,17 @@ export default function SellerProductsPage() {
             <button
               disabled={page === 1}
               onClick={() => setPage(page - 1)}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+              className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-40 transition-colors"
             >
               Previous
             </button>
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </span>
             <button
               disabled={page === totalPages}
               onClick={() => setPage(page + 1)}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition-colors"
+              className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-40 transition-colors"
             >
               Next
             </button>

@@ -1,0 +1,25 @@
+/* Serif headings for luxury feel */
+[data-theme="user"] .page-heading {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Restrained CTA — wide tracking, small caps feel */
+[data-theme="user"] .btn-primary {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  border-radius: 2px;
+}
+
+/* Square-ish cards — premium, not bubbly */
+[data-theme="user"] .card,
+[data-theme="user"] .card-alt {
+  border-radius: 4px;
+}
+
+/* Thin gold focus ring */
+[data-theme="user"] .input-base:focus {
+  box-shadow: 0 0 0 1px #BA7517;
+}

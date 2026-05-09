@@ -33,7 +33,7 @@ export function BottomTabBar() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 pb-safe backdrop-blur-xl md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 pb-safe backdrop-blur-xl md:hidden">
       <div className="grid grid-cols-4 h-16 items-center">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href
@@ -45,13 +45,13 @@ export function BottomTabBar() {
               href={tab.href}
               className={cn(
                 "relative flex flex-col items-center justify-center h-full transition-colors",
-                isActive ? "text-primary" : "text-slate-500 hover:text-slate-900"
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <div className="relative w-6 h-6">
                 <Icon className={cn("size-6", isActive && "fill-primary/10")} />
                 {tab.badge && tab.badge > 0 ? (
-                  <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white ring-2 ring-white">
+                  <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-card">
                     {formatBadge(tab.badge)}
                   </span>
                 ) : null}
@@ -66,7 +66,7 @@ export function BottomTabBar() {
 
         {/* Hamburger Menu Trigger */}
         <Sheet>
-          <SheetTrigger className="relative flex flex-col items-center justify-center h-full transition-colors text-slate-500 hover:text-slate-900 outline-none">
+          <SheetTrigger className="relative flex flex-col items-center justify-center h-full transition-colors text-muted-foreground hover:text-foreground outline-none">
             <div className="w-6 h-6 flex items-center justify-center">
               <Menu className="size-6" />
             </div>
@@ -83,7 +83,7 @@ export function BottomTabBar() {
                 <>
                   <Link 
                     href="/profile" 
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   >
                     <User className="size-5" />
                     <span className="font-medium">My Profile</span>
@@ -98,7 +98,7 @@ export function BottomTabBar() {
                   {user.role === "seller" && (
                     <Link 
                       href="/seller/dashboard" 
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-teal-600 hover:bg-teal-50 hover:text-teal-700 dark:text-teal-400 dark:hover:bg-teal-950 dark:hover:text-teal-300 transition-colors"
                     >
                       <LayoutDashboard className="size-5" />
                       <span className="font-medium">Seller Dashboard</span>
@@ -107,7 +107,7 @@ export function BottomTabBar() {
                   <button
                     onClick={() => logout()}
                     disabled={isPending}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors mt-4"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 transition-colors mt-4"
                   >
                     <LogOut className="size-5" />
                     <span className="font-medium">{isPending ? "Signing out..." : "Sign Out"}</span>
@@ -115,7 +115,7 @@ export function BottomTabBar() {
                 </>
               ) : (
                 <div className="pt-4">
-                  <p className="text-sm text-slate-500 mb-4">Sign in to manage your profile and orders.</p>
+                  <p className="text-sm text-muted-foreground mb-4">Sign in to manage your profile and orders.</p>
                   <Link 
                     href="/auth/login"
                     className="block w-full rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
