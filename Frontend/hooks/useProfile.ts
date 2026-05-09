@@ -2,12 +2,16 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { profileService } from "@/services/profiles"
+import { useAuthStore } from "@/store/useAuthStore"
 import { UserProfile, Address } from "@/types"
 
 export function useProfile() {
+  const { user } = useAuthStore()
+  
   return useQuery<UserProfile>({
     queryKey: ["profile"],
     queryFn: () => profileService.getProfile().then((res) => res.data),
+    enabled: !!user,
   })
 }
 

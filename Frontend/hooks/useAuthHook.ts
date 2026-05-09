@@ -1,8 +1,9 @@
 "use client"
 
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { authService } from "@/services/auth"
 import { useAuthStore } from "@/store/useAuthStore"
+import { useCartStore } from "@/store/useCartStore"
 import { useRouter } from "next/navigation"
 import api from "@/lib/axios"
 
@@ -93,11 +94,15 @@ export function useResendOtp() {
 export function useLogout() {
     const { logout } = useAuthStore()
     const router = useRouter()
+    const {resetCart} = useCartStore()
+    const queryClient = useQueryClient()
 
     return useMutation({
         mutationFn: () => authService.logout(),
         onSuccess: () => {
             logout()
+            resetCart()
+            queryClient.clear()
             router.push("/")
         }
     })
