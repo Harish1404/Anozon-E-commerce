@@ -250,8 +250,8 @@ export function ProductForm({ initialValues, onSubmit, isLoading, submitLabel = 
 
             {/* Live price preview */}
             {actualPrice > 0 && (
-              <div className="mt-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 px-3 py-2">
-                <p className="text-xs text-emerald-700 dark:text-emerald-400">
+              <div className="mt-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                <p className="text-xs text-emerald-600 dark:text-emerald-500">
                   Final price:{" "}
                   <span className="font-bold">₹{finalPrice}</span>
                   {discountPercent > 0 && (

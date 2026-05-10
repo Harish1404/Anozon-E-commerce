@@ -34,7 +34,7 @@ export default function CartPage() {
     return (
       <div className="mx-auto max-w-7xl px-4 py-10 space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-32 w-full bg-slate-100 animate-pulse rounded-3xl" />
+          <div key={i} className="h-32 w-full bg-muted animate-pulse rounded-3xl" />
         ))}
       </div>
     )
@@ -47,11 +47,11 @@ export default function CartPage() {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white mb-6">
-          <ShoppingBag className="size-10 text-slate-700" />
+        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-card mb-6 shadow-sm border border-border">
+          <ShoppingBag className="size-10 text-primary" />
         </div>
-        <h1 className="text-3xl font-bold text-slate-700">Your Cart is empty</h1>
-        <p className="mt-4 text-slate-600">Your shopping cart lives to serve. Give it purpose — fill it with groceries, electronics, and more.</p>
+        <h1 className="text-3xl font-bold text-foreground">Your Cart is empty</h1>
+        <p className="mt-4 text-muted-foreground">Your shopping cart lives to serve. Give it purpose — fill it with groceries, electronics, and more.</p>
         <Button className="mt-8 px-8 rounded-full" onClick={() => router.push("/")}>Continue Shopping</Button>
       </div>
     )
@@ -63,49 +63,49 @@ export default function CartPage() {
 
         {/* Cart Items Section */}
         <div className="flex-1 w-full space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+          <div className="bg-card rounded-3xl border border-border p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-slate-900">Shopping Cart</h1>
-              <p className="text-sm font-medium text-slate-500">{totalItems} items</p>
+              <h1 className="text-2xl font-bold text-foreground">Shopping Cart</h1>
+              <p className="text-sm font-medium text-muted-foreground">{totalItems} items</p>
             </div>
 
             <div className="space-y-6">
               {paginatedItems.map((item) => (
                 <div key={item.product_id} className="flex flex-col sm:flex-row gap-6 group">
-                  <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-slate-100">
+                  <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-border bg-muted">
                     <img src={item.image} alt={item.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                   </div>
-
+ 
                   <div className="flex-1 flex flex-col justify-between">
                     <div className="flex justify-between items-start gap-4">
                       <div>
                         <h3
-                          className="text-lg font-bold text-slate-900 hover:text-primary cursor-pointer transition-colors"
+                          className="text-lg font-bold text-foreground hover:text-primary cursor-pointer transition-colors"
                           onClick={() => router.push(`/products/${item.product_id}`)}
                         >
                           {item.name}
                         </h3>
                         <p className="text-sm font-medium text-emerald-600 mt-1">In Stock</p>
                       </div>
-                      <p className="text-xl font-bold text-slate-900">₹{item.price.toFixed(2)}</p>
+                      <p className="text-xl font-bold text-foreground">₹{item.price.toFixed(2)}</p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-6 mt-4">
-                      <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">
+                      <div className="flex items-center gap-1 rounded-full border border-border bg-muted p-1 shadow-sm">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 rounded-full bg-white shadow-sm hover:bg-slate-50"
+                          className="h-8 w-8 rounded-full bg-background shadow-sm hover:bg-muted"
                           onClick={() => updateCart.mutate({ product_id: item.product_id, quantity: item.quantity - 1 })}
                           disabled={item.quantity <= 1 || updateCart.isPending}
                         >
                           -
                         </Button>
-                        <span className="min-w-[2.5rem] text-center text-sm font-bold">{item.quantity}</span>
+                        <span className="min-w-[2.5rem] text-center text-sm font-bold text-foreground">{item.quantity}</span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 rounded-full bg-white shadow-sm hover:bg-slate-50"
+                          className="h-8 w-8 rounded-full bg-background shadow-sm hover:bg-muted"
                           onClick={() => updateCart.mutate({ product_id: item.product_id, quantity: item.quantity + 1 })}
                           disabled={updateCart.isPending}
                         >
@@ -141,8 +141,8 @@ export default function CartPage() {
                 >
                   <ChevronLeft className="size-4" /> Previous
                 </Button>
-                <div className="text-sm font-medium text-slate-500">
-                  Page <span className="text-slate-900">{page}</span> of {totalPages}
+                <div className="text-sm font-medium text-muted-foreground">
+                  Page <span className="text-foreground">{page}</span> of {totalPages}
                 </div>
                 <Button
                   variant="outline"
@@ -160,15 +160,15 @@ export default function CartPage() {
 
         {/* Order Summary Sidebar */}
         <div className="w-full lg:w-96 sticky top-24">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900 mb-6">Order Summary</h2>
-
+          <div className="bg-card rounded-3xl border border-border p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-foreground mb-6">Order Summary</h2>
+ 
             <div className="space-y-4 text-sm">
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal ({totalItems} items)</span>
                 <span>₹{cart.summary.subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-muted-foreground">
                 <span>Delivery</span>
                 {cart.summary.delivery_charge === 0 ? (
                   <span className="text-emerald-600 font-medium">FREE</span>
@@ -176,14 +176,14 @@ export default function CartPage() {
                   <span>₹{cart.summary.delivery_charge.toFixed(2)}</span>
                 )}
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-muted-foreground">
                 <span>GST (18%)</span>
                 <span>₹{cart.summary.gst_amount.toFixed(2)}</span>
               </div>
 
               <Separator />
-
-              <div className="flex justify-between text-xl font-bold text-slate-900 pt-2">
+ 
+              <div className="flex justify-between text-xl font-bold text-foreground pt-2">
                 <span>Total</span>
                 <span>₹{cart.summary.total.toFixed(2)}</span>
               </div>
@@ -196,10 +196,10 @@ export default function CartPage() {
               Proceed to Buy
             </Button>
 
-            <div className="mt-6 flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest font-bold text-slate-400">
-              <div className="h-px w-8 bg-slate-100" />
+            <div className="mt-6 flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest font-bold text-muted-foreground/50">
+              <div className="h-px w-8 bg-border" />
               Secure Checkout
-              <div className="h-px w-8 bg-slate-100" />
+              <div className="h-px w-8 bg-border" />
             </div>
           </div>
         </div>

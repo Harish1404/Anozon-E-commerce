@@ -64,15 +64,15 @@ export default function CheckoutPage() {
   }, [isBuyNow, product, cart, buyNowQuantity])
 
   if (isLoading) {
-    return <div className="min-h-screen p-8 text-center text-slate-500">Loading checkout...</div>
+    return <div className="min-h-screen p-8 text-center text-muted-foreground animate-pulse">Loading checkout...</div>
   }
 
   if (!profile?.full_name || !profile?.mobile) {
     return (
-      <div className="min-h-screen p-8">
-        <div className="rounded-3xl border border-yellow-200 bg-yellow-50 p-8 text-yellow-800 text-center shadow-sm">
+      <div className="min-h-screen p-8 bg-background">
+        <div className="rounded-3xl border border-yellow-500/20 bg-yellow-500/10 p-8 text-yellow-600 text-center shadow-sm">
           <p className="font-semibold text-lg">Incomplete Profile</p>
-          <p className="mt-2">Please complete your profile (name and mobile) to continue.</p>
+          <p className="mt-2 text-yellow-600/80">Please complete your profile (name and mobile) to continue.</p>
           <Button className="mt-6" onClick={() => router.push("/profile")}>Go to Profile</Button>
         </div>
       </div>
@@ -81,8 +81,8 @@ export default function CheckoutPage() {
 
   if (!summary || (!isBuyNow && cart?.items.length === 0)) {
     return (
-      <div className="min-h-screen p-8 text-center">
-        <p className="text-lg font-semibold text-slate-700">Nothing to checkout.</p>
+      <div className="min-h-screen p-8 text-center bg-background">
+        <p className="text-lg font-semibold text-foreground">Nothing to checkout.</p>
         <Button className="mt-4" onClick={() => router.push("/")}>Browse Products</Button>
       </div>
     )
@@ -119,14 +119,14 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-semibold text-slate-900 mb-8">Checkout</h1>
+      <h1 className="text-3xl font-semibold text-foreground mb-8">Checkout</h1>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-8 lg:grid-cols-[1fr_400px]">
           <div className="space-y-8">
             {/* Address Selection */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900 mb-6">Delivery Address</h2>
+            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-foreground mb-6">Delivery Address</h2>
               {profile.addresses && profile.addresses.length > 0 ? (
                 <FormField
                   control={form.control}
@@ -140,15 +140,19 @@ export default function CheckoutPage() {
                           className="space-y-3"
                         >
                           {profile.addresses.map((address) => (
-                            <FormItem key={address.address_id} className="flex items-start space-x-3 space-y-0 rounded-2xl border border-slate-200 p-4 transition-colors hover:bg-slate-50 cursor-pointer">
+                            <FormItem 
+                              key={address.address_id} 
+                              className="flex items-start space-x-3 space-y-0 rounded-2xl border border-border p-4 transition-colors hover:bg-muted cursor-pointer"
+                              onClick={() => field.onChange(address.address_id)}
+                            >
                               <FormControl>
                                 <RadioGroupItem value={address.address_id} className="mt-1" />
                               </FormControl>
                               <div className="flex-1 cursor-pointer">
-                                <FormLabel className="font-semibold text-slate-900 cursor-pointer">
-                                  {address.label} {address.is_default && <span className="ml-2 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">Default</span>}
+                                <FormLabel className="font-semibold text-foreground cursor-pointer">
+                                  {address.label} {address.is_default && <span className="ml-2 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Default</span>}
                                 </FormLabel>
-                                <p className="mt-1 text-sm text-slate-600">
+                                <p className="mt-1 text-sm text-muted-foreground">
                                   {address.line1}, {address.line2 && `${address.line2}, `}{address.city}, {address.state} - {address.pincode}
                                 </p>
                               </div>
@@ -161,16 +165,16 @@ export default function CheckoutPage() {
                   )}
                 />
               ) : (
-                <div className="text-center p-6 border border-dashed border-slate-300 rounded-2xl">
-                  <p className="text-slate-600 mb-4">You have no saved addresses.</p>
+                <div className="text-center p-6 border border-dashed border-border rounded-2xl">
+                  <p className="text-muted-foreground mb-4">You have no saved addresses.</p>
                   <Button type="button" variant="outline" onClick={() => router.push("/profile")}>Add an Address</Button>
                 </div>
               )}
             </div>
 
             {/* Payment Selection */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900 mb-6">Payment Method</h2>
+            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-foreground mb-6">Payment Method</h2>
               <FormField
                 control={form.control}
                 name="payment_method"
@@ -182,17 +186,23 @@ export default function CheckoutPage() {
                         value={field.value}
                         className="space-y-3"
                       >
-                        <FormItem className="flex items-center space-x-3 space-y-0 rounded-2xl border border-slate-200 p-4 transition-colors hover:bg-slate-50 cursor-pointer">
+                        <FormItem 
+                          className="flex items-center space-x-3 space-y-0 rounded-2xl border border-border p-4 transition-colors hover:bg-muted cursor-pointer"
+                          onClick={() => field.onChange("online")}
+                        >
                           <FormControl>
                             <RadioGroupItem value="online" />
                           </FormControl>
-                          <FormLabel className="font-medium text-slate-900 cursor-pointer">Online Payment (Cards, UPI, NetBanking)</FormLabel>
+                          <FormLabel className="font-medium text-foreground cursor-pointer">Online Payment (Cards, UPI, NetBanking)</FormLabel>
                         </FormItem>
-                        <FormItem className="flex items-center space-x-3 space-y-0 rounded-2xl border border-slate-200 p-4 transition-colors hover:bg-slate-50 cursor-pointer">
+                        <FormItem 
+                          className="flex items-center space-x-3 space-y-0 rounded-2xl border border-border p-4 transition-colors hover:bg-muted cursor-pointer"
+                          onClick={() => field.onChange("cod")}
+                        >
                           <FormControl>
                             <RadioGroupItem value="cod" />
                           </FormControl>
-                          <FormLabel className="font-medium text-slate-900 cursor-pointer">Cash on Delivery (COD)</FormLabel>
+                          <FormLabel className="font-medium text-foreground cursor-pointer">Cash on Delivery (COD)</FormLabel>
                         </FormItem>
                       </RadioGroup>
                     </FormControl>
@@ -205,37 +215,37 @@ export default function CheckoutPage() {
 
           {/* Order Summary */}
           <div className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sticky top-24">
-              <h2 className="text-xl font-semibold text-slate-900 mb-6">Order Summary</h2>
+            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm sticky top-24">
+              <h2 className="text-xl font-semibold text-foreground mb-6">Order Summary</h2>
 
               {isBuyNow && product ? (
-                <div className="mb-6 flex gap-4 pb-6 border-b border-slate-100">
-                  <img src={product.image_urls?.[0] || "/placeholder.png"} alt={product.name} className="h-16 w-16 rounded-xl object-cover" />
+                <div className="mb-6 flex gap-4 pb-6 border-b border-border">
+                  <img src={product.image_urls?.[0] || "/placeholder.png"} alt={product.name} className="h-16 w-16 rounded-xl object-cover bg-muted" />
                   <div>
-                    <p className="font-medium text-sm text-slate-900 line-clamp-2">{product.name}</p>
-                    <p className="text-xs text-slate-500 mt-1">Qty: {buyNowQuantity}</p>
+                    <p className="font-medium text-sm text-foreground line-clamp-2">{product.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Qty: {buyNowQuantity}</p>
                   </div>
                 </div>
               ) : null}
 
-              <div className="space-y-4 text-sm text-slate-600">
+              <div className="space-y-4 text-sm text-muted-foreground">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>₹{summary.subtotal.toFixed(2)}</span>
+                  <span className="text-foreground">₹{summary.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>GST ({summary.gst_rate}%)</span>
-                  <span>₹{summary.gst_amount.toFixed(2)}</span>
+                  <span className="text-foreground">₹{summary.gst_amount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Delivery</span>
                   {summary.delivery_charge === 0 ? (
                     <span className="text-emerald-600 font-medium">Free</span>
                   ) : (
-                    <span>₹{summary.delivery_charge.toFixed(2)}</span>
+                    <span className="text-foreground">₹{summary.delivery_charge.toFixed(2)}</span>
                   )}
                 </div>
-                <div className="flex justify-between border-t border-slate-200 pt-4 text-lg font-semibold text-slate-900">
+                <div className="flex justify-between border-t border-border pt-4 text-lg font-semibold text-foreground">
                   <span>Total</span>
                   <span>₹{summary.total.toFixed(2)}</span>
                 </div>

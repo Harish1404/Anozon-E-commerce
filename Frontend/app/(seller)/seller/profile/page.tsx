@@ -35,9 +35,9 @@ export default function SellerProfilePage() {
     const status = profile.application_status
     if (profile.is_suspended) {
       return (
-        <div className="flex items-start gap-2 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3">
-          <XCircle className="size-4 text-rose-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-rose-800">
+        <div className="flex items-start gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">
+          <XCircle className="size-4 text-destructive mt-0.5 shrink-0" />
+          <p className="text-sm text-destructive font-medium">
             <strong>Account suspended.</strong> Please contact support for assistance.
           </p>
         </div>
@@ -45,26 +45,26 @@ export default function SellerProfilePage() {
     }
     if (status === "approved") {
       return (
-        <div className="flex items-start gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
-          <CheckCircle2 className="size-4 text-emerald-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-emerald-800"><strong>Your seller account is active.</strong></p>
+        <div className="flex items-start gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3">
+          <CheckCircle2 className="size-4 text-emerald-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-emerald-600 font-medium"><strong>Your seller account is active.</strong></p>
         </div>
       )
     }
     if (status === "rejected") {
       return (
-        <div className="flex items-start gap-2 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3">
-          <AlertTriangle className="size-4 text-rose-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-rose-800">
+        <div className="flex items-start gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">
+          <AlertTriangle className="size-4 text-destructive mt-0.5 shrink-0" />
+          <p className="text-sm text-destructive font-medium">
             <strong>Application rejected:</strong> {profile.rejection_reason ?? "No reason provided"}.
           </p>
         </div>
       )
     }
     return (
-      <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
-        <Clock className="size-4 text-amber-600 mt-0.5 shrink-0" />
-        <p className="text-sm text-amber-800"><strong>Your seller application is under review.</strong></p>
+      <div className="flex items-start gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
+        <Clock className="size-4 text-amber-500 mt-0.5 shrink-0" />
+        <p className="text-sm text-amber-600 font-medium"><strong>Your seller application is under review.</strong></p>
       </div>
     )
   }
@@ -139,10 +139,10 @@ export default function SellerProfilePage() {
                 <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                   <h3 className="text-sm font-semibold text-foreground mb-3">Application Status</h3>
                   <span className={cn(
-                    "inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize",
-                    profile.application_status === "approved" ? "bg-emerald-100 text-emerald-700" :
-                    profile.application_status === "rejected" ? "bg-rose-100 text-rose-700" :
-                    "bg-amber-100 text-amber-700"
+                    "inline-flex rounded-full px-3 py-1 text-[10px] font-bold capitalize",
+                    profile.application_status === "approved" ? "bg-emerald-500/10 text-emerald-500" :
+                    profile.application_status === "rejected" ? "bg-destructive/10 text-destructive" :
+                    "bg-amber-500/10 text-amber-500"
                   )}>
                     {profile.application_status}
                   </span>

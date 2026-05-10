@@ -13,11 +13,11 @@ interface SellerOrderItemRowProps {
 }
 
 const statusStyles: Record<string, string> = {
-  pending:   "bg-slate-100 text-slate-700",
-  confirmed: "bg-blue-100 text-blue-700",
-  shipped:   "bg-violet-100 text-violet-700",
-  delivered: "bg-emerald-100 text-emerald-700",
-  cancelled: "bg-rose-100 text-rose-700",
+  pending:   "bg-muted text-muted-foreground",
+  confirmed: "bg-blue-500/10 text-blue-500",
+  shipped:   "bg-violet-500/10 text-violet-500",
+  delivered: "bg-emerald-500/10 text-emerald-500",
+  cancelled: "bg-rose-500/10 text-rose-500",
 }
 
 export function SellerOrderItemRow({ item, orderId }: SellerOrderItemRowProps) {
@@ -26,9 +26,9 @@ export function SellerOrderItemRow({ item, orderId }: SellerOrderItemRowProps) {
 
   return (
     <>
-      <div className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4">
+      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
         {/* Image */}
-        <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-slate-100">
+        <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-muted">
           {item.image ? (
             <Image src={item.image} alt={item.name} fill className="object-cover" sizes="56px" />
           ) : null}
@@ -36,9 +36,9 @@ export function SellerOrderItemRow({ item, orderId }: SellerOrderItemRowProps) {
 
         {/* Info */}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-800 truncate">{item.name}</p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            ₹{item.price} × {item.quantity} = <span className="font-medium text-slate-700">₹{item.item_total}</span>
+          <p className="text-sm font-semibold text-foreground truncate">{item.name}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            ₹{item.price} × {item.quantity} = <span className="font-medium text-foreground">₹{item.item_total}</span>
           </p>
           <span className={cn("mt-1 inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold capitalize", statusStyles[item.item_status])}>
             {item.item_status}
@@ -53,8 +53,8 @@ export function SellerOrderItemRow({ item, orderId }: SellerOrderItemRowProps) {
             className={cn(
               "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors",
               isTerminal
-                ? "cursor-not-allowed bg-slate-100 text-slate-400"
-                : "bg-indigo-600 text-white hover:bg-indigo-700"
+                ? "cursor-not-allowed bg-muted text-muted-foreground/50"
+                : "bg-primary text-primary-foreground hover:opacity-90"
             )}
           >
             {isTerminal ? "Final" : "Update"}
