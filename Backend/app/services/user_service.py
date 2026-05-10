@@ -62,13 +62,24 @@ class UserService:
         """
         if not ObjectId.is_valid(user_id):
             raise HTTPException(status_code=400, detail="Invalid user ID")
-        
-        cart = await get_cart_by_user(cart_collection, user_id)
 
+        cart = await get_cart_by_user(cart_collection, user_id)
         if not cart:
             return []
+            
+        wishlist_items = []
+        for w_item in cart.get("wishlist", []):
+            prod = await fetch_product_by_id(products_collection(), w_item["product_id"])
+            if prod:
+                wishlist_items.append({
+                    "product_id": str(prod["_id"]),
+                    "name": prod["name"],
+                    "image": prod.get("image_urls", [""])[0] if prod.get("image_urls") else "",
+                    "price": float(prod.get("price", 0.0)),
+                    "added_at": w_item.get("added_at")
+                })
         
-        return cart.get("wishlist", [])
+        return wishlist_items
 
     # --- 🛒 CART LOGIC ---
     @staticmethod

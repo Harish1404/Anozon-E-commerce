@@ -5,7 +5,9 @@ export type Role = "super_admin" | "admin" | "seller" | "user"
 export type OrderStatus =
   | "pending"
   | "confirmed"
+  | "partially_shipped"
   | "shipped"
+  | "partially_delivered"
   | "delivered"
   | "cancelled"
 
@@ -128,6 +130,21 @@ export interface Cart {
   summary: CartSummary
 }
 
+// ── Wishlist ──────────────────────────────────────────────────────────────
+
+export interface WishlistItem {
+  product_id: string
+  name: string
+  image: string
+  price: number
+  added_at: string
+}
+
+// Legacy alias
+export type Wishlist = WishlistItem
+
+
+
 // ── Orders ────────────────────────────────────────────────────────────────
 
 export interface OrderItem {
@@ -225,6 +242,7 @@ export interface TopProduct {
   image: string
   units_sold: number
   revenue: number
+  avg_rating?: number
 }
 
 export interface RecentOrderEntry {
@@ -301,6 +319,28 @@ export interface PaginatedSellerProductResponse {
 export interface PaginatedSellerOrderResponse {
   items: SellerOrder[]
   total: number
+  page: number
+  limit: number
+}
+
+// ── Seller Application ───────────────────────────────────────────────────
+
+export interface SellerApplicationStatusResponse {
+  application_status: ApplicationStatus | null
+  submitted_at: string | null
+  reviewed_at: string | null
+  rejection_reason: string | null
+  reapply_attempts_remaining: number
+}
+
+// ── Seller Reviews ───────────────────────────────────────────────────────
+
+export interface SellerProductReviewsResponse {
+  product_id: string
+  product_name: string
+  avg_rating: number
+  review_count: number
+  reviews: Review[]
   page: number
   limit: number
 }

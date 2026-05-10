@@ -59,7 +59,7 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4 py-10">
             <div className="w-full max-w-md">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="h-20 w-auto ">
+                    <div className="h-20 w-auto mb-4">
                         <img
                             src="/anozon.png"
                             alt="Anozon Logo"

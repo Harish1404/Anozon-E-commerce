@@ -6,7 +6,12 @@ import { Product } from "@/types"
 import { Button } from "@/components/ui/button"
 import { ReviewCard } from "@/components/product/ReviewCard"
 import { RelatedProducts } from "@/components/product/RelatedProducts"
-import { ShoppingCart, Zap, Truck, RotateCcw, ShieldCheck, AlertCircle } from "lucide-react"
+import { useIsWishlisted, useToggleWishlist } from "@/hooks/useWishlist"
+import {
+  ShoppingCart, Zap, Truck, RotateCcw, ShieldCheck, AlertCircle,
+  Heart, Store, Star
+} from "lucide-react"
+import { cn, formatCompactNumber } from "@/lib/utils"
 
 interface ProductDetailProps {
   product: Product
@@ -19,7 +24,10 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
   const router = useRouter()
   const [quantity, setQuantity] = useState(1)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [activeTab, setActiveTab] = useState<TabId>("reviews")
+  const [activeTab, setActiveTab] = useState<TabId>("specs")
+
+  const isWishlisted = useIsWishlisted(product._id)
+  const toggleWishlist = useToggleWishlist()
 
   const imageUrl = product.image_urls?.[selectedIndex] ?? "/placeholder.png"
   const savings = product.actual_price - product.price
@@ -80,6 +88,7 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
 
         {/* Right — Info Zone */}
         <div className="flex flex-col gap-6 p-6 sm:p-8 bg-background">
+          {/* Category + Rating + Seller name + Heart */}
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-[11px] uppercase tracking-widest text-muted-foreground border border-border px-3 py-1 rounded-sm">
               {product.category}
@@ -89,6 +98,42 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
               <span className="font-medium text-foreground">{product.avg_rating.toFixed(1)}</span>
               <span>({product.review_count} reviews)</span>
             </div>
+
+            {/* Seller name + rating pill (top-right area) */}
+            {product.seller_details?.business_name && (
+              <span className="ml-auto flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground border border-border">
+                <Store className="size-3" />
+                <span className="font-medium text-foreground">{product.seller_details.business_name}</span>
+                {product.seller_details.rating != null && product.seller_details.rating > 0 && (
+                  <>
+                    <span className="text-border">•</span>
+                    <Star className="size-3 text-amber-500 fill-amber-500" />
+                    <span>{product.seller_details.rating.toFixed(1)}</span>
+                  </>
+                )}
+              </span>
+            )}
+
+            {/* Heart button */}
+            <button
+              type="button"
+              onClick={() => toggleWishlist.mutate(product._id)}
+              disabled={toggleWishlist.isPending}
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all duration-200",
+                isWishlisted
+                  ? "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
+                  : "border-border bg-muted text-muted-foreground hover:text-destructive hover:border-destructive/30"
+              )}
+              aria-label={isWishlisted ? "Remove from favourites" : "Add to favourites"}
+            >
+              <Heart
+                className={cn(
+                  "size-5 transition-all duration-200",
+                  isWishlisted && "fill-current scale-110"
+                )}
+              />
+            </button>
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight text-foreground">
@@ -110,7 +155,7 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
                 <span className="text-base text-muted-foreground line-through">
                   ₹{product.actual_price.toLocaleString()}
                 </span>
-                <span className="text-[11px] font-medium bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300 px-2.5 py-1 rounded-sm">
+                <span className="text-[11px] font-medium bg-primary/10 text-primary px-2.5 py-1 rounded-sm">
                   You save ₹{savings.toLocaleString()}
                 </span>
               </>
@@ -175,7 +220,7 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
               { icon: <ShieldCheck className="size-3.5" />, label: "1-yr warranty" },
             ].map(({ icon, label }) => (
               <span key={label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="text-orange-600">{icon}</span>
+                <span className="text-primary">{icon}</span>
                 {label}
               </span>
             ))}
@@ -183,10 +228,10 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
         </div>
       </div>
 
-      {/* ── Reviews + Specs Tabs ── */}
+      {/* ── Specs + Reviews Tabs ── */}
       <div className="border-t border-border">
         <div className="flex px-4 sm:px-6 border-b border-border">
-          {(["reviews", "specs"] as TabId[]).map((tab) => (
+          {(["specs", "reviews"] as TabId[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -228,19 +273,56 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
           )}
 
           {activeTab === "specs" && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[
-                { label: "Category", value: product.category },
-                { label: "In Stock", value: `${product.stock} units` },
-                { label: "Rating", value: `${product.avg_rating.toFixed(1)} / 5` },
-                { label: "Reviews", value: product.review_count },
-                { label: "Discount", value: product.discount_percent > 0 ? `${product.discount_percent}%` : "None" },
-              ].map(({ label, value }) => (
-                <div key={label} className="bg-muted rounded-md px-4 py-3 border border-border">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{label}</p>
-                  <p className="text-sm font-medium text-foreground">{value}</p>
+            <div className="space-y-6">
+              {/* Spec grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  { label: "Category", value: product.category },
+                  { label: "In Stock", value: `${product.stock} units` },
+                  { label: "Rating", value: `${product.avg_rating.toFixed(1)} / 5` },
+                  { label: "Reviews", value: product.review_count },
+                  { label: "Likes", value: formatCompactNumber(product.product_likes) },
+                  { label: "Discount", value: product.discount_percent > 0 ? `${product.discount_percent}%` : "None" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="bg-muted rounded-md px-4 py-3 border border-border">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{label}</p>
+                    <p className="text-sm font-medium text-foreground">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Seller Details Block */}
+              {product.seller_details && (
+                <div className="rounded-xl border border-border bg-muted/30 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Store className="size-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Sold by</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {product.seller_details.business_name && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Business Name</p>
+                        <p className="text-sm font-medium text-foreground">{product.seller_details.business_name}</p>
+                      </div>
+                    )}
+                    {product.seller_details.business_type && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Business Type</p>
+                        <p className="text-sm font-medium text-foreground capitalize">{product.seller_details.business_type}</p>
+                      </div>
+                    )}
+                    {product.seller_details.rating != null && product.seller_details.rating > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Seller Rating</p>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-amber-500">{"★".repeat(Math.round(product.seller_details.rating))}</span>
+                          <span className="text-sm font-medium text-foreground">{product.seller_details.rating.toFixed(1)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>

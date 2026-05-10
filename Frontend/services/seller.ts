@@ -1,6 +1,6 @@
 // services/seller.ts
 import api from "@/lib/axios"
-import { SellerDashboard, SellerProfile, ItemStatus, PaginatedSellerProductResponse, PaginatedSellerOrderResponse } from "@/types"
+import { SellerDashboard, SellerProfile, ItemStatus, PaginatedSellerProductResponse, PaginatedSellerOrderResponse, SellerProductReviewsResponse } from "@/types"
 import { Product } from "@/types"
 
 export const sellerService = {
@@ -31,8 +31,8 @@ export const sellerService = {
   deleteProduct: (product_id: string) =>
     api.delete<{ message: string }>(`/seller/products/${product_id}`),
 
-  // Orders
-  getOrders: (params?: { page?: number; limit?: number }) =>
+  // Orders (with server-side filters)
+  getOrders: (params?: { page?: number; limit?: number; status?: string; year?: number; month?: number }) =>
     api.get<PaginatedSellerOrderResponse>("/seller/orders", { params }),
 
   getOrder: (order_id: string) =>
@@ -41,6 +41,10 @@ export const sellerService = {
   // URL includes /status suffix — required by backend route
   updateItemStatus: (order_id: string, product_id: string, item_status: ItemStatus) =>
     api.patch(`/seller/orders/${order_id}/items/${product_id}/status`, { item_status }),
+
+  // Product Reviews (seller view)
+  getProductReviews: (product_id: string, params?: { page?: number; limit?: number }) =>
+    api.get<SellerProductReviewsResponse>(`/seller/products/${product_id}/reviews`, { params }),
 
   // Profile
   getProfile: () =>

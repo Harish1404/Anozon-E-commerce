@@ -26,6 +26,11 @@ export function SellerOrderCard({ order }: SellerOrderCardProps) {
     (sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 1), 0
   )
 
+  const dateStr = order.created_at.endsWith("Z") || order.created_at.includes("+")
+    ? order.created_at
+    : `${order.created_at}Z`
+  const date = new Date(dateStr)
+
   return (
     <Link
       href={`/seller/orders/${order._id}`}
@@ -47,7 +52,7 @@ export function SellerOrderCard({ order }: SellerOrderCardProps) {
           </span>
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {itemCount} item{itemCount !== 1 ? "s" : ""} · {format(new Date(order.created_at), "d MMM yyyy")}
+          {itemCount} item{itemCount !== 1 ? "s" : ""} · {format(date, "d MMM yyyy, h:mm a")}
         </p>
       </div>
 

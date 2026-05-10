@@ -26,16 +26,16 @@ const YEAR_OPTIONS = [
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("orders")
   const [year, setYear] = useState("current_month")
-    const [page, setPage] = useState(1)
-    
-    useEffect(() => {
-        const labels: Record<string, string> = {
-            orders: "Orders",
-            buy_again: "Order Again",
-            cancelled: "Cancelled Orders"
-        }
-        document.title = `Anozon - ${labels[activeTab] || "Orders"}`
-    }, [activeTab])
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    const labels: Record<string, string> = {
+      orders: "Orders",
+      buy_again: "Order Again",
+      cancelled: "Cancelled Orders"
+    }
+    document.title = `Anozon - ${labels[activeTab] || "Orders"}`
+  }, [activeTab])
 
   const getFilterOptions = () => {
     const now = new Date()
@@ -85,22 +85,22 @@ export default function OrdersPage() {
 
       {/* Page header */}
       <div className="mb-7">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Your orders</h1>
-        <p className="mt-1 text-sm text-slate-500">Track, manage, and reorder your purchases</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Your orders</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Track, manage, and reorder your purchases</p>
       </div>
 
       {/* Tabs + filter row */}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+        <div className="flex gap-1 rounded-xl bg-muted p-1">
           {TABS.map((tab) => (
             <button
               key={tab.value}
               onClick={() => handleTabChange(tab.value)}
               className={cn(
-                "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
+                "rounded-lg px-4 py-1.5 text-sm font-medium transition-all",
                 activeTab === tab.value
-                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-500 hover:text-slate-700"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {tab.label}
@@ -124,13 +124,13 @@ export default function OrdersPage() {
       {isLoading ? (
         <OrderSkeleton />
       ) : isError ? (
-        <div className="rounded-xl border border-red-100 bg-red-50 px-6 py-8 text-center">
-          <p className="text-sm font-medium text-red-700">Unable to load orders. Please try again later.</p>
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-6 py-8 text-center">
+          <p className="text-sm font-medium text-destructive">Unable to load orders. Please try again later.</p>
         </div>
       ) : data?.items.length ? (
         <>
-          <p className="mb-4 text-sm text-slate-500">
-            <span className="font-semibold text-slate-800">{data.total}</span> orders placed
+          <p className="mb-4 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{data.total}</span> orders placed
           </p>
 
           <div className="space-y-3">
@@ -177,12 +177,12 @@ export default function OrdersPage() {
           )}
         </>
       ) : (
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-20 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
-            <PackageOpen className="size-7 text-slate-400" />
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-muted/40 py-20 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-background shadow-sm ring-1 ring-border">
+            <PackageOpen className="size-7 text-muted-foreground" />
           </div>
-          <p className="text-base font-semibold text-slate-800">No orders found</p>
-          <p className="mt-1.5 max-w-xs text-sm text-slate-500 leading-relaxed">{emptyMessage}</p>
+          <p className="text-base font-semibold text-foreground">No orders found</p>
+          <p className="mt-1.5 max-w-xs text-sm text-muted-foreground leading-relaxed">{emptyMessage}</p>
         </div>
       )}
     </div>

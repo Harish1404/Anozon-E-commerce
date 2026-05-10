@@ -6,9 +6,10 @@ import { useAuthStore } from "@/store/useAuthStore"
 import { useLogout } from "@/hooks/useAuthHook"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { LogOut, User, ShoppingBag, ShoppingCart, Package, Bell, LayoutDashboard } from "lucide-react"
+import { LogOut, User, ShoppingBag, ShoppingCart, Package, Bell, LayoutDashboard, Heart } from "lucide-react"
 import { toast } from "sonner"
 import { useCart } from "@/hooks/useCart"
+import { useWishlist } from "@/hooks/useWishlist"
 import { useProfile } from "@/hooks/useProfile"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
 
@@ -16,6 +17,7 @@ export function Navbar() {
   const { user } = useAuthStore()
   const { mutate: logout, isPending } = useLogout()
   const { data: cart } = useCart()
+  const { data: wishlist } = useWishlist()
   const { data: profile } = useProfile()
   const router = useRouter()
 
@@ -47,6 +49,17 @@ export function Navbar() {
               )}
             </div>
             Cart
+          </Link>
+          <Link href="/favourites" className="relative rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-1.5">
+            <div className="relative">
+              <Heart className="size-4" />
+              {wishlist && wishlist.length > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-card">
+                  {wishlist.length > 99 ? "99+" : wishlist.length}
+                </span>
+              )}
+            </div>
+            Wishlist
           </Link>
           <Link href="/orders" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-1.5">
             <Package className="size-4" />

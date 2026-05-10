@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query, status
+from typing import Optional
 from app.deps.roles import require_permission, get_current_user
 from app.services.seller_service import SellerService
 from app.models.product_model import ProductCreate, ProductUpdate, ProductStockUpdate, ProductToggleRequest
@@ -56,8 +57,15 @@ async def delete_product(product_id: str, user=Depends(get_current_user)):
 
 # --- Orders ---
 @router.get("/orders", dependencies=[Depends(require_permission("order:own:view"))])
-async def get_orders(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100), user=Depends(get_current_user)):
-    return await SellerService.get_orders(str(user["_id"]), page, limit)
+async def get_orders(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    status: Optional[str] = Query(None, description="Filter by item status"),
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    user=Depends(get_current_user)
+):
+    return await SellerService.get_orders(str(user["_id"]), page, limit, status=status, year=year, month=month)
 
 @router.get("/orders/{order_id}", dependencies=[Depends(require_permission("order:own:view"))])
 async def get_order_by_id(order_id: str, user=Depends(get_current_user)):

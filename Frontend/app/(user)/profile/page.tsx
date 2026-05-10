@@ -11,7 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Pencil, Trash2, Plus, Check, X, MapPin, Star } from "lucide-react"
+import { Pencil, Trash2, Plus, Check, X, MapPin, Star, Building2, ArrowRight } from "lucide-react"
+import Link from "next/link"
 
 const addressSchema = z.object({
   label: z.string().min(2, "Label is required"),
@@ -368,6 +369,26 @@ export default function ProfilePage() {
           )}
         </div>
       </section>
+
+      {/* Seller Account Link */}
+      {user?.role !== "seller" && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Building2 className="size-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">Become a Seller</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Start selling your products on Anozon today.</p>
+            </div>
+          </div>
+          <Link href="/profile/seller-apply">
+            <Button size="sm" className="rounded-xl">
+              Apply Now <ArrowRight className="size-4 ml-1.5" />
+            </Button>
+          </Link>
+        </section>
+      )}
     </div>
   )
 }

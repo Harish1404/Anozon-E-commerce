@@ -67,10 +67,25 @@ async def get_product_by_slug(collection, seller_id: str, slug: str):
         logger.error(f"DB Error fetching product by slug: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
-async def get_seller_orders(collection, seller_id: str, skip: int = 0, limit: int = 10):
+async def get_seller_orders(collection, seller_id: str, skip: int = 0, limit: int = 10, status: str = None, year: int = None, month: int = None):
     try:
+        base_match = {"items.seller_id": ObjectId(seller_id)}
+
+        # Date filter on order created_at
+        if year and month:
+            start = datetime(year, month, 1, tzinfo=timezone.utc)
+            if month == 12:
+                end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+            else:
+                end = datetime(year, month + 1, 1, tzinfo=timezone.utc)
+            base_match["created_at"] = {"$gte": start, "$lt": end}
+        elif year:
+            start = datetime(year, 1, 1, tzinfo=timezone.utc)
+            end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+            base_match["created_at"] = {"$gte": start, "$lt": end}
+
         pipeline = [
-            {"$match": {"items.seller_id": ObjectId(seller_id)}},
+            {"$match": base_match},
             {"$addFields": {
                 "items": {
                     "$filter": {
@@ -80,16 +95,23 @@ async def get_seller_orders(collection, seller_id: str, skip: int = 0, limit: in
                     }
                 }
             }},
+        ]
+
+        # Status filter on item_status (post seller-item filter)
+        if status:
+            pipeline.append({
+                "$match": {"items.item_status": status}
+            })
+
+        count_pipeline = pipeline.copy()
+        count_pipeline.append({"$count": "total"})
+
+        pipeline.extend([
             {"$sort": {"created_at": -1}},
             {"$skip": skip},
             {"$limit": limit}
-        ]
-        
-        count_pipeline = [
-            {"$match": {"items.seller_id": ObjectId(seller_id)}},
-            {"$count": "total"}
-        ]
-        
+        ])
+
         cursor = collection.aggregate(pipeline)
         items = await cursor.to_list(length=limit)
         
@@ -201,166 +223,155 @@ async def get_seller_dashboard_stats(product_collection, order_collection, selle
         # Build product_id → product map for top products lookup
         product_map = {str(p["_id"]): p for p in products}
 
-        # ── 2. All Seller Order Items (non-cancelled) ─────────────────────────
-        items_pipeline = [
+        # ── 2. Aggregation Pipeline for Revenue and Stats ─────────────────────
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_of_week  = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=now.weekday())
+        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        thirty_days_ago = start_of_today - timedelta(days=30)
+
+        stats_pipeline = [
             {"$match": {"items.seller_id": ObjectId(seller_id)}},
             {"$unwind": "$items"},
-            {"$match": {
-                "items.seller_id": ObjectId(seller_id),
-                "items.item_status": {"$nin": ["cancelled"]}
-            }},
+            {"$match": {"items.seller_id": ObjectId(seller_id)}}, # Ensure unwound items are still seller's
+            {"$facet": {
+                "order_counts": [
+                    {"$group": {"_id": {"order_id": "$_id", "status": "$items.item_status"}}},
+                    {"$group": {"_id": "$_id.status", "count": {"$sum": 1}}}
+                ],
+                "unique_order_count": [
+                    {"$group": {"_id": "$_id"}},
+                    {"$count": "total"}
+                ],
+                "revenue": [
+                    {"$match": {"items.item_status": {"$ne": "cancelled"}}},
+                    {"$project": {
+                        "revenue": {"$multiply": ["$items.price", "$items.quantity"]},
+                        "created_at": "$created_at"
+                    }},
+                    {"$group": {
+                        "_id": None,
+                        "all_time": {"$sum": "$revenue"},
+                        "this_month": {
+                            "$sum": {"$cond": [{"$gte": ["$created_at", start_of_month]}, "$revenue", 0]}
+                        },
+                        "this_week": {
+                            "$sum": {"$cond": [{"$gte": ["$created_at", start_of_week]}, "$revenue", 0]}
+                        },
+                        "today": {
+                            "$sum": {"$cond": [{"$gte": ["$created_at", start_of_today]}, "$revenue", 0]}
+                        }
+                    }}
+                ],
+                "weekly_revenue": [
+                    {"$match": {"items.item_status": {"$ne": "cancelled"}}},
+                    {"$match": {"created_at": {"$gte": start_of_today - timedelta(days=6)}}},
+                    {"$group": {
+                        "_id": {
+                            "$dateToString": {"format": "%Y-%m-%d", "date": "$created_at"}
+                        },
+                        "revenue": {"$sum": {"$multiply": ["$items.price", "$items.quantity"]}}
+                    }}
+                ],
+                "top_products": [
+                    {"$match": {"items.item_status": {"$ne": "cancelled"}}},
+                    {"$match": {"created_at": {"$gte": thirty_days_ago}}},
+                    {"$group": {
+                        "_id": "$items.product_id",
+                        "revenue": {"$sum": {"$multiply": ["$items.price", "$items.quantity"]}},
+                        "units_sold": {"$sum": "$items.quantity"},
+                        "name": {"$first": "$items.name"},
+                        "image": {"$first": "$items.image"}
+                    }},
+                    {"$sort": {"revenue": -1}},
+                    {"$limit": 5}
+                ]
+            }}
+        ]
+
+        result = await order_collection.aggregate(stats_pipeline).to_list(length=1)
+        data = result[0] if result else {}
+
+        # ── 3. Extract Order Status Breakdown ─────────────────────────────────
+        order_counts = {item["_id"]: item["count"] for item in data.get("order_counts", [])}
+        total_orders_count = data.get("unique_order_count", [{}])[0].get("total", 0) if data.get("unique_order_count") else 0
+
+        # ── 4. Extract Revenue Calculations ───────────────────────────────────
+        rev_data = data.get("revenue", [{}])[0] if data.get("revenue") else {}
+        all_time_rev = rev_data.get("all_time", 0.0)
+        month_rev    = rev_data.get("this_month", 0.0)
+        week_rev     = rev_data.get("this_week", 0.0)
+        today_rev    = rev_data.get("today", 0.0)
+
+        # ── 5. Extract Weekly Revenue (last 7 calendar days) ──────────────────
+        weekly_raw = {item["_id"]: item["revenue"] for item in data.get("weekly_revenue", [])}
+        days_abbr  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        weekly_revenue = []
+        for i in range(6, -1, -1):
+            day_date = start_of_today - timedelta(days=i)
+            day_str = day_date.strftime("%Y-%m-%d")
+            weekly_revenue.append({
+                "day": days_abbr[day_date.weekday()],
+                "revenue": round(weekly_raw.get(day_str, 0.0), 2),
+                "is_today": i == 0
+            })
+
+        # ── 6. Extract Top 5 Products (last 30 days by revenue) ───────────────
+        top_products = []
+        for p in data.get("top_products", []):
+            pid = str(p["_id"])
+            prod = product_map.get(pid, {})
+            top_products.append({
+                "product_id": pid,
+                "name": p.get("name") or prod.get("name", "Unknown"),
+                "image": p.get("image") or (prod.get("image_urls") or [""])[0],
+                "units_sold": p.get("units_sold", 0),
+                "revenue": round(p.get("revenue", 0.0), 2),
+                "avg_rating": float(prod.get("avg_rating", 0))
+            })
+
+        # ── 7. Recent 5 Orders ────────────────────────────────────────────────
+        recent_pipeline = [
+            {"$match": {"items.seller_id": ObjectId(seller_id)}},
+            {"$sort": {"created_at": -1}},
+            {"$limit": 5},
             {"$project": {
                 "_id": 1,
                 "created_at": 1,
                 "order_status": 1,
-                "items": 1,
                 "shipping_address": 1,
-            }},
-        ]
-        all_items = await order_collection.aggregate(items_pipeline).to_list(length=None)
-
-        # ── 3. Order Status Breakdown ─────────────────────────────────────────
-        # Count unique orders per status
-        order_status_map: dict[str, set] = {
-            "confirmed": set(), "shipped": set(), "delivered": set(), "cancelled": set()
-        }
-        all_order_ids: set = set()
-        for row in all_items:
-            oid = str(row["_id"])
-            all_order_ids.add(oid)
-            status = row["items"].get("item_status", "")
-            if status in order_status_map:
-                order_status_map[status].add(oid)
-
-        total_orders_count = len(all_order_ids)
-
-        # ── 4. Revenue Calculations ───────────────────────────────────────────
-        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        # ISO week starts Monday
-        start_of_week  = now.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ) - timedelta(days=now.weekday())
-        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
-        all_time_rev   = 0.0
-        month_rev      = 0.0
-        week_rev       = 0.0
-        today_rev      = 0.0
-
-        for row in all_items:
-            item      = row["items"]
-            revenue   = float(item.get("price", 0)) * int(item.get("quantity", 1))
-            created   = row.get("created_at")
-            if created is None:
-                continue
-            # Normalize to UTC-aware for comparison
-            if hasattr(created, "tzinfo") and created.tzinfo is not None:
-                created = created.astimezone(timezone.utc)
-            else:
-                created = created.replace(tzinfo=timezone.utc)
-
-            all_time_rev += revenue
-            if created >= start_of_month:
-                month_rev += revenue
-            if created >= start_of_week:
-                week_rev += revenue
-            if created >= start_of_today:
-                today_rev += revenue
-
-        # ── 5. Weekly Revenue (last 7 calendar days) ──────────────────────────
-        days_abbr  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        daily_rev  = {}
-        for i in range(6, -1, -1):
-            day_start = (start_of_today - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
-            day_end   = day_start + timedelta(days=1)
-            day_label = days_abbr[day_start.weekday()]
-            daily_rev[day_start] = {"day": day_label, "revenue": 0.0, "is_today": i == 0}
-
-        for row in all_items:
-            item    = row["items"]
-            revenue = float(item.get("price", 0)) * int(item.get("quantity", 1))
-            created = row.get("created_at")
-            if created is None:
-                continue
-            if hasattr(created, "tzinfo") and created.tzinfo is not None:
-                created = created.astimezone(timezone.utc)
-            else:
-                created = created.replace(tzinfo=timezone.utc)
-            day_bucket = created.replace(hour=0, minute=0, second=0, microsecond=0)
-            if day_bucket in daily_rev:
-                daily_rev[day_bucket]["revenue"] += revenue
-
-        weekly_revenue = list(daily_rev.values())
-
-        # ── 6. Top 5 Products (last 30 days by revenue) ───────────────────────
-        thirty_days_ago = start_of_today - timedelta(days=30)
-        product_revenue: dict[str, dict] = {}
-
-        for row in all_items:
-            item    = row["items"]
-            created = row.get("created_at")
-            if created is None:
-                continue
-            if hasattr(created, "tzinfo") and created.tzinfo is not None:
-                created = created.astimezone(timezone.utc)
-            else:
-                created = created.replace(tzinfo=timezone.utc)
-            if created < thirty_days_ago:
-                continue
-            pid     = str(item.get("product_id", ""))
-            revenue = float(item.get("price", 0)) * int(item.get("quantity", 1))
-            qty     = int(item.get("quantity", 1))
-            if pid not in product_revenue:
-                prod = product_map.get(pid, {})
-                product_revenue[pid] = {
-                    "product_id": pid,
-                    "name":       item.get("name", prod.get("name", "Unknown")),
-                    "image":      (item.get("image") or (prod.get("image_urls") or [""])[0]),
-                    "units_sold": 0,
-                    "revenue":    0.0,
+                "items": {
+                    "$filter": {
+                        "input": "$items",
+                        "as": "item",
+                        "cond": {"$eq": ["$$item.seller_id", ObjectId(seller_id)]}
+                    }
                 }
-            product_revenue[pid]["units_sold"] += qty
-            product_revenue[pid]["revenue"]    += revenue
-
-        top_products = sorted(product_revenue.values(), key=lambda x: x["revenue"], reverse=True)[:5]
-
-        # ── 7. Recent 5 Orders ────────────────────────────────────────────────
-        seen_orders: set   = set()
+            }}
+        ]
+        recent_orders_raw = await order_collection.aggregate(recent_pipeline).to_list(length=5)
         recent_orders_list = []
-
-        for row in sorted(all_items, key=lambda x: x.get("created_at") or datetime.min, reverse=True):
-            oid = str(row["_id"])
-            if oid in seen_orders:
-                continue
-            seen_orders.add(oid)
-
-            # Count seller items in this order
-            seller_items_in_order = [
-                r["items"] for r in all_items if str(r["_id"]) == oid
-            ]
-            seller_total = sum(
-                float(i.get("price", 0)) * int(i.get("quantity", 1))
-                for i in seller_items_in_order
-            )
+        for row in recent_orders_raw:
+            items = row.get("items", [])
+            seller_total = sum(float(i.get("price", 0)) * int(i.get("quantity", 1)) for i in items)
             buyer_name = row.get("shipping_address", {}).get("full_name", "")
             first_name = buyer_name.split()[0] if buyer_name else "—"
-
+            
             recent_orders_list.append({
-                "order_id":    oid,
-                "created_at":  row.get("created_at"),
-                "item_count":  len(seller_items_in_order),
-                "seller_total": seller_total,
+                "order_id": str(row["_id"]),
+                "created_at": row.get("created_at"),
+                "item_count": len(items),
+                "seller_total": round(seller_total, 2),
                 "order_status": row.get("order_status", ""),
                 "buyer_first_name": first_name,
             })
 
-            if len(recent_orders_list) >= 5:
-                break
-
         # ── 8. Store Rating ───────────────────────────────────────────────────
-        seller_doc = await sellers_collection.find_one({"user_id": seller_id})
-        avg_rating    = float(seller_doc.get("rating", 0) or 0) if seller_doc else 0.0
-        total_reviews = int(seller_doc.get("total_reviews", 0) or 0) if seller_doc else 0
+        total_reviews = sum(p.get("review_count", 0) for p in products if p.get("is_active") and p.get("is_approved"))
+        if total_reviews > 0:
+            total_score = sum(float(p.get("avg_rating", 0)) * p.get("review_count", 0) for p in products if p.get("is_active") and p.get("is_approved"))
+            avg_rating = round(total_score / total_reviews, 1)
+        else:
+            avg_rating = 0.0
 
         # ── Final Response ────────────────────────────────────────────────────
         return {
@@ -374,10 +385,11 @@ async def get_seller_dashboard_stats(product_collection, order_collection, selle
             },
             "orders": {
                 "total":     total_orders_count,
-                "confirmed": len(order_status_map["confirmed"]),
-                "shipped":   len(order_status_map["shipped"]),
-                "delivered": len(order_status_map["delivered"]),
-                "cancelled": len(order_status_map["cancelled"]),
+                "pending":   order_counts.get("pending", 0),
+                "confirmed": order_counts.get("confirmed", 0),
+                "shipped":   order_counts.get("shipped", 0),
+                "delivered": order_counts.get("delivered", 0),
+                "cancelled": order_counts.get("cancelled", 0),
             },
             "revenue": {
                 "all_time":   round(all_time_rev, 2),

@@ -85,9 +85,11 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "pending": return <Clock className="size-5 text-amber-500" />
+      case "pending": return <Clock className="size-5 text-amber-900" />
       case "confirmed": return <CheckCircle2 className="size-5 text-blue-500" />
+      case "partially_shipped": return <Truck className="size-5 text-indigo-400" />
       case "shipped": return <Truck className="size-5 text-indigo-500" />
+      case "partially_delivered": return <CheckCircle2 className="size-5 text-emerald-400" />
       case "delivered": return <CheckCircle2 className="size-5 text-emerald-500" />
       case "cancelled": return <XCircle className="size-5 text-rose-500" />
       default: return <Clock className="size-5 text-slate-500" />
@@ -118,7 +120,7 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
           isCancelled ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-700"
         )}>
           {getStatusIcon(order.order_status)}
-          <span className="capitalize">{order.order_status}</span>
+          <span className="capitalize">{order.order_status.replace('_', ' ')}</span>
         </div>
       </div>
 

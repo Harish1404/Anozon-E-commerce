@@ -14,6 +14,7 @@ import {
   LogOut,
   Bell,
   Menu,
+  Star,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLogout } from "@/hooks/useAuthHook"
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { label: "Products",  href: "/seller/products",  icon: Package },
   { label: "Orders",    href: "/seller/orders",    icon: ShoppingBag },
+  { label: "Reviews",   href: "/seller/reviews",   icon: Star },
   { label: "Profile",   href: "/seller/profile",   icon: User },
 ]
 

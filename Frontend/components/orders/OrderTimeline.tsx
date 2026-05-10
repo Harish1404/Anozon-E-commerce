@@ -11,7 +11,21 @@ interface OrderTimelineProps {
 export function OrderTimeline({ status }: OrderTimelineProps) {
   const isCancelled = status === "cancelled"
   const steps = ["pending", "confirmed", "shipped", "delivered"]
-  const currentStepIndex = steps.indexOf(status)
+  
+  // Map exact and partial statuses to the step index
+  const getStepIndex = (s: OrderStatus) => {
+    switch (s) {
+      case "pending": return 0
+      case "confirmed": return 1
+      case "partially_shipped": return 2
+      case "shipped": return 2
+      case "partially_delivered": return 3
+      case "delivered": return 3
+      default: return 0
+    }
+  }
+  
+  const currentStepIndex = getStepIndex(status)
 
   if (isCancelled) return null
 

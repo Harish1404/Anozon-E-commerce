@@ -51,12 +51,9 @@ export function OrderCard({ order }: OrderCardProps) {
       {/* Body */}
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-slate-900">
-            {order.order_status === "delivered" ? "Delivered" : order.order_status.charAt(0).toUpperCase() + order.order_status.slice(1)}
+          <h3 className="text-lg font-bold text-slate-900 capitalize">
+            {order.order_status === "delivered" ? "Delivered" : order.order_status.replace('_', ' ')}
           </h3>
-          <Badge variant={order.payment_status === "paid" ? "default" : "secondary"}>
-            {order.payment_status.toUpperCase()}
-          </Badge>
         </div>
 
         <div className="space-y-6">

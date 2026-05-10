@@ -72,7 +72,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 #{order._id.slice(-8).toUpperCase()}
               </p>
               <p className="text-xs text-slate-400 mt-0.5">
-                Placed {format(new Date(order.created_at), "d MMMM yyyy, h:mm a")}
+                Placed {format(new Date(order.created_at.endsWith("Z") || order.created_at.includes("+") ? order.created_at : `${order.created_at}Z`), "d MMMM yyyy, h:mm a")}
               </p>
             </div>
             <span className={cn("self-start rounded-full px-3 py-1 text-xs font-semibold capitalize", statusStyles[order.order_status])}>

@@ -17,3 +17,4 @@ export const useCartStore = create<CartStore>((set) => ({
   decrementCount: () => set((s) => ({ itemCount: Math.max(0, s.itemCount - 1) })),
   resetCart: () => set({ itemCount: 0 })
 }))
+

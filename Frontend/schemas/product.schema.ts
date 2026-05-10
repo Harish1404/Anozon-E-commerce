@@ -17,7 +17,11 @@ export const productSchema = z.object({
     .number()
     .int("Stock must be a whole number")
     .min(0, "Stock cannot be negative"),
-  image_urls: z.array(z.string()),
+  image_urls: z
+    .array(z.string().url("Must be a valid URL (starting with http:// or https://)"))
+    .min(3, "At least 3 images are required")
+    .max(5, "Maximum 5 images allowed"),
 })
 
 export type ProductFormData = z.infer<typeof productSchema>
+

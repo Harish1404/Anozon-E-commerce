@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useSellerDashboard } from "@/hooks/useSeller"
+import { useSellerDashboard, useSellerProfile } from "@/hooks/useSeller"
 import { StatCard } from "@/components/seller/dashboard/StatCard"
 import { RevenueCard } from "@/components/seller/dashboard/RevenueCard"
 import { WeeklyRevenueChart } from "@/components/seller/dashboard/WeeklyRevenueChart"
@@ -25,7 +25,10 @@ function CardSkeleton({ className = "" }: { className?: string }) {
 
 export default function SellerDashboardPage() {
   const { data, isLoading, isError } = useSellerDashboard()
+  const { data: profile } = useSellerProfile()
   const { user } = useAuthStore()
+
+  const sellerName = profile?.business_name || user?.email?.split("@")[0] || "Seller"
 
   useEffect(() => {
     document.title = "Dashboard — Anozon Seller"
@@ -39,7 +42,7 @@ export default function SellerDashboardPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold text-foreground">
-              Good {getGreeting()}, {user?.email?.split("@")[0] ?? "Seller"} 👋
+              Good {getGreeting()}, {sellerName} 👋
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               {format(new Date(), "EEEE, d MMMM yyyy")}

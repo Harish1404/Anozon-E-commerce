@@ -170,7 +170,7 @@ class SellerService:
         return {"message": "Product deleted successfully"}
 
     @staticmethod
-    async def get_orders(seller_id: str, page: int = 1, limit: int = 10):
+    async def get_orders(seller_id: str, page: int = 1, limit: int = 10, status: str = None, year: int = None, month: int = None):
 
         skip = (page - 1) * limit
 
@@ -178,7 +178,10 @@ class SellerService:
             orders_collection(),
             seller_id,
             skip=skip,
-            limit=limit
+            limit=limit,
+            status=status,
+            year=year,
+            month=month
         )
 
         items = serialize_mongo(items)
@@ -264,7 +267,7 @@ class SellerService:
         full_order = await get_full_order_by_id(orders_collection(), order_id)
         if full_order:
             new_order_status = compute_order_status(full_order.get("items", []))
-            await db_update_order_status(orders_collection(), order_id, new_order_status)
+            await db_update_order_status(orders_collection(), order_id, new_order_status.value if hasattr(new_order_status, "value") else new_order_status)
 
         return {
             "message": f"Item status updated to '{new_status}'",
@@ -300,6 +303,13 @@ class SellerService:
         profile = await seller_helpers.get_seller_by_user_id(sellers_collection(), seller_id)
         if not profile:
             raise HTTPException(status_code=404, detail="Seller profile not found")
+            
+        # Get fresh stats for the Store Overview
+        stats = await SellerService.get_dashboard(seller_id)
+        profile["total_products"] = stats["products"]["total"]
+        profile["total_orders"] = stats["orders"]["total"]
+        profile["rating"] = stats["store"]["avg_rating"]
+        
         profile["_id"] = str(profile["_id"])
         return profile
 

@@ -52,7 +52,7 @@ export function RecentOrderList({ orders }: RecentOrderListProps) {
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {order.buyer_first_name} · {order.item_count} item{order.item_count !== 1 ? "s" : ""}
-                    {" · "}{format(new Date(order.created_at), "d MMM")}
+                    {" · "}{format(new Date(order.created_at.endsWith("Z") || order.created_at.includes("+") ? order.created_at : `${order.created_at}Z`), "d MMM")}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">

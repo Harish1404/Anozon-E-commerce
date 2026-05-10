@@ -8,6 +8,9 @@ import { toast } from "sonner"
 interface OrderListParams {
   page?: number
   limit?: number
+  status?: string
+  year?: number
+  month?: number
 }
 
 export function useSellerOrders(params: OrderListParams = {}) {
