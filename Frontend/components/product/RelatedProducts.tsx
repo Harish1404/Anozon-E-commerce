@@ -73,30 +73,28 @@ export function RelatedProducts({ category, currentProductId }: RelatedProductsP
           </h2>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="h-9 w-9 rounded-full border-transparent bg-foreground text-background transition-all hover:bg-foreground/90 hover:scale-105 active:scale-95 disabled:opacity-20 disabled:scale-100"
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className="h-9 w-9 rounded-full border-transparent bg-foreground text-background transition-all hover:bg-foreground/90 hover:scale-105 active:scale-95 disabled:opacity-20 disabled:scale-100"
-              aria-label="Next page"
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={page === 1 || totalPages <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="h-9 w-9 rounded-full border-transparent bg-foreground text-background transition-all hover:bg-foreground/90 hover:scale-105 active:scale-95 disabled:opacity-20 disabled:scale-100"
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={page === totalPages || totalPages <= 1}
+            onClick={() => setPage((p) => p + 1)}
+            className="h-9 w-9 rounded-full border-transparent bg-foreground text-background transition-all hover:bg-foreground/90 hover:scale-105 active:scale-95 disabled:opacity-20 disabled:scale-100"
+            aria-label="Next page"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
       </div>
 
       {/* 
@@ -118,22 +116,20 @@ export function RelatedProducts({ category, currentProductId }: RelatedProductsP
       </div>
 
       {/* Mobile dot indicator */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-1.5 pt-1 sm:hidden">
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setPage(i + 1)}
-              className={`h-1.5 rounded-full transition-all ${
-                page === i + 1
-                  ? "w-4 bg-foreground"
-                  : "w-1.5 bg-border"
-              }`}
-              aria-label={`Go to page ${i + 1}`}
-            />
-          ))}
-        </div>
-      )}
+      <div className="flex items-center justify-center gap-1.5 pt-1 sm:hidden">
+        {Array.from({ length: totalPages }).map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setPage(i + 1)}
+            className={`h-1.5 rounded-full transition-all ${
+              page === i + 1
+                ? "w-4 bg-foreground"
+                : "w-1.5 bg-border"
+            }`}
+            aria-label={`Go to page ${i + 1}`}
+          />
+        ))}
+      </div>
 
     </div>
   )

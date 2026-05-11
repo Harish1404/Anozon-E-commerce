@@ -130,10 +130,14 @@ async def update_product_likes(collection, product_id: str, user_id: str, action
         
     try:
         if action == "like":
-            # Initialize fields if they don't exist
+            # Initialize fields if they don't exist separately
             await collection.update_one(
                 {"_id": ObjectId(product_id), "liked_by": {"$exists": False}},
-                {"$set": {"liked_by": [], "product_likes": 0}}
+                {"$set": {"liked_by": []}}
+            )
+            await collection.update_one(
+                {"_id": ObjectId(product_id), "product_likes": {"$exists": False}},
+                {"$set": {"product_likes": 0}}
             )
             # Add user and increment
             result = await collection.update_one(

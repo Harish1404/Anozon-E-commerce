@@ -19,6 +19,7 @@ export default function Loading() {
                     src="/logo.png"
                     alt="Anozon Logo"
                     fill
+                    sizes="128px"
                     className="object-contain drop-shadow-xl"
                     priority
                 />

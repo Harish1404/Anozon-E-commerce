@@ -4,7 +4,7 @@
   border-right: 1px solid var(--brand-border);
 }
 [data-theme="seller"].dark .sidebar {
-  background-color: var(--brand-surface-alt);
+  background-color: var(--brand-primary);
 }
 [data-theme="seller"] .sidebar .nav-item {
   color: var(--brand-surface);

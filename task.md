@@ -1,31 +1,50 @@
-Requirement:
+Requirement 
 
-Context: Implement the user wishlist and apply seller feature from backend and just check whether cart and order, seller orders pages from user and seller are paginated and filtered well also add the filter for seller orders history like how we have for the user orders and need some enchancement too.
+seed our databasE:
 
-1. Favourites page should be paginated, filters and also sort by price high to low and low to high. also make heart icon button like that fill and empty heart icon in prduct card and in details page. it should be clickable and remove from wishlist too when clicked. also should reduce the likes count and also like count should be shown in specification section in details page.
+we need more users email with 
 
-2. According to backend implement the apply seller, this page also show the status and history.
+email - roshzag17@gmail.com, (seller)
+password - Harish@1562123
 
-3. I think some order pages for user and seller are not paginated Ig check if not implement that. and add the filters sorts too.
+email - roshanavb@gmail.com  (admin)
+password - Harish@1562123
 
-Enchancement: 
+email - dinesh@yopmail.com  (seller)
+password - Harish@1562123
 
-1. In Product Details page it has reteun the seller deatils too like businness name and seller rating, type so showcase that in the after the specification and also the name and rating alone in top right of product details page
+create a user accounts seed to 
 
-2. Seller rating should be calculated through his products average ratings and also can see his products Review details so make a separate Review section in sidebar This should have proper paginationa and filter and sorting. Also in Main dashboard make the top 5 products
-with avg reviews too.
+email - yopmail.com 
+password - Harish@1562123
 
-3. In Dashboard after that Good morning/afternoon/evening should display the name of seller
+saaru, pavi, khirran, akshitha, anouksha, 
+aditiya, vicky, sharan, dhanush, surya, bharath.
 
-4. For create product the image URLs are accepting comma separating also in backend it has list so enchance that to images and a seller can set only 5 images there too three is madatory and remaining two is optional.
+use the yopmail to create users and add them to the db
 
-Make sure all should very good in responsive view and optimized in terms of performance and loading time and aligned with our colour palette too.. good at UI/UX too.
+for harish seller the major customber is Anouksha and others mixed for roshan seller the major customer is akshitha and others mixed 
 
-Validation errors display inline below each field using shadcn FormMessage component. Form never submits if validation fails — no API call made.
+and for dinesh seller the major customer is all mixed and slighlty major is dhanush surya khirran and this dinesh has kindly of like worst seller avg rating for him is 1.7 so seed accordingly.
 
-Error Handling: 
+Make 50 products for harish and roshan and 10 products for dinesh seller. mixed products ( categories) use the existing seller too 
 
-- API errors are caught in the mutation onError callback and shown as toast notifications using shadcn Sonner toast. Never shown as raw error objects.
-- Loading states use shadcn Skeleton component — not spinners. Skeletons match the shape of the content being loaded so layout does not shift.
-- Empty states are handled per page with a helpful message and a clear next action button — not just blank space.
-- Network errors are caught by the axios interceptor. 401 triggers silent refresh. Other errors bubble up to the mutation error handler.
+make all the products stocks to random and must mixed with 5 to 15 range.
+mixed with categories too
+relevant discounts and all products should have all 5 images 
+good likes level and likes can be ups and down 
+also with reveiws random but all can be min 4+ and a good reviews too for harish seller and roshan seller.
+
+I don't need any audit logs let be from my end itsef , I can handle it 
+
+make the products a bit realistic too
+
+enchance this seed too 
+
+
+
+
+
+
+
+

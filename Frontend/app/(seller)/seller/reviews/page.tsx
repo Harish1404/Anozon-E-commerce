@@ -12,14 +12,35 @@ import {
   MessageSquare, ShieldCheck
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Search, ArrowUpDown } from "lucide-react"
 
 export default function SellerReviewsPage() {
   useEffect(() => {
     document.title = "Reviews — Anozon Seller"
   }, [])
 
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState("")
+  const [sort, setSort] = useState("newest")
+  const LIMIT = 10
+
   const { data: productsData, isLoading: productsLoading } = useSellerProducts({ limit: 100 })
-  const products = productsData?.items ?? []
+  const allProducts = productsData?.items ?? []
+
+  // Client-side filtering and sorting for products
+  const filteredProducts = allProducts.filter((p) => {
+    return search === "" || p.name.toLowerCase().includes(search.toLowerCase())
+  }).sort((a, b) => {
+    if (sort === "rating_desc") return b.avg_rating - a.avg_rating
+    if (sort === "rating_asc") return a.avg_rating - b.avg_rating
+    if (sort === "reviews_desc") return b.review_count - a.review_count
+    if (sort === "reviews_asc") return a.review_count - b.review_count
+    // default: newest first based on created_at
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / LIMIT))
+  const paginatedProducts = filteredProducts.slice((page - 1) * LIMIT, page * LIMIT)
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,6 +54,37 @@ export default function SellerReviewsPage() {
           </p>
         </div>
 
+        {/* Toolbar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full rounded-xl border border-border bg-card py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={sort} onValueChange={(val) => { setSort(val); setPage(1); }}>
+              <SelectTrigger className="h-9 w-[160px] text-sm">
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown className="size-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Sort by" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="rating_desc">Highest Rating</SelectItem>
+                <SelectItem value="rating_asc">Lowest Rating</SelectItem>
+                <SelectItem value="reviews_desc">Most Reviews</SelectItem>
+                <SelectItem value="reviews_asc">Least Reviews</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {/* Product accordion list */}
         {productsLoading ? (
           <div className="space-y-3">
@@ -40,16 +92,41 @@ export default function SellerReviewsPage() {
               <div key={i} className="h-16 rounded-2xl bg-muted animate-pulse" />
             ))}
           </div>
-        ) : products.length === 0 ? (
+        ) : paginatedProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card py-16">
             <MessageSquare className="size-10 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">No products with reviews yet</p>
+            <p className="text-sm text-muted-foreground">No products found</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {products.map((product) => (
+            {paginatedProducts.map((product) => (
               <ProductReviewPanel key={product._id} product={product} />
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-4">
+            <Button
+              variant="outline"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              className="rounded-xl border-border hover:bg-muted transition-colors"
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground px-2">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              className="rounded-xl border-border hover:bg-muted transition-colors"
+            >
+              Next
+            </Button>
           </div>
         )}
       </div>
@@ -192,12 +269,12 @@ function ProductReviewPanel({ product }: { product: Product }) {
                 size="icon"
                 disabled={page === 1}
                 onClick={() => setPage(page - 1)}
-                className="h-7 w-7 rounded-full"
+                className="h-8 w-8 rounded-full"
               >
-                <ChevronLeft className="size-3" />
+                <ChevronLeft className="size-4" />
               </Button>
 
-              <span className="text-xs text-muted-foreground px-2">
+              <span className="text-sm font-medium text-muted-foreground px-2">
                 Page {page} of {totalPages}
               </span>
 
@@ -206,9 +283,9 @@ function ProductReviewPanel({ product }: { product: Product }) {
                 size="icon"
                 disabled={page === totalPages}
                 onClick={() => setPage(page + 1)}
-                className="h-7 w-7 rounded-full"
+                className="h-8 w-8 rounded-full"
               >
-                <ChevronRight className="size-3" />
+                <ChevronRight className="size-4" />
               </Button>
             </div>
           )}
