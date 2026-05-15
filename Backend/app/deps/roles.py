@@ -35,7 +35,8 @@ ROLE_PERMISSIONS = {
         "seller:approve", "seller:reject", "seller:suspend",
         "user:ban", "user:view",
         "product:any", "product:approve",
-        "order:any"
+        "order:any",
+        "audit:view"
     },
     "seller": {
         "product:own:write",

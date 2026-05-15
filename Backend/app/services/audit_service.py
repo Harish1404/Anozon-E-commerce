@@ -82,6 +82,8 @@ def _infer_module(action: str) -> str:
         return "seller"
     if any(kw in action for kw in ["banned", "unbanned"]):
         return "user"
+    if any(kw in action for kw in ["review"]):
+        return "review"
     if any(kw in action for kw in ["product"]):
         return "product"
     return "system"
@@ -104,8 +106,10 @@ def _generate_description(action: str, performer: dict, target: dict, reason: Op
         "seller_application_submitted": f"{t_name} ({t_email}) submitted seller application",
         "seller_reapplied": f"{t_name} ({t_email}) resubmitted seller application",
         "user_banned": f"Banned user {t_name} ({t_email})",
+        "user_unbanned": f"Unbanned user {t_name} ({t_email})",
         "product_approved": f"Admin {p_name} approved product {target.get('user_id', '')}",
         "product_rejected": f"Admin {p_name} rejected product {target.get('user_id', '')} — {reason or 'no reason'}",
+        "review_deleted": f"Admin {p_name} deleted review {target.get('user_id', '')} — {reason or 'no reason'}",
     }
 
     return descriptions.get(action, f"{p_name} performed {action} on {t_name}")

@@ -3,16 +3,20 @@
   background-color: var(--brand-primary);
   border-right: 1px solid var(--brand-border);
 }
+
 [data-theme="seller"].dark .sidebar {
   background-color: var(--brand-primary);
 }
+
 [data-theme="seller"] .sidebar .nav-item {
   color: var(--brand-surface);
   opacity: 0.75;
 }
+
 [data-theme="seller"].dark .sidebar .nav-item {
   color: var(--brand-text-primary);
 }
+
 [data-theme="seller"] .sidebar .nav-item.active,
 [data-theme="seller"] .sidebar .nav-item:hover {
   opacity: 1;

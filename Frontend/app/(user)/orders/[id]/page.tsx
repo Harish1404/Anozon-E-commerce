@@ -32,10 +32,10 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="h-8 w-48 bg-slate-200 animate-pulse rounded-lg mb-8" />
+        <div className="h-8 w-48 bg-muted animate-pulse rounded-lg mb-8" />
         <div className="space-y-6">
-          <div className="h-64 bg-slate-100 animate-pulse rounded-3xl" />
-          <div className="h-96 bg-slate-100 animate-pulse rounded-3xl" />
+          <div className="h-64 bg-muted animate-pulse rounded-3xl" />
+          <div className="h-96 bg-muted animate-pulse rounded-3xl" />
         </div>
       </div>
     )
@@ -44,8 +44,8 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   if (isError || !order) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-20 text-center">
-        <h2 className="text-2xl font-semibold text-slate-900">Order not found</h2>
-        <p className="mt-2 text-slate-600">We couldn't find the order you're looking for.</p>
+        <h2 className="text-2xl font-semibold text-foreground">Order not found</h2>
+        <p className="mt-2 text-muted-foreground">We couldn't find the order you're looking for.</p>
         <Button className="mt-6" onClick={() => router.push("/orders")}>Back to Orders</Button>
       </div>
     )
@@ -85,14 +85,14 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "pending": return <Clock className="size-5 text-amber-900" />
+      case "pending": return <Clock className="size-5 text-amber-600 dark:text-amber-500" />
       case "confirmed": return <CheckCircle2 className="size-5 text-blue-500" />
       case "partially_shipped": return <Truck className="size-5 text-indigo-400" />
       case "shipped": return <Truck className="size-5 text-indigo-500" />
       case "partially_delivered": return <CheckCircle2 className="size-5 text-emerald-400" />
       case "delivered": return <CheckCircle2 className="size-5 text-emerald-500" />
       case "cancelled": return <XCircle className="size-5 text-rose-500" />
-      default: return <Clock className="size-5 text-slate-500" />
+      default: return <Clock className="size-5 text-muted-foreground" />
     }
   }
 
@@ -105,19 +105,19 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-      <Link href="/orders" className="mb-6 flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
+      <Link href="/orders" className="mb-6 flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
         <ChevronLeft className="size-4" />
         Back to My Orders
       </Link>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Order Details</h1>
-          <p className="mt-1 text-slate-500 font-mono text-sm">ID: {order._id}</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Order Details</h1>
+          <p className="mt-1 text-muted-foreground font-mono text-sm">ID: {order._id}</p>
         </div>
         <div className={cn(
           "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold",
-          isCancelled ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-700"
+          isCancelled ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-secondary text-secondary-foreground"
         )}>
           {getStatusIcon(order.order_status)}
           <span className="capitalize">{order.order_status.replace('_', ' ')}</span>

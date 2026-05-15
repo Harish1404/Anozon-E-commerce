@@ -107,6 +107,12 @@ export function Navbar() {
                     Seller Dashboard
                   </DropdownMenuItem>
                 )}
+                {(user.role === "admin" || user.role === "super_admin") && (
+                  <DropdownMenuItem onClick={() => router.push("/admin/dashboard")} className="cursor-pointer gap-2 text-purple-600 focus:text-purple-700 focus:bg-purple-50 dark:text-purple-400 dark:focus:text-purple-300 dark:focus:bg-purple-950">
+                    <LayoutDashboard className="size-4" />
+                    Admin Dashboard
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"

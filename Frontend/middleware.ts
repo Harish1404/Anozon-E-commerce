@@ -57,8 +57,16 @@ export function middleware(request: NextRequest) {
   }
 
   // Admin routes
-  if (path.startsWith("/admin") && !["admin", "super_admin"].includes(userRole ?? "")) {
-    return redirectTo("/")
+  if (path.startsWith("/admin")) {
+    if (!["admin", "super_admin"].includes(userRole ?? "")) {
+      return redirectTo("/")
+    }
+
+    // Super Admin specific routes
+    const isSuperAdminRoute = path.startsWith("/admin/admins")
+    if (isSuperAdminRoute && userRole !== "super_admin") {
+      return redirectTo("/admin/dashboard")
+    }
   }
 
   return nextWithPortal()

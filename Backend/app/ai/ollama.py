@@ -47,3 +47,4 @@ def response_cleaner(response_json: dict) -> dict:
         "total_duration_ms": round(response_json.get("total_duration", 0) / 1e6, 2),
         "model": response_json.get("model"),
     }
+

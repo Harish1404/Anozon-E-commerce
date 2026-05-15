@@ -1,7 +1,16 @@
+"""
+Admin service layer.
+Orchestrates business logic for admin operations: dashboard, user/seller/product/review management.
+Delegates DB queries to repo layer, handles validation, and triggers audit logging.
+"""
+
 from fastapi import HTTPException, status
 from pymongo.errors import PyMongoError
 from datetime import datetime
-from app.db.mongodb import sellers_collection, get_users_collection, products_collection
+from app.db.mongodb import (
+    sellers_collection, get_users_collection, products_collection,
+    orders_collection, reviews_collection, audit_logs_collection
+)
 from app.core.time_utils import utc_now
 from app.models.seller_model import SellerApplicationRequest, SellerProfile, SellerResponse
 from app.services.audit_service import log_action
@@ -13,7 +22,20 @@ from app.repo.admin_helpers import (
     update_seller_by_object_id,
     get_pending_sellers,
     get_pending_products,
-    update_product_approval_status
+    update_product_approval_status,
+    get_dashboard_stats,
+    get_all_users,
+    get_user_detail,
+    get_all_sellers,
+    get_seller_detail,
+    get_all_products,
+    get_all_reviews,
+    delete_review_by_id,
+    unban_user_db,
+    get_recent_pending_sellers,
+    get_recent_pending_products,
+    get_seller_performance,
+    get_approved_sellers_list,
 )
 from app.repo.seller_redis_helpers import (
     is_seller_apply_blocked,
@@ -21,11 +43,178 @@ from app.repo.seller_redis_helpers import (
     get_seller_apply_attempts_remaining
 )
 from app.models.product_model import ProductResponse
+from typing import Optional
 import logging
 
 logger = logging.getLogger("uvicorn.error")
 
 
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+
+async def get_admin_dashboard():
+    """Fetch aggregated dashboard stats + recent pending items + recent audit logs."""
+    stats = await get_dashboard_stats(
+        get_users_collection(),
+        sellers_collection(),
+        products_collection(),
+        orders_collection()
+    )
+
+    recent_sellers = await get_recent_pending_sellers(sellers_collection(), limit=5)
+    recent_products = await get_recent_pending_products(products_collection(), limit=5)
+
+    # Fetch recent audit logs for the activity feed
+    from app.repo.audit_helpers import fetch_audit_logs
+    audit_result = await fetch_audit_logs(audit_logs_collection(), skip=0, limit=10)
+    recent_activity = audit_result.get("logs", []) if isinstance(audit_result, dict) else []
+    for log in recent_activity:
+        log["_id"] = str(log["_id"])
+
+    # Fetch seller performance (top & worst)
+    seller_perf = await get_seller_performance(products_collection(), sellers_collection())
+
+    return {
+        "metrics": stats,
+        "pending_sellers": recent_sellers,
+        "pending_products": recent_products,
+        "recent_activity": recent_activity,
+        "top_sellers": seller_perf.get("top_sellers", []),
+        "worst_sellers": seller_perf.get("worst_sellers", []),
+    }
+
+
+# ── User Management ──────────────────────────────────────────────────────────
+
+async def fetch_all_users(page: int = 1, limit: int = 20, search: Optional[str] = None,
+                          role: Optional[str] = None, user_status: Optional[str] = None):
+    skip = (page - 1) * limit
+    result = await get_all_users(
+        get_users_collection(), limit=limit, skip=skip,
+        search=search, role=role, status=user_status
+    )
+    return {
+        "users": result["users"],
+        "total": result["total"],
+        "page": page,
+        "limit": limit,
+    }
+
+
+async def fetch_user_detail(user_id: str):
+    user = await get_user_detail(get_users_collection(), user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+async def unban_user(user_id: str, admin_id: str):
+    user = await get_user_by_id(get_users_collection(), user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.get("is_banned", False):
+        raise HTTPException(status_code=400, detail="User is not banned")
+
+    success = await unban_user_db(get_users_collection(), user_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to unban user")
+
+    await log_action(
+        action="user_unbanned",
+        target_user_id=user_id,
+        performed_by=admin_id,
+        from_role=user.get("role", "user"),
+        to_role=user.get("role", "user")
+    )
+    return {"message": "User unbanned successfully"}
+
+
+# ── Seller Management ────────────────────────────────────────────────────────
+
+async def fetch_all_sellers(page: int = 1, limit: int = 20, search: Optional[str] = None,
+                            seller_status: Optional[str] = None):
+    skip = (page - 1) * limit
+    result = await get_all_sellers(
+        sellers_collection(), limit=limit, skip=skip,
+        search=search, status=seller_status
+    )
+    return {
+        "sellers": result["sellers"],
+        "total": result["total"],
+        "page": page,
+        "limit": limit,
+    }
+
+
+async def fetch_seller_detail(user_id: str):
+    seller = await get_seller_detail(sellers_collection(), user_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Seller not found")
+    return seller
+
+
+# ── Product Management ───────────────────────────────────────────────────────
+
+async def fetch_all_products(page: int = 1, limit: int = 20, search: Optional[str] = None,
+                             category: Optional[str] = None, product_status: Optional[str] = None):
+    skip = (page - 1) * limit
+    result = await get_all_products(
+        products_collection(), limit=limit, skip=skip,
+        search=search, category=category, status=product_status
+    )
+    return {
+        "products": result["products"],
+        "total": result["total"],
+        "page": page,
+        "limit": limit,
+    }
+
+
+# ── Review Management ────────────────────────────────────────────────────────
+
+async def fetch_all_reviews(page: int = 1, limit: int = 20, search: Optional[str] = None,
+                            product_id: Optional[str] = None, seller_id: Optional[str] = None,
+                            min_rating: Optional[float] = None,
+                            max_rating: Optional[float] = None):
+    skip = (page - 1) * limit
+    result = await get_all_reviews(
+        reviews_collection(),
+        products_col=products_collection(),
+        limit=limit, skip=skip,
+        search=search, product_id=product_id, seller_id=seller_id,
+        min_rating=min_rating, max_rating=max_rating
+    )
+    return {
+        "reviews": result["reviews"],
+        "total": result["total"],
+        "page": page,
+        "limit": limit,
+    }
+
+
+async def get_sellers_dropdown_list():
+    """Lightweight list of approved sellers for filter dropdowns."""
+    return await get_approved_sellers_list(sellers_collection())
+
+
+async def admin_delete_review(review_id: str, admin_id: str, reason: str):
+    success = await delete_review_by_id(reviews_collection(), products_collection(), review_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    await log_action(
+        action="review_deleted",
+        target_user_id=review_id,
+        performed_by=admin_id,
+        from_role="admin",
+        to_role="admin",
+        reason=reason,
+        module="review",
+        description=f"Admin deleted review {review_id} — {reason}"
+    )
+    return {"message": "Review deleted successfully"}
+
+
+# ── Seller Application Flow (existing — kept intact) ─────────────────────────
 
 async def apply_for_seller(user_id: str, payload: SellerApplicationRequest):
     user = await get_user_by_id(get_users_collection(), user_id)
@@ -182,7 +371,6 @@ async def reject_seller(target_user_id: str, admin_id: str, reason: str):
 
     logger.info(f"Seller application for {target_user_id} rejected by {admin_id}. Reason: {reason}")
     try:
-        # Update Seller Profile
         await update_seller_by_user_id(
             sellers_collection(),
             target_user_id,
@@ -314,5 +502,3 @@ async def reject_product(product_id: str, admin_id: str, reason: str):
         reason=reason
     )
     return {"message": "Product rejected"}
-
-

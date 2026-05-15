@@ -42,10 +42,10 @@ export default function NewProductPage() {
           {/* Duplicate / error banner */}
           {error && errorMsg?.includes("already exists") && (
             <div className="mb-5 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
-              <p className="text-sm text-amber-600 font-medium">
+              <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
                 You already have a product with this name.
               </p>
-              <p className="text-xs text-amber-600/80 mt-0.5">
+              <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">
                 Edit the existing listing instead of creating a new one.
               </p>
             </div>

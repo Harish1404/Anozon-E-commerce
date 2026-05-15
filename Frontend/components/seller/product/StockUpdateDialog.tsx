@@ -45,7 +45,7 @@ export function StockUpdateDialog({ productId, currentStock, productName }: Stoc
     <>
       <button
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(true) }}
-        className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+        className="shrink-0 rounded-lg border border-slate-200 bg-olive-100 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
       >
         Update Stock
       </button>

@@ -67,7 +67,7 @@ export default function SellerReviewsPage() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <Select value={sort} onValueChange={(val) => { setSort(val); setPage(1); }}>
+            <Select value={sort} onValueChange={(val) => { if (val) { setSort(val); setPage(1); } }}>
               <SelectTrigger className="h-9 w-[160px] text-sm">
                 <div className="flex items-center gap-2">
                   <ArrowUpDown className="size-3.5 text-muted-foreground" />

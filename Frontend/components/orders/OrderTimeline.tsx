@@ -30,10 +30,10 @@ export function OrderTimeline({ status }: OrderTimelineProps) {
   if (isCancelled) return null
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm mb-8">
-      <h2 className="text-lg font-semibold text-slate-900 mb-8">Order Progress</h2>
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-sm mb-8">
+      <h2 className="text-lg font-semibold text-foreground mb-8">Order Progress</h2>
       <div className="relative flex justify-between">
-        <div className="absolute top-5 left-0 h-0.5 w-full bg-slate-100 -z-0" />
+        <div className="absolute top-5 left-0 h-0.5 w-full bg-muted -z-0" />
         {steps.map((step, index) => {
           const isCompleted = index <= currentStepIndex
           const isCurrent = index === currentStepIndex
@@ -42,14 +42,14 @@ export function OrderTimeline({ status }: OrderTimelineProps) {
             <div key={step} className="relative z-10 flex flex-col items-center gap-2">
               <div className={cn(
                 "flex size-10 items-center justify-center rounded-full border-2 transition-all duration-300",
-                isCompleted ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-400",
+                isCompleted ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground",
                 isCurrent && "ring-4 ring-primary/20"
               )}>
                 {isCompleted ? <CheckCircle2 className="size-5" /> : (index + 1)}
               </div>
               <span className={cn(
                 "text-xs font-semibold capitalize whitespace-nowrap",
-                isCompleted ? "text-slate-900" : "text-slate-400"
+                isCompleted ? "text-foreground" : "text-muted-foreground"
               )}>
                 {step}
               </span>
