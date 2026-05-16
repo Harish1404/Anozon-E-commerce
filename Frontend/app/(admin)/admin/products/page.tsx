@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAdminProducts, useApproveProduct, useRejectProduct, useCategories } from "@/hooks/useAdminDashboard"
 import { Input } from "@/components/ui/input"
@@ -24,10 +24,16 @@ const STATUS_TABS = [
 export default function ProductsPage() {
   const searchParams = useSearchParams()
   const [search, setSearch] = useState("")
-  const [status, setStatus] = useState(searchParams.get("status") || "pending")
+  const [status, setStatus] = useState(searchParams.get("status") || "all")
   const [category, setCategory] = useState("")
   const [page, setPage] = useState(1)
   const limit = 15
+
+  useEffect(() => {
+    const s = searchParams.get("status")
+    if (s) setStatus(s)
+    else setStatus("all")
+  }, [searchParams])
 
   const [rejectDialog, setRejectDialog] = useState<string | null>(null)
   const [reason, setReason] = useState("")

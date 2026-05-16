@@ -227,7 +227,7 @@ export function useRejectProduct() {
 
 // ── Review Management ────────────────────────────────────────────────────────
 
-export function useAdminReviews(params?: { page?: number; limit?: number; search?: string; product_id?: string; seller_id?: string; min_rating?: number; max_rating?: number }) {
+export function useAdminReviews(params?: { page?: number; limit?: number; search?: string; product_id?: string; seller_id?: string; min_rating?: number; max_rating?: number; sort_rating?: string }) {
   return useQuery({
     queryKey: KEYS.reviews(params),
     queryFn: async () => {

@@ -225,13 +225,15 @@ async def list_reviews(
     seller_id: Optional[str] = Query(None, description="Filter by seller user ID"),
     min_rating: Optional[float] = Query(None, ge=1, le=5),
     max_rating: Optional[float] = Query(None, ge=1, le=5),
+    sort_rating: Optional[str] = Query(None, description="Sort by rating: asc or desc"),
     current_user: dict = Depends(require_permission("product:approve"))
 ):
     """List all platform reviews with optional filters for moderation."""
     return await fetch_all_reviews(
         page=page, limit=limit, search=search,
         product_id=product_id, seller_id=seller_id,
-        min_rating=min_rating, max_rating=max_rating
+        min_rating=min_rating, max_rating=max_rating,
+        sort_rating=sort_rating
     )
 
 

@@ -174,14 +174,16 @@ async def fetch_all_products(page: int = 1, limit: int = 20, search: Optional[st
 async def fetch_all_reviews(page: int = 1, limit: int = 20, search: Optional[str] = None,
                             product_id: Optional[str] = None, seller_id: Optional[str] = None,
                             min_rating: Optional[float] = None,
-                            max_rating: Optional[float] = None):
+                            max_rating: Optional[float] = None,
+                            sort_rating: Optional[str] = None):
     skip = (page - 1) * limit
     result = await get_all_reviews(
         reviews_collection(),
         products_col=products_collection(),
         limit=limit, skip=skip,
         search=search, product_id=product_id, seller_id=seller_id,
-        min_rating=min_rating, max_rating=max_rating
+        min_rating=min_rating, max_rating=max_rating,
+        sort_rating=sort_rating
     )
     return {
         "reviews": result["reviews"],

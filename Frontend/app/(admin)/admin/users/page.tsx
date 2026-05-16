@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAdminUsers, useBanUser, useUnbanUser } from "@/hooks/useAdminDashboard"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -35,6 +35,12 @@ export default function UsersPage() {
   const [status, setStatus] = useState(searchParams.get("status") || "all")
   const [page, setPage] = useState(1)
   const limit = 20
+
+  useEffect(() => {
+    const s = searchParams.get("status")
+    if (s) setStatus(s)
+    else setStatus("all")
+  }, [searchParams])
 
   const [confirmDialog, setConfirmDialog] = useState<{ action: "ban" | "unban"; userId: string; userName: string } | null>(null)
 

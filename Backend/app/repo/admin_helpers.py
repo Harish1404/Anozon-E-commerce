@@ -294,6 +294,7 @@ async def get_all_reviews(
     seller_id: Optional[str] = None,
     min_rating: Optional[float] = None,
     max_rating: Optional[float] = None,
+    sort_rating: Optional[str] = None,
 ):
     """Fetch all reviews with optional filters for admin moderation."""
     try:
@@ -324,7 +325,13 @@ async def get_all_reviews(
             if max_rating is not None:
                 query["rating"]["$lte"] = max_rating
 
-        cursor = collection.find(query).sort("reviewed_at", -1).skip(skip).limit(limit)
+        sort_field = [("reviewed_at", -1)]
+        if sort_rating == "asc":
+            sort_field = [("rating", 1), ("reviewed_at", -1)]
+        elif sort_rating == "desc":
+            sort_field = [("rating", -1), ("reviewed_at", -1)]
+
+        cursor = collection.find(query).sort(sort_field).skip(skip).limit(limit)
         reviews = await cursor.to_list(length=limit)
         total = await collection.count_documents(query)
 

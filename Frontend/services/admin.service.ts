@@ -63,7 +63,7 @@ export const adminService = {
     api.post(`/admin/products/${product_id}/reject`, { rejection_reason }),
 
   // ── Reviews ────────────────────────────────────────────────────────────────
-  getReviews: (params?: { page?: number; limit?: number; search?: string; product_id?: string; seller_id?: string; min_rating?: number; max_rating?: number }) =>
+  getReviews: (params?: { page?: number; limit?: number; search?: string; product_id?: string; seller_id?: string; min_rating?: number; max_rating?: number; sort_rating?: string }) =>
     api.get("/admin/reviews", { params }),
 
   deleteReview: (review_id: string, reason: string) =>

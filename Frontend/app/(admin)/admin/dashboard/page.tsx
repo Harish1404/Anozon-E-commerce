@@ -122,16 +122,16 @@ export default function AdminDashboardPage() {
 
       {/* Stat Cards — clickable */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        <AdminStatCard label="Total Users" value={m.total_users ?? 0} icon={<Users />} href="/admin/users" />
-        <AdminStatCard label="Active Sellers" value={m.total_sellers ?? 0} icon={<Store />} href="/admin/sellers?status=approved" />
-        <AdminStatCard label="Products" value={m.total_products ?? 0} icon={<Package />} href="/admin/products" />
-        <AdminStatCard label="Orders" value={m.total_orders ?? 0} icon={<ShoppingBag />} />
-        <AdminStatCard label="Revenue" value={formatCurrency(m.total_revenue ?? 0)} icon={<IndianRupee />} />
-        <AdminStatCard label="Pending Sellers" value={m.pending_sellers ?? 0} icon={<Clock />} className="border-amber-500/30 dark:border-amber-500/20" href="/admin/sellers?status=pending" />
-        <AdminStatCard label="Pending Products" value={m.pending_products ?? 0} icon={<Clock />} className="border-amber-500/30 dark:border-amber-500/20" href="/admin/products?status=pending" />
-        <AdminStatCard label="Banned Users" value={m.banned_users ?? 0} icon={<Ban />} className="border-red-500/30 dark:border-red-500/20" href="/admin/users?status=banned" />
+        <AdminStatCard label="Total Users" value={m.total_users ?? 0} icon={<Users className="size-5" />} color="blue" href="/admin/users" />
+        <AdminStatCard label="Active Sellers" value={m.total_sellers ?? 0} icon={<Store className="size-5" />} color="emerald" href="/admin/sellers?status=approved" />
+        <AdminStatCard label="Products" value={m.total_products ?? 0} icon={<Package className="size-5" />} color="violet" href="/admin/products" />
+        <AdminStatCard label="Orders" value={m.total_orders ?? 0} icon={<ShoppingBag className="size-5" />} color="cyan" />
+        <AdminStatCard label="Revenue" value={formatCurrency(m.total_revenue ?? 0)} icon={<IndianRupee className="size-5" />} color="indigo" />
+        <AdminStatCard label="Pending Sellers" value={m.pending_sellers ?? 0} icon={<Clock className="size-5" />} color="amber" href="/admin/sellers?status=pending" />
+        <AdminStatCard label="Pending Products" value={m.pending_products ?? 0} icon={<Clock className="size-5" />} color="emerald" href="/admin/products?status=pending" />
+        <AdminStatCard label="Banned Users" value={m.banned_users ?? 0} icon={<Ban className="size-5" />} color="rose" href="/admin/users?status=banned" />
         {isSuperAdmin && (
-          <AdminStatCard label="Admins" value={m.total_admins ?? 0} icon={<ShieldCheck />} href="/admin/admins" />
+          <AdminStatCard label="Admins" value={m.total_admins ?? 0} icon={<ShieldCheck className="size-5" />} color="violet" href="/admin/admins" />
         )}
       </div>
 

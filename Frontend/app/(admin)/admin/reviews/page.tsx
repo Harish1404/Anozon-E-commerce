@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Star, Trash2, ChevronLeft, ChevronRight, Store } from "lucide-react"
+import { Search, Star, Trash2, ChevronLeft, ChevronRight, Store, ArrowUpDown } from "lucide-react"
 
 function RatingStars({ rating }: { rating: number }) {
   return (
@@ -28,6 +28,7 @@ function RatingStars({ rating }: { rating: number }) {
 export default function ReviewsPage() {
   const [search, setSearch] = useState("")
   const [sellerId, setSellerId] = useState("")
+  const [sortRating, setSortRating] = useState("")
   const [page, setPage] = useState(1)
   const limit = 20
 
@@ -38,6 +39,7 @@ export default function ReviewsPage() {
     page, limit,
     search: search || undefined,
     seller_id: sellerId || undefined,
+    sort_rating: sortRating || undefined,
   }
   const { data, isLoading } = useAdminReviews(params)
   const deleteMutation = useDeleteReview()
@@ -66,10 +68,10 @@ export default function ReviewsPage() {
         <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">{total} total reviews</p>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               {/* Seller filter dropdown */}
               <Select value={sellerId} onValueChange={(val) => { if (val !== null) { setSellerId(val === "__all__" ? "" : val); setPage(1); } }}>
-                <SelectTrigger className="h-9 w-full sm:w-[200px] text-sm">
+                <SelectTrigger className="h-9 w-full sm:w-[180px] text-sm">
                   <div className="flex items-center gap-2">
                     <Store className="size-3.5 text-muted-foreground" />
                     <SelectValue placeholder="All Sellers" />
@@ -82,7 +84,21 @@ export default function ReviewsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="relative w-full sm:w-72">
+              {/* Rating sort dropdown */}
+              <Select value={sortRating} onValueChange={(val) => { if (val !== null) { setSortRating(val === "__default__" ? "" : val); setPage(1); } }}>
+                <SelectTrigger className="h-9 w-full sm:w-[180px] text-sm">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="size-3.5 text-muted-foreground" />
+                    <SelectValue placeholder="Sort by Rating" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__default__">Newest First</SelectItem>
+                  <SelectItem value="desc">Rating: High to Low</SelectItem>
+                  <SelectItem value="asc">Rating: Low to High</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by review comment…"

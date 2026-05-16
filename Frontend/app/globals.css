@@ -63,7 +63,7 @@
 :root {
   --background:           var(--brand-surface);
   --foreground:           var(--brand-text-primary);
-  --card:                 var(--brand-area);
+  --card:                 var(--brand-area, var(--brand-surface));
   --card-foreground:      var(--brand-text-primary);
   --popover:              var(--brand-surface);
   --popover-foreground:   var(--brand-text-primary);
