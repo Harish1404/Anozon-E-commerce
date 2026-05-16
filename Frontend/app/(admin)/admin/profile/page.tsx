@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { LogOut, Store, ShieldCheck, Mail, Phone, User, Pencil, Check, X } from "lucide-react"
 import Link from "next/link"
+import { LogoutDialog } from "@/components/shared/LogoutDialog"
 
 function InlineEditRow({
   label, value, onSave, placeholder = "", icon: Icon, editable = true,
@@ -73,6 +74,7 @@ export default function AdminProfilePage() {
   const { data: profile, isLoading } = useProfile()
   const updateProfile = useUpdateProfile()
   const { mutate: logout, isPending: isLogoutPending } = useLogout()
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   const [isEditingAvatar, setIsEditingAvatar] = useState(false)
   const [avatarDraft, setAvatarDraft] = useState("")
@@ -232,7 +234,7 @@ export default function AdminProfilePage() {
           <Button
             variant="destructive"
             className="w-full justify-start gap-3"
-            onClick={() => logout()}
+            onClick={() => setLogoutOpen(true)}
             disabled={isLogoutPending}
           >
             <LogOut className="h-4 w-4" />
@@ -240,6 +242,12 @@ export default function AdminProfilePage() {
           </Button>
         </CardContent>
       </Card>
+
+      <LogoutDialog 
+        isOpen={logoutOpen} 
+        onOpenChange={setLogoutOpen} 
+        onConfirm={logout} 
+      />
     </div>
   )
 }

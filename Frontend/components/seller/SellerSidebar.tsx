@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -22,6 +23,7 @@ import { useAuthStore } from "@/store/useAuthStore"
 import { useSellerProfile } from "@/hooks/useSeller"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { LogoutDialog } from "@/components/shared/LogoutDialog"
 
 interface NavItem {
   label: string
@@ -56,6 +58,7 @@ export function SellerSidebar({
   const { mutate: logout, isPending } = useLogout()
   const { user } = useAuthStore()
   const { data: profile } = useSellerProfile()
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   const initials = profile?.business_name
     ? profile.business_name.slice(0, 2).toUpperCase()
@@ -181,7 +184,7 @@ export function SellerSidebar({
 
         {/* Logout */}
         <button
-          onClick={() => logout()}
+          onClick={() => setLogoutOpen(true)}
           disabled={isPending}
           className="nav-item group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium !text-red-500 hover:bg-red-500/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           title={collapsed ? "Logout" : undefined}
@@ -235,6 +238,12 @@ export function SellerSidebar({
       >
         <SidebarContent />
       </aside>
+
+      <LogoutDialog 
+        isOpen={logoutOpen} 
+        onOpenChange={setLogoutOpen} 
+        onConfirm={logout} 
+      />
     </>
   )
 }

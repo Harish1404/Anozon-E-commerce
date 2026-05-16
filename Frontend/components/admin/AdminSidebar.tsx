@@ -223,7 +223,7 @@ export function AdminSidebar({
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "sidebar hidden md:flex flex-col shrink-0 transition-all duration-300 bg-card border-r border-border",
+          "sidebar hidden md:flex flex-col shrink-0 transition-all duration-300 border-r border-border",
           collapsed ? "w-[64px]" : "w-[240px]"
         )}
       >
@@ -242,7 +242,7 @@ export function AdminSidebar({
       {/* Mobile drawer */}
       <aside
         className={cn(
-          "sidebar fixed inset-y-0 left-0 z-50 w-[260px] flex flex-col bg-card border-r border-border transition-transform duration-300 md:hidden",
+          "sidebar fixed inset-y-0 left-0 z-50 w-[260px] flex flex-col border-r border-border transition-transform duration-300 md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

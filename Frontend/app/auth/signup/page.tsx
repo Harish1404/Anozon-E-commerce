@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, ShoppingBag } from "lucide-react"
-
 import { useSignup } from "@/hooks/useAuthHook"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -57,10 +56,15 @@ export default function SignupPage() {
         signup({ username: data.username, email: data.email, password: data.password })
     }
 
-    const serverError =
-        error && "response" in (error as any)
-            ? (error as any).response?.data?.detail ?? "Something went wrong"
-            : null
+    const serverError = (() => {
+        if (!error) return null;
+        const res = (error as any).response;
+        if (!res) return (error as any).message ?? "Something went wrong. Please try again.";
+        const detail = res.data?.detail;
+        if (typeof detail === "string") return detail;
+        if (Array.isArray(detail)) return detail.map((d: any) => d.msg ?? JSON.stringify(d)).join(", ");
+        return "Something went wrong. Please try again.";
+    })();
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
@@ -96,7 +100,7 @@ export default function SignupPage() {
                                 <Label htmlFor="username">Username</Label>
                                 <Input
                                     id="username"
-                                    placeholder="john_doe"
+                                    placeholder="Enter your username..."
                                     autoComplete="username"
                                     aria-invalid={!!errors.username}
                                     {...register("username")}
@@ -129,7 +133,7 @@ export default function SignupPage() {
                                     <Input
                                         id="password"
                                         type={showPassword ? "text" : "password"}
-                                        placeholder="••••••••"
+                                        placeholder="*********"
                                         autoComplete="new-password"
                                         aria-invalid={!!errors.password}
                                         className="pr-10"

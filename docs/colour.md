@@ -62,10 +62,11 @@ css/* Serif headings for luxury feel */
 Emotional goal: Intelligent capability, creative energy, modern confidence.
 themes/seller/light.css
 css:root[data-theme="seller"] {
-  --brand-primary:        #26215C;
+  --brand-primary:        #342e73;
   --brand-accent:         #7F77DD;
   --brand-surface:        #EEEDFE;
-  --brand-surface-alt:    #E2E0FA;
+  --brand-area:           #fefeff;  
+  --brand-surface-alt:    #bebcd8;
   --brand-border:         #AFA9EC;
   --brand-text-primary:   #26215C;
   --brand-text-secondary: #534AB7;
@@ -76,10 +77,11 @@ css:root[data-theme="seller"] {
 }
 themes/seller/dark.css
 css:root[data-theme="seller"].dark {
-  --brand-primary:        #CECBF6;
+  --brand-primary:        #0b0926;
   --brand-accent:         #AFA9EC;
-  --brand-surface:        #16142E;
-  --brand-surface-alt:    #1E1B3A;
+  --brand-surface:        #000004;
+  --brand-area:           #11112a;
+  --brand-surface-alt:    #262247;
   --brand-border:         #3C3489;
   --brand-text-primary:   #EEEDFE;
   --brand-text-secondary: #AFA9EC;
@@ -120,7 +122,8 @@ themes/admin/light.css
 css:root[data-theme="admin"] {
   --brand-primary:        #591515ff;
   --brand-accent:         #E24B4A;
-  --brand-surface:        #FFFFFF;
+  --brand-surface:        #fcf6f6;
+  --brand-area:           #ffffff;
   --brand-surface-alt:    #FCEBEB;
   --brand-border:         #F7C1C1;
   --brand-text-primary:   #2C2C2A;
@@ -134,9 +137,10 @@ themes/admin/dark.css
 css:root[data-theme="admin"].dark {
   --brand-primary:        #F7C1C1;
   --brand-accent:         #F09595;
-  --brand-surface:        #1A0E0E;
+  --brand-surface:        #070707;
+  --brand-area:           #1f0f0f;
   --brand-surface-alt:    #2A1414;
-  --brand-border:         #791F1F;
+  --brand-border:         #671a1a;
   --brand-text-primary:   #F1EFE8;
   --brand-text-secondary: #B4B2A9;
   --brand-cta:            #E24B4A;

@@ -4,3 +4,7 @@ __pycache__/
 .env
 
 seed/
+
+# IDE / AI tools
+.amazonq
+.amazonq/

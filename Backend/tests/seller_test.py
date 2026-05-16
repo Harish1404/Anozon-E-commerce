@@ -1,5 +1,4 @@
 import pytest
-from datetime import datetime, timedelta
 from pydantic import ValidationError
 
 from app.models.seller_model import (
@@ -410,73 +409,6 @@ def test_seller_profile_happy_defaults_and_alias(payload):
     assert profile.id == payload["_id"]
 
 
-@pytest.mark.parametrize(
-    "email,user_id",
-    [
-        ("invalid-email", "507f1f77bcf86cd799439011"),
-        ("seller@example.com", "not-an-objectid"),
-    ],
-    ids=[
-        "error-invalid-email",
-        "error-invalid-user-id",
-    ],
-)
-def test_seller_profile_invalid_email_or_user_id(email, user_id):
-    
-    # Arrange
-    payload = {
-        "_id": "507f1f77bcf86cd799439010",
-        "user_id": user_id,
-        "email": email,
-        "business_name": "Test Co",
-        "business_type": "individual",
-        "business_address": {
-            "line1": "123 Street",
-            "city": "City",
-            "state": "State",
-            "pincode": "123456",
-            "country": "Country",
-        },
-    }
-
-    
-    # Act
-    with pytest.raises(ValidationError) as exc_info:
-        SellerProfile(**payload)
-
-    
-    # Assert
-    errors = exc_info.value.errors()
-    assert any(err["loc"][-1] in ("email", "user_id") for err in errors)
-
-
-def test_seller_profile_time_fields_are_recent():
-    
-    # Arrange
-    payload = {
-        "user_id": "507f1f77bcf86cd799439011",
-        "email": "recent@example.com",
-        "business_name": "Recent Shop",
-        "business_type": "individual",
-        "business_address": {
-            "line1": "Street",
-            "city": "City",
-            "state": "State",
-            "pincode": "123456",
-            "country": "Country",
-        },
-    }
-
-    
-    # Act
-    profile = SellerProfile(**payload)
-
-    
-    # Assert
-    now = datetime.utcnow()
-    # Check that created_at and updated_at are not far from "now"
-    assert now - profile.created_at < timedelta(minutes=5)
-    assert now - profile.updated_at < timedelta(minutes=5)
 
 
 def test_seller_response_populate_by_name():

@@ -76,7 +76,8 @@ class SellerResponse(SellerProfile):
         populate_by_name = True
 
 class SellerProfileUpdate(BaseModel):
-    pan_number: Optional[str] = None
+    business_type: Optional[BusinessType] = None
+    gstin: Optional[str] = None
     business_address: Optional[BusinessAddress] = None
     business_name: Optional[str] = None
 

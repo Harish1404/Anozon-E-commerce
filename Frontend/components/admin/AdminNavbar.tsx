@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Menu, Bell, LogOut } from "lucide-react"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -15,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useProfile } from "@/hooks/useProfile"
+import { LogoutDialog } from "@/components/shared/LogoutDialog"
 
 interface AdminNavbarProps {
   onMobileOpen: () => void
@@ -32,6 +34,7 @@ export function AdminNavbar({ onMobileOpen }: AdminNavbarProps) {
   const { user } = useAuthStore()
   const { data: profile } = useProfile()
   const { mutate: logout, isPending } = useLogout()
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   const isSuperAdmin = user?.role === "super_admin"
   const roleLabel = isSuperAdmin ? "Super Admin" : "Admin"
@@ -44,7 +47,8 @@ export function AdminNavbar({ onMobileOpen }: AdminNavbarProps) {
     : "AD"
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border bg-card px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+    <>
+    <header className="admin-navbar sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
       {/* Mobile Menu Toggle */}
       <button
         type="button"
@@ -118,7 +122,7 @@ export function AdminNavbar({ onMobileOpen }: AdminNavbarProps) {
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
-                onClick={() => logout()}
+                onClick={() => setLogoutOpen(true)}
                 disabled={isPending}
                 className="text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer"
               >
@@ -130,5 +134,11 @@ export function AdminNavbar({ onMobileOpen }: AdminNavbarProps) {
         </div>
       </div>
     </header>
+    <LogoutDialog 
+      isOpen={logoutOpen} 
+      onOpenChange={setLogoutOpen} 
+      onConfirm={logout} 
+    />
+    </>
   )
 }

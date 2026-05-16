@@ -9,6 +9,8 @@ from app.repo.profiles_helpers import (
     update_address_in_profile,
     delete_address_from_profile
 )
+from app.db.mongodb import get_users_collection, profiles_collection
+from app.repo.profiles_helpers import create_empty_profile
 from app.db.mongodb import profiles_collection
 
 logger = logging.getLogger("uvicorn.error")
@@ -53,6 +55,13 @@ class ProfileService:
         if not update_data:
             return {"message": "No data to update"}
             
+        # Check if profile exists, if not create an empty one first
+        profile = await get_profile_by_user_id(profiles_collection(), user_id)
+        if not profile:
+            user = await get_users_collection().find_one({"_id": ObjectId(user_id)})
+            if user:
+                await create_empty_profile(profiles_collection(), user_id, user.get("email", ""))
+
         try:
             await update_profile_db(profiles_collection(), user_id, update_data)
         except Exception as e:
@@ -68,7 +77,11 @@ class ProfileService:
             
         profile = await get_profile_by_user_id(profiles_collection(), user_id)
         if not profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
+            
+            user = await get_users_collection().find_one({"_id": ObjectId(user_id)})
+            if user:
+                await create_empty_profile(profiles_collection(), user_id, user.get("email", ""))
+            profile = {"addresses": []}
             
         address_data["address_id"] = str(uuid.uuid4())
         

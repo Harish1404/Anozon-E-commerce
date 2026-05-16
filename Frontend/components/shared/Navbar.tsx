@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -12,10 +13,12 @@ import { useCart } from "@/hooks/useCart"
 import { useWishlist } from "@/hooks/useWishlist"
 import { useProfile } from "@/hooks/useProfile"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
+import { LogoutDialog } from "@/components/shared/LogoutDialog"
 
 export function Navbar() {
   const { user } = useAuthStore()
   const { mutate: logout, isPending } = useLogout()
+  const [logoutOpen, setLogoutOpen] = useState(false)
   const { data: cart } = useCart()
   const { data: wishlist } = useWishlist()
   const { data: profile } = useProfile()
@@ -28,6 +31,7 @@ export function Navbar() {
     : "?"
 
   return (
+    <>
     <header className="hidden md:block sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
@@ -117,7 +121,7 @@ export function Navbar() {
                 <DropdownMenuItem
                   variant="destructive"
                   disabled={isPending}
-                  onClick={() => logout()}
+                  onClick={() => setLogoutOpen(true)}
                   className="cursor-pointer"
                 >
                   <LogOut className="size-4" />
@@ -137,5 +141,11 @@ export function Navbar() {
         </nav>
       </div>
     </header>
+    <LogoutDialog 
+      isOpen={logoutOpen} 
+      onOpenChange={setLogoutOpen} 
+      onConfirm={logout} 
+    />
+    </>
   )
 }

@@ -16,6 +16,7 @@ import {
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { LogoutDialog } from "@/components/shared/LogoutDialog"
 
 interface SellerNavbarProps {
   onMenuClick: () => void
@@ -27,6 +28,7 @@ export function SellerNavbar({ onMenuClick }: SellerNavbarProps) {
   const { data: profile } = useSellerProfile()
   const { mutate: logout, isPending } = useLogout()
   const router = useRouter()
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   const initials = profile?.business_name
     ? profile.business_name.slice(0, 2).toUpperCase()
@@ -35,6 +37,7 @@ export function SellerNavbar({ onMenuClick }: SellerNavbarProps) {
     : "S"
 
   return (
+    <>
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/90 backdrop-blur-xl px-4 md:px-6">
       {/* Hamburger — mobile only */}
       <button
@@ -101,7 +104,7 @@ export function SellerNavbar({ onMenuClick }: SellerNavbarProps) {
             <DropdownMenuItem
               variant="destructive"
               disabled={isPending}
-              onClick={() => logout()}
+              onClick={() => setLogoutOpen(true)}
               className="cursor-pointer gap-2"
             >
               <LogOut className="size-4" />
@@ -111,5 +114,11 @@ export function SellerNavbar({ onMenuClick }: SellerNavbarProps) {
         </DropdownMenu>
       </div>
     </header>
+    <LogoutDialog 
+      isOpen={logoutOpen} 
+      onOpenChange={setLogoutOpen} 
+      onConfirm={logout} 
+    />
+    </>
   )
 }
