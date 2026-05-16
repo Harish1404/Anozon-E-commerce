@@ -30,6 +30,7 @@ export default function ProductsPage() {
   const limit = 15
 
   useEffect(() => {
+    document.title = "Products — Anozon Admin"
     const s = searchParams.get("status")
     if (s) setStatus(s)
     else setStatus("all")

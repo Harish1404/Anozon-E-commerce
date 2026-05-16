@@ -37,6 +37,7 @@ export default function UsersPage() {
   const limit = 20
 
   useEffect(() => {
+    document.title = "Users — Anozon Admin"
     const s = searchParams.get("status")
     if (s) setStatus(s)
     else setStatus("all")

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { useAdminDashboard } from "@/hooks/useAdminDashboard"
 import { useAuthStore } from "@/store/useAuthStore"
 import { AdminStatCard } from "@/components/admin/dashboard/AdminStatCard"
@@ -91,6 +92,10 @@ export default function AdminDashboardPage() {
   const { data, isLoading, isError } = useAdminDashboard()
 
   const isSuperAdmin = user?.role === "super_admin"
+
+  useEffect(() => {
+    document.title = "Dashboard — Anozon Admin"
+  }, [])
 
   if (isLoading) {
     return (

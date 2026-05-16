@@ -80,6 +80,10 @@ export default function AdminProfilePage() {
   const isSuperAdmin = user?.role === "super_admin"
   const roleLabel = isSuperAdmin ? "Super Admin" : "Admin"
 
+  useEffect(() => {
+    document.title = "Profile — Anozon Admin"
+  }, [])
+
   const adminName = profile?.full_name || user?.email?.split("@")[0] || "Admin"
   const initials = profile?.full_name
     ? profile.full_name.slice(0, 2).toUpperCase()

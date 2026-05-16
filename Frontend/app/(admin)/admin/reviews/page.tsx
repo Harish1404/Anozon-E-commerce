@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAdminReviews, useDeleteReview, useSellersList } from "@/hooks/useAdminDashboard"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,10 @@ export default function ReviewsPage() {
   const [sortRating, setSortRating] = useState("")
   const [page, setPage] = useState(1)
   const limit = 20
+
+  useEffect(() => {
+    document.title = "Reviews — Anozon Admin"
+  }, [])
 
   const [deleteDialog, setDeleteDialog] = useState<{ reviewId: string; comment: string } | null>(null)
   const [reason, setReason] = useState("")

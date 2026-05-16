@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useAuditLogs } from "@/hooks/useAdminDashboard"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -55,6 +55,10 @@ export default function AuditLogsPage() {
   const [dateTo, setDateTo] = useState("")
   const [page, setPage] = useState(1)
   const limit = 20
+
+  useEffect(() => {
+    document.title = "Activity — Anozon Admin"
+  }, [])
 
   const params = useMemo(() => ({
     page,

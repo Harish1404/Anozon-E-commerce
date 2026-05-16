@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAdminList, usePromoteToAdmin, useDemoteToUser, useAdminUsers } from "@/hooks/useAdminDashboard"
 import { useAuthStore } from "@/store/useAuthStore"
 import { Input } from "@/components/ui/input"
@@ -20,6 +20,10 @@ export default function AdminManagementPage() {
   const [promoteDialog, setPromoteDialog] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [demoteDialog, setDemoteDialog] = useState<{ id: string; name: string } | null>(null)
+
+  useEffect(() => {
+    document.title = "Admins — Anozon Admin"
+  }, [])
 
   // Search users to promote
   const { data: searchData } = useAdminUsers(

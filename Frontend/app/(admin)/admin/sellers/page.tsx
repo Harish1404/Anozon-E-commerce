@@ -39,6 +39,7 @@ export default function SellersPage() {
   const limit = 15
 
   useEffect(() => {
+    document.title = "Sellers — Anozon Admin"
     const s = searchParams.get("status")
     if (s) setStatus(s)
     else setStatus("all")
