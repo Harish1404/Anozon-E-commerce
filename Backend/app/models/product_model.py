@@ -1,48 +1,103 @@
-from pydantic import BaseModel, Field, HttpUrl, BeforeValidator
-from typing import Optional, Annotated
+from pydantic import BaseModel, Field, HttpUrl, BeforeValidator, model_validator
+from typing import Optional, Annotated, Any
+from bson import ObjectId
+from datetime import datetime
+from app.utils.discount import calculate_discount_price
+from app.models.reviews_model import ReviewPublicResponse
+from app.models.seller_model import SellerMinimalResponse
+from app.core.time_utils import utc_now
 
 # 1. Helper to handle MongoDB ObjectId -> String conversion
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
-# --- BASE MODEL (Shared Rules) ---
+# --- BASE MODEL (Shared Fields) ---
 class ProductBase(BaseModel):
-    name: str = Field(..., min_length=3, max_length=100) # Increased to 100
-    category: str = Field(..., min_length=3, max_length=50) # Increased to 50
-    description: str = Field(..., min_length=10, max_length=1000) # Increased to 1000
-    price: int = Field(..., gt=0) # Changed to float for cents (e.g. 10.99)
-    stock_quantity: int = Field(..., ge=0) # Cannot be negative
-    image_url: HttpUrl # Validates it is a real URL
-    likes: Optional[int] = Field(0, ge=0) # Default to 0, cannot be negative
-    liked_by: list[PyObjectId] = Field(default_factory=list) # List of User IDs who liked the product
+    name: str = Field(..., min_length=1)
+    description: str = Field(...)
+    category: str = Field(...)
+    actual_price: int = Field(..., gt=0) # User enters this
+    stock: int = Field(..., ge=0)
+    image_urls: Optional[list[str]] = Field(default_factory=list)
 
 # --- CREATE MODEL (Input) ---
 class ProductCreate(ProductBase):
-    pass # Inherits everything from Base
+    discount_percent: Optional[int] = Field(default=0, ge=0, le=100) # User enters this
+    product_likes: Optional[int] = Field(default=0) # User enters this
 
 # --- UPDATE MODEL (For PUT/PATCH) ---
 class ProductUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=3, max_length=100)
-    category: Optional[str] = Field(None, min_length=3, max_length=50)
-    description: Optional[str] = Field(None, min_length=10, max_length=1000)
-    price: Optional[float] = Field(None, gt=0)
-    stock_quantity: Optional[int] = Field(None, ge=0)
-    image_url: Optional[HttpUrl] = None
-    likes: Optional[int] = Field(None, ge=0)
+    name: Optional[str] = Field(default=None, min_length=1)
+    description: Optional[str] = None
+    category: Optional[str] = None
+    actual_price: Optional[int] = Field(default=None, gt=0)
+    discount_percent: Optional[int] = Field(default=None, ge=0, le=100)
+    stock: Optional[int] = Field(default=None, ge=0)
+    image_urls: Optional[list[str]] = None
+    
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True
+    }
+
+# --- IN DB MODEL ---
+class ProductInDB(ProductBase):
+    id: PyObjectId = Field(alias="_id")
+    seller_id: PyObjectId
+    slug: str
+    discount_percent: int
+    price: int # Final discounted price
+    is_active: bool = Field(default=True)
+    is_approved: bool = Field(default=False)
+    is_deleted: bool = Field(default=False)
+    avg_rating: float = Field(default=0.0)
+    review_count: int = Field(default=0)
+    product_likes: int = Field(default=0)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now) 
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True
+    }
+    
 # --- RESPONSE MODEL (Output to Frontend) ---
 class ProductResponse(ProductBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    likes_count: int = 0 # Better to return a count
-    
-    class Config:
-        populate_by_name = True
-        json_schema_extra = {
-            "example": {
-                "name": "Cloud Hoodie",
-                "category": "Clothing",
-                "description": "A warm hoodie for late night deployments.",
-                "price": 49.99,
-                "stock_quantity": 100,
-                "image_url": "https://example.com/hoodie.jpg",
-                "likes_count": 5
-            }
-        }
+    seller_id: PyObjectId
+    slug: str
+    discount_percent: int
+    price: int # Final discounted price
+    is_active: bool
+    is_approved: bool
+    is_deleted: bool
+    avg_rating: float
+    review_count: int
+    product_likes: int
+    recent_reviews: list["ReviewPublicResponse"] = []
+    seller_details: Optional["SellerMinimalResponse"] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {
+        "from_attributes": True,   # maps ProductInDB -> ProductResponse
+        "populate_by_name": True,
+    }
+
+
+class ProductStockUpdate(BaseModel):
+    stock: int = Field(..., ge=0)
+
+class ProductToggleRequest(BaseModel):
+    is_active: bool = Field(...)
+
+class PaginatedProductResponse(BaseModel):
+    items: list[ProductResponse]
+    total: int
+    page: int
+    limit: int
+    pages: int
+
+class ProductRejectRequest(BaseModel):
+    rejection_reason: str = Field(..., min_length=5)

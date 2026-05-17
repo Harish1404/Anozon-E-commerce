@@ -2,3 +2,9 @@ venv/
 __pycache__/
 *.pyc
 .env
+
+seed/
+
+# IDE / AI tools
+.amazonq
+.amazonq/

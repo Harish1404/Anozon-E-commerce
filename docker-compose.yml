@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # MongoDB Database
   mongodb:
-    image: mongo:7.0
+    image: mongo:7.0    
     container_name: product-shop-mongodb
     restart: unless-stopped
     environment:
@@ -89,5 +89,3 @@ networks:
 volumes:
   mongodb_data:
     driver: local
-
-    

@@ -1,0 +1,12 @@
+:root[data-theme="user"].dark {
+  --brand-primary:        #D3D1C7;
+  --brand-accent:         #EF9F27;
+  --brand-surface:        #1A1A18;
+  --brand-surface-alt:    #252522;
+  --brand-border:         #444441;
+  --brand-text-primary:   #F1EFE8;
+  --brand-text-secondary: #B4B2A9;
+  --brand-cta:            #EF9F27;
+  --brand-cta-fg:         #2C2C2A;
+  --brand-destructive:    #F09595;
+}

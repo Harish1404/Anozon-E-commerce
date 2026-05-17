@@ -5,10 +5,24 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     MONGO_URL: str = Field(..., env="MONGO_URL")
     DB_NAME: str = Field(..., env="DB_NAME")
+
+    REDIS_URL: str = Field(..., env="REDIS_URL")
+
+    EMAIL_SERVER: str = Field(..., env="EMAIL_SERVER")
+    EMAIL_PORT: int = Field(..., env="EMAIL_PORT")
+    EMAIL_USER: str = Field(..., env="EMAIL_USER")
+    EMAIL_PASS: str = Field(..., env="EMAIL_PASS")
+
+    MAIL_FROM: str = Field(..., env="MAIL_FROM")
+    MAIL_FROM_APP: str = Field(..., env="MAIL_FROM_APP")
+
     JWT_SECRET: str = Field(..., env="JWT_SECRET")
     JWT_ALGORITHM: str = Field("HS256", env="JWT_ALGORITHM")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(15, env="ACCESS_TOKEN_EXPIRE_MINUTES")
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(7, env="REFRESH_TOKEN_EXPIRE_DAYS")
+    
+    OLLAMA_API_URL: str = Field(..., env="OLLAMA_API_URL")
+    OLLAMA_URL: str = Field(..., env="OLLAMA_URL")
 
     class Config:
         env_file = ".env"

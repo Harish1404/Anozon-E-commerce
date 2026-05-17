@@ -1,6 +1,5 @@
 import logging
 import sys
-from app.core.config import settings
 
 # Create a custom logger
 logger = logging.getLogger("anozon_logger")
@@ -22,4 +21,5 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 # Prevent duplicate logs from uvicorn
-logger.propagate = False
+logger.propagate = True
+

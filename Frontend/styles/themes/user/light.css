@@ -1,0 +1,12 @@
+:root[data-theme="user"] {
+  --brand-primary:        #2C2C2A;
+  --brand-accent:         #BA7517;
+  --brand-surface:        #F1EFE8;
+  --brand-surface-alt:    #E8E6DE;
+  --brand-border:         #B4B2A9;
+  --brand-text-primary:   #2C2C2A;
+  --brand-text-secondary: #5F5E5A;
+  --brand-cta:            #BA7517;
+  --brand-cta-fg:         #F1EFE8;
+  --brand-destructive:    #A32D2D;
+}

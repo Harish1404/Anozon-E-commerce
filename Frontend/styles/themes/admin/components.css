@@ -1,0 +1,35 @@
+/* Table row highlight using brand-surface-alt for red identity */
+[data-theme="admin"] table tr:hover td {
+  background-color: var(--brand-surface-alt);
+}
+
+/* Sidebar & Navbar surface colors */
+[data-theme="admin"] .sidebar,
+[data-theme="admin"] .admin-navbar {
+  background-color: var(--brand-surface) !important;
+}
+
+/* Sidebar navigation item hover effect */
+[data-theme="admin"] .sidebar .nav-item:not(.bg-primary):hover {
+  background-color: var(--brand-surface-alt) !important;
+  color: var(--brand-cta) !important;
+}
+
+/* Warning badge — amber for pending states */
+[data-theme="admin"] .badge-warning {
+  background-color: var(--brand-warning);
+  color: #fff;
+}
+
+/* Destructive actions are visually prominent */
+[data-theme="admin"] .btn-destructive {
+  background-color: var(--brand-destructive);
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+/* Tighter headings — crisp authority */
+[data-theme="admin"] .page-heading {
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}

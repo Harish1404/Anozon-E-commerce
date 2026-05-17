@@ -37,7 +37,6 @@ jobs:
         cd Backend
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest pytest-asyncio httpx
         
     - name: Run tests
       env:
@@ -109,8 +108,14 @@ jobs:
   build-and-push-to-DockerHub:
     needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
+<<<<<<< HEAD
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature '
+    environment: production
+    
+=======
     if: github.ref == 'refs/heads/main'
 
+>>>>>>> 5d6140282c6fc95b0436535f73c9e902ec8c4c20
     steps:
     - uses: actions/checkout@v4
 

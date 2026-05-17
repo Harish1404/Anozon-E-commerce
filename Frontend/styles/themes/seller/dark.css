@@ -1,0 +1,16 @@
+:root[data-theme="seller"].dark {
+  --brand-primary:        #0b0926;
+  --brand-accent:         #AFA9EC;
+  --brand-surface:        #000004;
+  --brand-area:           #11112a;
+  --brand-surface-alt:    #262247;
+  --brand-border:         #3C3489;
+  --brand-text-primary:   #EEEDFE;
+  --brand-text-secondary: #AFA9EC;
+  --brand-cta:            #7F77DD;
+  --brand-cta-fg:         #EEEDFE;
+  --brand-teal:           #5DCAA5;
+  --brand-destructive:    #F09595;
+}
+
+
