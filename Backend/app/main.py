@@ -51,6 +51,7 @@ app.add_middleware(
         "http://localhost:3001",
         settings.ALLOWED_ORIGIN.rstrip("/"),
         settings.ALLOWED_ORIGIN,
+        settings.PREVIEW_ORIGIN,
     ],
     allow_credentials=True,
     allow_methods=["*"],

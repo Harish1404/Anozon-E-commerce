@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     DB_NAME: str = Field(..., env="DB_NAME")
 
     ALLOWED_ORIGIN: str = Field(..., env="ALLOWED_ORIGIN")
+    PREVIEW_ORIGIN: str = Field("http://localhost:3000", env="PREVIEW_ORIGIN")
 
     REDIS_URL: str = Field(..., env="REDIS_URL")
 
