@@ -5,6 +5,11 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     MONGO_URL: str = Field(..., env="MONGO_URL")
     DB_NAME: str = Field(..., env="DB_NAME")
+    ALLOWED_ORIGIN: str = Field("http://localhost:3000", env="ALLOWED_ORIGIN")
+    PREVIEW_ORIGIN: str = Field("http://localhost:3000", env="PREVIEW_ORIGIN")
+
+    ALLOWED_ORIGIN: str = Field(..., env="ALLOWED_ORIGIN")
+    PREVIEW_ORIGIN: str = Field("http://localhost:3000", env="PREVIEW_ORIGIN")
 
     REDIS_URL: str = Field(..., env="REDIS_URL")
 

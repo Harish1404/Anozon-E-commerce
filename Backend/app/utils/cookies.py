@@ -1,26 +1,51 @@
 from fastapi import Response
+import os
 
 COOKIE_KEY = "refresh_token"
-COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days in seconds
+COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
+
+def get_cookie_settings():
+    """Return cookie settings based on environment"""
+    is_prod = os.getenv("ENVIRONMENT", "development").lower() == "production"
+    
+    if is_prod:
+        # Production — proxy makes cookies same-domain, so Lax is safe & more secure
+        return {
+            "httponly": True,
+            "secure": True,
+            "samesite": "lax",
+            "max_age": COOKIE_MAX_AGE,
+            "path": "/",
+        }
+    else:
+        # Local Development
+        return {
+            "httponly": True,
+            "secure": False,          # False because localhost is HTTP
+            "samesite": "lax",        # More lenient in dev
+            "max_age": COOKIE_MAX_AGE,
+            "path": "/",
+        }
+
 
 def set_refresh_cookie(response: Response, refresh_token: str):
+    settings = get_cookie_settings()
+    
     response.set_cookie(
         key=COOKIE_KEY,
         value=refresh_token,
-        httponly=True,           # JS cannot access — XSS protection
-        secure=True,             # HTTPS only in prod
-        samesite="lax",          # CSRF protection
-        max_age=COOKIE_MAX_AGE,
-        path="/",                # Cookie sent to all routes
+        **settings
     )
+
 
 def clear_refresh_cookie(response: Response):
+    settings = get_cookie_settings()
+    
+    # Browsers REQUIRE SameSite and Secure to match when deleting cookies
     response.delete_cookie(
         key=COOKIE_KEY,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        path="/",
+        path=settings["path"],
+        secure=settings["secure"],
+        samesite=settings["samesite"],
+        httponly=settings["httponly"]
     )
-
-
