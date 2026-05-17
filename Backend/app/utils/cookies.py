@@ -9,11 +9,11 @@ def get_cookie_settings():
     is_prod = os.getenv("ENVIRONMENT", "development").lower() == "production"
     
     if is_prod:
-        # Production (Cross-domain: Vercel + Render)
+        # Production — proxy makes cookies same-domain, so Lax is safe & more secure
         return {
             "httponly": True,
-            "secure": True,           # Required for cross-domain
-            "samesite": "none",       # Required for cross-domain
+            "secure": True,
+            "samesite": "lax",
             "max_age": COOKIE_MAX_AGE,
             "path": "/",
         }
