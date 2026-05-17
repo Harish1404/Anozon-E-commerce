@@ -8,9 +8,8 @@ from starlette.middleware.cors import CORSMiddleware
 from app.db.mongodb import connect_to_mongo, create_indexes, close_mongo_connection
 from app.db.redis import connect_redis, close_redis
 from app.core.logger import logger
-
-
 from app.core.config import settings
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -50,8 +49,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
+        settings.ALLOWED_ORIGIN.rstrip("/"),
         settings.ALLOWED_ORIGIN,
-        settings.PREVIEW_ORIGIN
+        settings.PREVIEW_ORIGIN,
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -68,4 +68,3 @@ app.include_router(seller_routes.router)
 app.include_router(review_routes.router)
 app.include_router(super_admin_routes.router)
 app.include_router(ollama.router)  # Ollama AI routes
-

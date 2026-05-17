@@ -2,7 +2,7 @@ import axios from "axios";
 import { useAuthStore } from "@/store/useAuthStore";
 import { AxiosError } from "axios";
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const baseURL = "/api";
 
 const api = axios.create({
     baseURL,

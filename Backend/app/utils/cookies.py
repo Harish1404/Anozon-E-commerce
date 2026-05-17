@@ -9,11 +9,11 @@ def get_cookie_settings():
     is_prod = os.getenv("ENVIRONMENT", "development").lower() == "production"
     
     if is_prod:
-        # Production (Cross-domain: Vercel + Render)
+        # Production — proxy makes cookies same-domain, so Lax is safe & more secure
         return {
             "httponly": True,
-            "secure": True,           # Required for cross-domain
-            "samesite": "none",       # Required for cross-domain
+            "secure": True,
+            "samesite": "lax",
             "max_age": COOKIE_MAX_AGE,
             "path": "/",
         }
@@ -41,7 +41,7 @@ def set_refresh_cookie(response: Response, refresh_token: str):
 def clear_refresh_cookie(response: Response):
     settings = get_cookie_settings()
     
-    # Browsers REQUIRE SameSite and Secure to match when deleting cross-domain cookies
+    # Browsers REQUIRE SameSite and Secure to match when deleting cookies
     response.delete_cookie(
         key=COOKIE_KEY,
         path=settings["path"],

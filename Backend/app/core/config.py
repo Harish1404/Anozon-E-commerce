@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     ALLOWED_ORIGIN: str = Field("http://localhost:3000", env="ALLOWED_ORIGIN")
     PREVIEW_ORIGIN: str = Field("http://localhost:3000", env="PREVIEW_ORIGIN")
 
+    ALLOWED_ORIGIN: str = Field(..., env="ALLOWED_ORIGIN")
+    PREVIEW_ORIGIN: str = Field("http://localhost:3000", env="PREVIEW_ORIGIN")
+
     REDIS_URL: str = Field(..., env="REDIS_URL")
 
     EMAIL_SERVER: str = Field(..., env="EMAIL_SERVER")
