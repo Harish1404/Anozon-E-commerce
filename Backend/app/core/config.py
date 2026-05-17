@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     MONGO_URL: str = Field(..., env="MONGO_URL")
     DB_NAME: str = Field(..., env="DB_NAME")
 
+    ALLOWED_ORIGIN: str = Field(..., env="ALLOWED_ORIGIN")
+
     REDIS_URL: str = Field(..., env="REDIS_URL")
 
     EMAIL_SERVER: str = Field(..., env="EMAIL_SERVER")
