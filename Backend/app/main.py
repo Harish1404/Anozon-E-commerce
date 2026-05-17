@@ -10,6 +10,8 @@ from app.db.redis import connect_redis, close_redis
 from app.core.logger import logger
 
 
+from app.core.config import settings
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Connect to MongoDB
@@ -45,7 +47,12 @@ async def health_check():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000","http://localhost:3001", "[IP_ADDRESS]", "http://[IP_ADDRESS]"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        settings.ALLOWED_ORIGIN,
+        settings.PREVIEW_ORIGIN
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
