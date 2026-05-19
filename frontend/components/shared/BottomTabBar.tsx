@@ -126,13 +126,9 @@ export function BottomTabBar() {
               )}
               
               <div className="mt-auto pt-4 border-t border-border/50">
-                <div className="flex items-center justify-between rounded-xl px-3 py-2 text-muted-foreground bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <Sun className="size-5 dark:hidden" />
-                    <Moon className="size-5 hidden dark:block" />
-                    <span className="font-medium">Theme</span>
-                  </div>
+                <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground">
                   <ThemeToggle />
+                  <span className="font-medium">Theme</span>
                 </div>
               </div>
             </div>
