@@ -20,6 +20,7 @@ export type ApplicationStatus = "pending" | "approved" | "rejected"
 export interface User {
   _id: string
   email: string
+  username?: string
   role: Role
 }
 

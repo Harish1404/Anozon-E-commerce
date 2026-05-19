@@ -1,21 +1,35 @@
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from app.core.config import settings
 import logging
+from brevo import AsyncBrevo
+from brevo.transactional_emails import SendTransacEmailRequestSender, SendTransacEmailRequestToItem
+from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
 
-conf = ConnectionConfig(
-    MAIL_USERNAME=settings.EMAIL_USER,
-    MAIL_PASSWORD=settings.EMAIL_PASS,
-    MAIL_FROM=settings.MAIL_FROM,
-    MAIL_PORT=settings.EMAIL_PORT,
-    MAIL_SERVER=settings.EMAIL_SERVER,
-    MAIL_FROM_NAME=settings.MAIL_FROM_APP,
-    MAIL_STARTTLS = settings.EMAIL_PORT == 587,
-    MAIL_SSL_TLS = settings.EMAIL_PORT == 465,
-    USE_CREDENTIALS = True,
-    VALIDATE_CERTS = True
-)
+# Configure Brevo API Client
+client = AsyncBrevo(api_key=settings.BREVO_API_KEY)
+
+async def send_email_via_brevo(subject: str, recipients: list[str], html_content: str) -> bool:
+    try:
+        sender = SendTransacEmailRequestSender(
+            name=settings.MAIL_FROM_APP,
+            email=settings.MAIL_FROM
+        )
+        
+        to_recipients = [
+            SendTransacEmailRequestToItem(email=email) 
+            for email in recipients
+        ]
+        
+        await client.transactional_emails.send_transac_email(
+            subject=subject,
+            html_content=html_content,
+            sender=sender,
+            to=to_recipients
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Error sending email via Brevo: {e}")
+        return False
 
 async def send_otp_email(email: str, otp: str):
     html_content = f"""
@@ -59,20 +73,7 @@ async def send_otp_email(email: str, otp: str):
         </html>
     """
 
-    message = MessageSchema(
-        subject="Verify Your Email",
-        recipients=[email],
-        body=html_content,
-        subtype="html",
-        
-    )
-    fm = FastMail(conf)
-    try:
-        await fm.send_message(message)
-        return True
-    except Exception as e:
-        logger.error(f"Error sending email: {e}")
-        return False
+    return await send_email_via_brevo("Verify Your Email", [email], html_content)
     
 async def send_forget_password_email(email: str, token: str):
     html_content = f"""
@@ -116,18 +117,4 @@ async def send_forget_password_email(email: str, token: str):
         </html>
     """
 
-    message = MessageSchema(
-        subject="Forget Password",
-        recipients=[email],
-        body=html_content,
-        subtype="html",
-        
-    )
-    fm = FastMail(conf)
-    try:
-        await fm.send_message(message)
-        return True
-    except Exception as e:
-        logger.error(f"Error sending email: {e}")
-        return False
-
+    return await send_email_via_brevo("Forget Password", [email], html_content)

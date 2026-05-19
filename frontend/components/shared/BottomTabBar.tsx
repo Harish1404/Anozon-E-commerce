@@ -2,12 +2,13 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Home, ShoppingCart, Menu, User, Package, LogOut, LayoutDashboard } from "lucide-react"
+import { Home, ShoppingCart, Menu, User, Package, LogOut, LayoutDashboard, Sun, Moon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCart } from "@/hooks/useCart"
 import { useAuthStore } from "@/store/useAuthStore"
 import { useLogout } from "@/hooks/useAuthHook"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { ThemeToggle } from "./ThemeToggle"
 
 export function BottomTabBar() {
   const pathname = usePathname()
@@ -72,13 +73,13 @@ export function BottomTabBar() {
             </div>
             <span className="text-[10px] font-medium mt-1 leading-none">Menu</span>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-            <SheetHeader className="mb-6 border-b border-slate-100 pb-4">
+          <SheetContent side="right" className="w-[300px] sm:w-[400px] flex flex-col">
+            <SheetHeader className="mb-6 border-b border-border pb-4">
               <SheetTitle className="text-left">
-                {user ? `Hello, ${user.email}` : "Menu"}
+                {user ? `Hello, ${user.username || user.email?.split('@')[0]}` : "Menu"}
               </SheetTitle>
             </SheetHeader>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 flex-1">
               {user ? (
                 <>
                   <Link 
@@ -87,13 +88,6 @@ export function BottomTabBar() {
                   >
                     <User className="size-5" />
                     <span className="font-medium">My Profile</span>
-                  </Link>
-                  <Link 
-                    href="/orders" 
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                  >
-                    <Package className="size-5" />
-                    <span className="font-medium">My Orders</span>
                   </Link>
                   {user.role === "seller" && (
                     <Link 
@@ -107,23 +101,36 @@ export function BottomTabBar() {
                   <button
                     onClick={() => logout()}
                     disabled={isPending}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 transition-colors mt-4"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 transition-colors mt-2"
                   >
                     <LogOut className="size-5" />
                     <span className="font-medium">{isPending ? "Signing out..." : "Sign Out"}</span>
                   </button>
                 </>
               ) : (
-                <div className="pt-4">
-                  <p className="text-sm text-muted-foreground mb-4">Sign in to manage your profile and orders.</p>
+                <div className="flex flex-col items-center justify-center py-6 text-center mt-2 border border-border/50 rounded-2xl bg-card shadow-sm">
+                  <div className="bg-primary/10 p-3 rounded-full mb-3">
+                    <User className="size-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-1 text-base">Welcome</h3>
+                  <p className="text-sm text-muted-foreground mb-5 px-4">
+                    Sign in to access your profile and track orders.
+                  </p>
                   <Link 
                     href="/auth/login"
-                    className="block w-full rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+                    className="flex items-center justify-center gap-2 w-[85%] mx-auto rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-md hover:bg-primary/90 transition-all active:scale-95"
                   >
                     Sign In
                   </Link>
                 </div>
               )}
+              
+              <div className="mt-auto pt-4 border-t border-border/50">
+                <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground">
+                  <ThemeToggle />
+                  <span className="font-medium">Theme</span>
+                </div>
+              </div>
             </div>
           </SheetContent>
         </Sheet>
