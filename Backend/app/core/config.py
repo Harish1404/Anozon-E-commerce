@@ -8,16 +8,9 @@ class Settings(BaseSettings):
     ALLOWED_ORIGIN: str = Field("http://localhost:3000", env="ALLOWED_ORIGIN")
     PREVIEW_ORIGIN: str = Field("http://localhost:3000", env="PREVIEW_ORIGIN")
 
-    ALLOWED_ORIGIN: str = Field(..., env="ALLOWED_ORIGIN")
-    PREVIEW_ORIGIN: str = Field("http://localhost:3000", env="PREVIEW_ORIGIN")
-
     REDIS_URL: str = Field(..., env="REDIS_URL")
 
-    EMAIL_SERVER: str = Field(..., env="EMAIL_SERVER")
-    EMAIL_PORT: int = Field(..., env="EMAIL_PORT")
-    EMAIL_USER: str = Field(..., env="EMAIL_USER")
-    EMAIL_PASS: str = Field(..., env="EMAIL_PASS")
-
+    BREVO_API_KEY: str = Field(..., env="BREVO_API_KEY")
     MAIL_FROM: str = Field(..., env="MAIL_FROM")
     MAIL_FROM_APP: str = Field(..., env="MAIL_FROM_APP")
 

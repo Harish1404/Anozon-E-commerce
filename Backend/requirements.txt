@@ -1,6 +1,6 @@
 # Web Framework
 fastapi
-fastapi-mail
+brevo-python
 uvicorn[standard]
 starlette
 httpx
