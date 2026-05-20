@@ -186,12 +186,14 @@ class SellerService:
 
         items = serialize_mongo(items)
 
-        # Compute seller_total for each order in the list
+        # Compute seller_total and dynamic seller-specific status for each order in the list
         for order in items:
             order["seller_total"] = sum(
                 item.get("price", 0) * item.get("quantity", 1)
                 for item in order.get("items", [])
             )
+            local_status = compute_order_status(order.get("items", []))
+            order["order_status"] = local_status.value if hasattr(local_status, "value") else local_status
 
         return {"items": items, "total": total, "page": page, "limit": limit}
 
@@ -212,6 +214,9 @@ class SellerService:
             
         seller_total = sum(item.get("price", 0) * item.get("quantity", 1) for item in order.get("items", []))
         order["seller_total"] = seller_total
+        
+        local_status = compute_order_status(order.get("items", []))
+        order["order_status"] = local_status.value if hasattr(local_status, "value") else local_status
         
         return order
 
