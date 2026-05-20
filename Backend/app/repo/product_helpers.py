@@ -15,6 +15,9 @@ def build_product_query(
     min_rating: Optional[float] = None,
     in_stock: Optional[bool] = None,
     search: Optional[str] = None,
+    brand: Optional[str] = None,
+    sub_category: Optional[str] = None,
+    is_featured: Optional[bool] = None,
     include_unapproved: bool = False
 ) -> dict:
     query = {}
@@ -40,6 +43,24 @@ def build_product_query(
             # Match any of the categories
             query["category"] = {"$in": [re.compile(f"^{re.escape(c)}$", re.IGNORECASE) for c in categories]}
 
+    # 2.5. Brand (supports comma separated)
+    if brand:
+        brands = [b.strip() for b in brand.split(",") if b.strip()]
+        if len(brands) == 1:
+            query["brand"] = {"$regex": f"^{re.escape(brands[0])}$", "$options": "i"}
+        elif len(brands) > 1:
+            # Match any of the brands
+            query["brand"] = {"$in": [re.compile(f"^{re.escape(b)}$", re.IGNORECASE) for b in brands]}
+
+    # 2.6. Sub Category (supports comma separated)
+    if sub_category:
+        sub_categories = [s.strip() for s in sub_category.split(",") if s.strip()]
+        if len(sub_categories) == 1:
+            query["sub_category"] = {"$regex": f"^{re.escape(sub_categories[0])}$", "$options": "i"}
+        elif len(sub_categories) > 1:
+            # Match any of the subcategories
+            query["sub_category"] = {"$in": [re.compile(f"^{re.escape(s)}$", re.IGNORECASE) for s in sub_categories]}
+
     # 3. Price Filter
     if min_price is not None or max_price is not None:
         price_query = {}
@@ -56,6 +77,10 @@ def build_product_query(
     # 5. Rating Filter
     if min_rating is not None:
         query["avg_rating"] = {"$gte": min_rating}
+
+    # 5.5. Is Featured Filter
+    if is_featured is not None:
+        query["is_featured"] = is_featured
 
     # 6. Stock Filter
     if in_stock is not None:

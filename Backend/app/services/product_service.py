@@ -36,6 +36,9 @@ class ProductService:
         min_rating: float = None,
         in_stock: bool = None,
         search: str = None,
+        brand: str = None,
+        sub_category: str = None,
+        is_featured: bool = None,
         sort_by: str = "created_at",
         sort_order: int = -1,
         page: int = 1,
@@ -50,7 +53,10 @@ class ProductService:
             min_discount=min_discount,
             min_rating=min_rating,
             in_stock=in_stock,
-            search=search
+            search=search,
+            brand=brand,
+            sub_category=sub_category,
+            is_featured=is_featured
         )
 
         # 2. Pagination Math

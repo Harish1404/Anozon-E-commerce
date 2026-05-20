@@ -80,6 +80,7 @@ class SellerProfileUpdate(BaseModel):
     gstin: Optional[str] = None
     business_address: Optional[BusinessAddress] = None
     business_name: Optional[str] = None
+    pan_number: Optional[str] = None
 
 
 class SellerMinimalResponse(BaseModel):
