@@ -347,8 +347,16 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
                   ...(product.sub_category && product.sub_category !== "General" ? [{ label: "Sub-Category", value: product.sub_category }] : []),
                   ...(product.sku ? [{ label: "SKU / Code", value: product.sku }] : []),
                   ...(product.weight && product.weight > 0 ? [{ label: "Shipping Weight", value: `${product.weight} kg` }] : []),
-                  ...(product.dimensions && (product.dimensions.length > 0 || product.dimensions.width > 0)
-                    ? [{ label: "Dimensions (L × W × H)", value: `${product.dimensions.length} × ${product.dimensions.width} × ${product.dimensions.height} cm` }]
+                  ...(product.dimensions &&
+                    product.dimensions.length > 0 &&
+                    product.dimensions.width > 0 &&
+                    product.dimensions.height > 0
+                    ? [
+                        {
+                          label: "Dimensions (L × W × H)",
+                          value: `${product.dimensions.length} × ${product.dimensions.width} × ${product.dimensions.height} cm`,
+                        },
+                      ]
                     : []),
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-muted rounded-md px-4 py-3 border border-border">

@@ -15,16 +15,26 @@ export function SearchBar() {
 
   const debouncedQuery = useDebounce(query, 300)
 
-  // Fetch search results using our debounced query
-  const { data: searchResults, isLoading } = useProducts({
-    search: debouncedQuery,
-    limit: 6,
-  })
+  // Fetch search results using our debounced query, enabled only when open and query exists
+  const { data: searchResults, isLoading } = useProducts(
+    {
+      search: debouncedQuery,
+      limit: 6,
+    },
+    {
+      enabled: isOpen && !!debouncedQuery,
+    }
+  )
 
-  // Fetch trending products for empty query state
-  const { data: trendingProducts } = useProducts({
-    limit: 4,
-  })
+  // Fetch trending products for empty query state, enabled only when open and query is empty
+  const { data: trendingProducts } = useProducts(
+    {
+      limit: 4,
+    },
+    {
+      enabled: isOpen && !debouncedQuery,
+    }
+  )
 
   // Popular categories for quick autocomplete
   const popularCategories = [
@@ -105,7 +115,7 @@ export function SearchBar() {
           </button>
         )}
         {!query && (
-          <kbd className="pointer-events-none absolute right-3 hidden.md:inline-flex h-5 select-none items-center gap-0.5 rounded border border-border/80 bg-card px-1.5 font-mono text-[9px] font-medium text-muted-foreground/80 shadow-xs hidden md:flex">
+          <kbd className="pointer-events-none absolute right-3 hidden md:inline-flex h-5 select-none items-center gap-0.5 rounded border border-border/80 bg-card px-1.5 font-mono text-[9px] font-medium text-muted-foreground/80 shadow-xs">
             <span className="text-[10px]">⌘</span>K
           </kbd>
         )}
@@ -175,7 +185,7 @@ export function SearchBar() {
                             <span className="text-xs font-bold text-foreground">₹{product.price.toLocaleString()}</span>
                             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                               <span className="text-amber-500 text-xs">★</span>
-                              <span>{product.avg_rating.toFixed(1)}</span>
+                              <span>{product.avg_rating != null ? product.avg_rating.toFixed(1) : "0.0"}</span>
                             </div>
                           </div>
                         </div>
