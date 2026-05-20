@@ -1,11 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Order } from "@/types"
 import { format } from "date-fns"
 import { buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { ChevronDown, ChevronUp } from "lucide-react"
 
 interface OrderCardProps {
   order: Order
@@ -22,6 +24,8 @@ const statusStyles: Record<string, { bg: string, text: string, label: string }> 
 }
 
 export function OrderCard({ order }: OrderCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
   // Ensure the date is parsed as UTC if it doesn't have a timezone indicator
   const dateStr = order.created_at.endsWith("Z") || order.created_at.includes("+")
     ? order.created_at
@@ -33,6 +37,8 @@ export function OrderCard({ order }: OrderCardProps) {
     text: "text-slate-700 dark:text-slate-400",
     label: order.order_status
   }
+
+  const displayItems = isExpanded ? order.items : order.items.slice(0, 3)
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md">
@@ -77,7 +83,7 @@ export function OrderCard({ order }: OrderCardProps) {
         </div>
 
         <div className="space-y-6">
-          {order.items.map((item) => (
+          {displayItems.map((item) => (
             <div key={item.product_id} className="flex gap-4">
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
                 <img
@@ -135,6 +141,27 @@ export function OrderCard({ order }: OrderCardProps) {
               </div>
             </div>
           ))}
+
+          {order.items.length > 3 && (
+            <div className="flex justify-center pt-2 border-t border-border/20">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 bg-primary/5 hover:bg-primary/10 px-4 py-2 rounded-full transition-all duration-200 focus:outline-hidden"
+              >
+                {isExpanded ? (
+                  <>
+                    <span>Show less</span>
+                    <ChevronUp className="size-3.5" />
+                  </>
+                ) : (
+                  <>
+                    <span>Show all {order.items.length} items</span>
+                    <ChevronDown className="size-3.5" />
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
