@@ -32,14 +32,15 @@ LANDING_CACHE_TTL = 300  # 5 minutes
 
 
 def _serialize_doc(doc: dict) -> dict:
-    """Convert a single MongoDB document for JSON serialization (ObjectId → str)."""
-    if "_id" in doc:
-        doc["_id"] = str(doc["_id"])
-    return doc
+    """Convert a single MongoDB document for JSON serialization (ObjectId → str) safely without mutating in-place."""
+    doc_copy = dict(doc)
+    if "_id" in doc_copy:
+        doc_copy["_id"] = str(doc_copy["_id"])
+    return doc_copy
 
 
 def _serialize_card(doc: dict) -> dict:
-    """Convert a raw product document into a ProductCard-shaped dict."""
+    """Convert a raw product document into a ProductCard-shaped dict safely without mutating in-place."""
     card = _serialize_doc(doc)
     # Extract first image from image_urls array
     image_urls = card.pop("image_urls", None)

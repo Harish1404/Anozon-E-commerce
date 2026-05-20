@@ -5,19 +5,14 @@ All queries use lightweight projections and the standard BASE_FILTER for approve
 
 import logging
 from pymongo.errors import PyMongoError
+from pymongo import ReturnDocument
 from fastapi import HTTPException
 from bson import ObjectId
+from app.repo.product_helpers import CARD_PROJECTION
 
 logger = logging.getLogger("uvicorn.error")
 
 # ── Shared constants ──────────────────────────────────────────────────────────
-
-CARD_PROJECTION = {
-    "_id": 1, "name": 1, "slug": 1, "image_urls": 1,
-    "price": 1, "actual_price": 1, "discount_percent": 1,
-    "avg_rating": 1, "review_count": 1, "brand": 1,
-    "category": 1, "sub_category": 1, "is_featured": 1, "stock": 1
-}
 
 BASE_FILTER = {"is_active": True, "is_deleted": False, "is_approved": True}
 
@@ -150,7 +145,7 @@ async def update_banner_by_id(collection, banner_id: str, update_data: dict) -> 
         result = await collection.find_one_and_update(
             {"_id": ObjectId(banner_id)},
             {"$set": update_data},
-            return_document=True
+            return_document=ReturnDocument.AFTER
         )
         if not result:
             raise HTTPException(status_code=404, detail="Banner not found")
