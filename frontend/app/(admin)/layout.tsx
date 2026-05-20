@@ -7,6 +7,7 @@ import { authService } from "@/services/auth"
 import api from "@/lib/axios"
 import { AdminSidebar } from "@/components/admin/AdminSidebar"
 import { AdminNavbar } from "@/components/admin/AdminNavbar"
+import Loading from "@/app/loading"
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return <AdminShell>{children}</AdminShell>
@@ -53,14 +54,7 @@ function AdminShell({ children }: { children: ReactNode }) {
   }, [collapsed])
 
   if (!ready) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background" data-theme="admin">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading admin dashboard…</p>
-        </div>
-      </div>
-    )
+    return <Loading message="Loading admin dashboard..." />
   }
 
   return (

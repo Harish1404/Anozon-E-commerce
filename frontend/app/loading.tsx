@@ -2,7 +2,11 @@
 
 import Image from "next/image";
 
-export default function Loading() {
+interface LoadingProps {
+  message?: string;
+}
+
+export default function Loading({ message = "Loading Excellence..." }: LoadingProps) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-md animate-in fade-in duration-700">
       <div className="relative flex flex-col items-center">
@@ -16,12 +20,12 @@ export default function Loading() {
             
             <div className="relative h-32 w-32 animate-bounce [animation-duration:2s]">
                 <Image
-                    src="/logo.png"
-                    alt="Anozon Logo"
-                    fill
-                    sizes="128px"
-                    className="object-contain drop-shadow-xl"
-                    priority
+                     src="/logo.png"
+                     alt="Anozon Logo"
+                     fill
+                     sizes="128px"
+                     className="object-contain drop-shadow-xl"
+                     priority
                 />
             </div>
         </div>
@@ -40,7 +44,7 @@ export default function Loading() {
           </div>
 
           <p className="text-sm font-medium tracking-wide text-muted-foreground/80 animate-pulse uppercase">
-            Loading Excellence...
+            {message}
           </p>
         </div>
       </div>
