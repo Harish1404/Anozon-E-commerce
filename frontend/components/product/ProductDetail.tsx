@@ -28,28 +28,9 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
 
   const isWishlisted = useIsWishlisted(product._id)
   const toggleWishlist = useToggleWishlist()
-
   const [selectedVariant, setSelectedVariant] = useState<string | null>(
     product.variants && product.variants.length > 0 ? product.variants[0] : null
   )
-
-  useEffect(() => {
-    if (product.meta_title) {
-      document.title = product.meta_title
-    }
-    if (product.meta_desc) {
-      let metaDescTag = document.querySelector('meta[name="description"]')
-      if (metaDescTag) {
-        metaDescTag.setAttribute("content", product.meta_desc)
-      } else {
-        const meta = document.createElement("meta")
-        meta.name = "description"
-        meta.content = product.meta_desc
-        document.head.appendChild(meta)
-      }
-    }
-  }, [product.meta_title, product.meta_desc])
-
   const imageUrl = product.image_urls?.[selectedIndex] ?? "/placeholder.png"
   const savings = product.actual_price - product.price
 
@@ -59,6 +40,9 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
 
   return (
     <div className="font-sans pb-16">
+      {/* Next.js hoists title and meta elements in Client Components to the document head automatically */}
+      <title>{product.meta_title || `Anozon - ${product.name}`}</title>
+      <meta name="description" content={product.meta_desc || product.description} />
 
       {/* ── Breadcrumb ── */}
       <nav className="flex items-center gap-1.5 px-4 py-3 text-xs text-muted-foreground sm:px-6">
@@ -348,9 +332,9 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
                   ...(product.sku ? [{ label: "SKU / Code", value: product.sku }] : []),
                   ...(product.weight && product.weight > 0 ? [{ label: "Shipping Weight", value: `${product.weight} kg` }] : []),
                   ...(product.dimensions &&
-                    product.dimensions.length > 0 &&
-                    product.dimensions.width > 0 &&
-                    product.dimensions.height > 0
+                    typeof product.dimensions.length === "number" && product.dimensions.length > 0 &&
+                    typeof product.dimensions.width === "number" && product.dimensions.width > 0 &&
+                    typeof product.dimensions.height === "number" && product.dimensions.height > 0
                     ? [
                         {
                           label: "Dimensions (L × W × H)",
