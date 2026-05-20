@@ -39,6 +39,9 @@ def orders_collection():
 def products_collection():
     return db_instance.client[settings.DB_NAME]['Products']
 
+def banners_collection():
+    return db_instance.client[settings.DB_NAME]['Banners']
+
 async def create_indexes():
     """Create all MongoDB indexes. Called once during app startup."""
     db = db_instance.client[settings.DB_NAME]
@@ -93,6 +96,19 @@ async def create_indexes():
     await db.AuditLogs.create_index("module")
     await db.AuditLogs.create_index("performed_by.email")
     await db.AuditLogs.create_index("target.email")
+
+    # ── Landing: Flash deals (discount sort with approval filter) ──
+    await db.Products.create_index([("discount_percent", -1), ("is_approved", 1), ("is_active", 1)])
+    # ── Landing: Top products (rating sort) ──
+    await db.Products.create_index([("avg_rating", -1), ("review_count", -1)])
+    # ── Landing: Featured products ──
+    await db.Products.create_index([("is_featured", 1), ("is_approved", 1), ("is_active", 1)])
+    # ── Facets: brand within filtered sets ──
+    await db.Products.create_index([("category", 1), ("brand", 1)])
+    # ── Facets: sub_category within filtered sets ──
+    await db.Products.create_index([("category", 1), ("sub_category", 1)])
+    # ── Banners ──
+    await db.Banners.create_index([("is_active", 1), ("priority", 1)])
 
     logger.info("✅ All MongoDB indexes created")
 

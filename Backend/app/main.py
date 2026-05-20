@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
-from app.routes import auth_user,secure, product_routes, admin_routes, user_routes, seller_routes, super_admin_routes, review_routes
+from app.routes import auth_user,secure, product_routes, admin_routes, user_routes, seller_routes, super_admin_routes, review_routes, landing_routes
 from app.ai import ollama 
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
@@ -64,6 +64,7 @@ app.include_router(secure.router)
 app.include_router(user_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(product_routes.router)
+app.include_router(landing_routes.router)
 app.include_router(seller_routes.router)
 app.include_router(review_routes.router)
 app.include_router(super_admin_routes.router)

@@ -12,7 +12,9 @@ from app.repo.product_helpers import (
     fetch_product_by_id,
     fetch_product_by_slug,
     fetch_categories,
+    fetch_product_facets,
 )
+from app.repo.landing_helpers import fetch_categories_with_subcategories
 from app.db.mongodb import sellers_collection
 from bson import ObjectId
 
@@ -148,3 +150,23 @@ class ProductService:
     @classmethod
     async def get_product_by_category(cls, category: str, page: int = 1, limit: int = 30):
         return await cls.get_products(category=category, page=page, limit=limit)
+
+    @staticmethod
+    async def get_product_facets(
+        category=None, brand=None, sub_category=None,
+        search=None, min_price=None, max_price=None,
+        min_discount=None, min_rating=None, is_featured=None, in_stock=None
+    ) -> dict:
+        """Build base query from current filters, then fetch facets for sidebar."""
+        query = build_product_query(
+            category=category, brand=brand, sub_category=sub_category,
+            search=search, min_price=min_price, max_price=max_price,
+            min_discount=min_discount, min_rating=min_rating,
+            is_featured=is_featured, in_stock=in_stock
+        )
+        return await fetch_product_facets(products_collection(), query)
+
+    @staticmethod
+    async def get_categories_with_subcategories():
+        """Returns categories grouped with their subcategories, counts, and images."""
+        return await fetch_categories_with_subcategories(products_collection())
