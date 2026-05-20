@@ -7,6 +7,14 @@ from typing import Optional
 
 logger = logging.getLogger("uvicorn.error")
 
+# ── Shared lightweight projection for product cards ──────────────────────────
+CARD_PROJECTION = {
+    "_id": 1, "name": 1, "slug": 1, "image_urls": 1,
+    "price": 1, "actual_price": 1, "discount_percent": 1,
+    "avg_rating": 1, "review_count": 1, "brand": 1,
+    "category": 1, "sub_category": 1, "is_featured": 1, "stock": 1
+}
+
 def build_product_query(
     category: Optional[str] = None,
     min_price: Optional[float] = None,
@@ -15,6 +23,9 @@ def build_product_query(
     min_rating: Optional[float] = None,
     in_stock: Optional[bool] = None,
     search: Optional[str] = None,
+    brand: Optional[str] = None,
+    sub_category: Optional[str] = None,
+    is_featured: Optional[bool] = None,
     include_unapproved: bool = False
 ) -> dict:
     query = {}
@@ -40,6 +51,24 @@ def build_product_query(
             # Match any of the categories
             query["category"] = {"$in": [re.compile(f"^{re.escape(c)}$", re.IGNORECASE) for c in categories]}
 
+    # 2.5. Brand (supports comma separated)
+    if brand:
+        brands = [b.strip() for b in brand.split(",") if b.strip()]
+        if len(brands) == 1:
+            query["brand"] = {"$regex": f"^{re.escape(brands[0])}$", "$options": "i"}
+        elif len(brands) > 1:
+            # Match any of the brands
+            query["brand"] = {"$in": [re.compile(f"^{re.escape(b)}$", re.IGNORECASE) for b in brands]}
+
+    # 2.6. Sub Category (supports comma separated)
+    if sub_category:
+        sub_categories = [s.strip() for s in sub_category.split(",") if s.strip()]
+        if len(sub_categories) == 1:
+            query["sub_category"] = {"$regex": f"^{re.escape(sub_categories[0])}$", "$options": "i"}
+        elif len(sub_categories) > 1:
+            # Match any of the subcategories
+            query["sub_category"] = {"$in": [re.compile(f"^{re.escape(s)}$", re.IGNORECASE) for s in sub_categories]}
+
     # 3. Price Filter
     if min_price is not None or max_price is not None:
         price_query = {}
@@ -57,6 +86,10 @@ def build_product_query(
     if min_rating is not None:
         query["avg_rating"] = {"$gte": min_rating}
 
+    # 5.5. Is Featured Filter
+    if is_featured is not None:
+        query["is_featured"] = is_featured
+
     # 6. Stock Filter
     if in_stock is not None:
         if in_stock:
@@ -73,14 +106,14 @@ def build_product_query(
 
     return query
 
-async def fetch_products(collection, query: dict, sort_by: str, sort_order: int, skip: int, limit: int):
+async def fetch_products(collection, query: dict, sort_by: str, sort_order: int, skip: int, limit: int, projection=None):
     try:
         # Validate sort_by field to avoid Mongo injection
         valid_sort_fields = {"price", "avg_rating", "created_at", "discount_percent", "product_likes", "review_count"}
         if sort_by not in valid_sort_fields:
             sort_by = "created_at"
             
-        cursor = collection.find(query).sort(sort_by, sort_order).skip(skip).limit(limit)
+        cursor = collection.find(query, projection).sort(sort_by, sort_order).skip(skip).limit(limit)
         return await cursor.to_list(length=limit)
     except PyMongoError as e:
         logger.error(f"DB Error fetching products: {e}")
@@ -123,6 +156,84 @@ async def fetch_categories(collection):
         return sorted(categories, key=str.lower)
     except PyMongoError as e:
         logger.error(f"DB Error fetching categories: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+
+async def fetch_product_facets(collection, base_query: dict) -> dict:
+    """
+    Given a base query, returns available filter values with counts
+    using MongoDB $facet aggregation (single DB round trip).
+
+    Returns: {
+        "brands": [{"value": "Samsung", "count": 45}, ...],
+        "sub_categories": [{"value": "Phones", "count": 30}, ...],
+        "price_range": {"min": 499, "max": 149999},
+        "rating_distribution": [{"_id": 4, "count": 120}, ...],
+        "total_count": 280
+    }
+    """
+    try:
+        pipeline = [
+            {"$match": base_query},
+            {"$facet": {
+                "brands": [
+                    {"$group": {"_id": "$brand", "count": {"$sum": 1}}},
+                    {"$sort": {"count": -1}},
+                    {"$project": {"value": "$_id", "count": 1, "_id": 0}}
+                ],
+                "sub_categories": [
+                    {"$group": {"_id": "$sub_category", "count": {"$sum": 1}}},
+                    {"$sort": {"count": -1}},
+                    {"$project": {"value": "$_id", "count": 1, "_id": 0}}
+                ],
+                "price_range": [
+                    {"$group": {"_id": None, "min": {"$min": "$price"}, "max": {"$max": "$price"}}},
+                    {"$project": {"_id": 0}}
+                ],
+                "rating_buckets": [
+                    {"$bucket": {
+                        "groupBy": "$avg_rating",
+                        "boundaries": [0, 1, 2, 3, 4, 5.1],
+                        "default": "Other",
+                        "output": {"count": {"$sum": 1}}
+                    }}
+                ],
+                "total": [{"$count": "count"}]
+            }}
+        ]
+
+        result = await collection.aggregate(pipeline).to_list(length=1)
+
+        if not result:
+            return {
+                "brands": [], "sub_categories": [],
+                "price_range": {"min": 0, "max": 0},
+                "rating_distribution": [],
+                "total_count": 0
+            }
+
+        facets = result[0]
+
+        # Flatten price_range from list to single dict
+        price_range = facets.get("price_range", [{}])
+        price_range = price_range[0] if price_range else {"min": 0, "max": 0}
+
+        # Extract total count
+        total = facets.get("total", [{}])
+        total_count = total[0].get("count", 0) if total else 0
+
+        # Filter out None values from sub_categories
+        sub_cats = [s for s in facets.get("sub_categories", []) if s.get("value") is not None]
+
+        return {
+            "brands": facets.get("brands", []),
+            "sub_categories": sub_cats,
+            "price_range": price_range,
+            "rating_distribution": facets.get("rating_buckets", []),
+            "total_count": total_count
+        }
+    except PyMongoError as e:
+        logger.error(f"DB Error fetching product facets: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
 async def update_product_likes(collection, product_id: str, user_id: str, action: str):

@@ -14,6 +14,9 @@ async def get_products(
     min_rating: Optional[float] = Query(None, description="Minimum average rating"),
     in_stock: Optional[bool] = Query(None, description="Only show in-stock products"),
     search: Optional[str] = Query(None, description="Search query string"),
+    brand: Optional[str] = Query(None, description="Comma separated brands"),
+    sub_category: Optional[str] = Query(None, description="Comma separated subcategories"),
+    is_featured: Optional[bool] = Query(None, description="Filter featured products"),
     sort_by: str = Query("created_at", description="Sort by field: price, avg_rating, created_at, discount_percent"),
     sort_order: int = Query(-1, description="Sort order: 1 (asc) or -1 (desc)"),
     page: int = Query(1, description="Page number"),
@@ -30,6 +33,9 @@ async def get_products(
         min_rating=min_rating,
         in_stock=in_stock,
         search=search,
+        brand=brand,
+        sub_category=sub_category,
+        is_featured=is_featured,
         sort_by=sort_by,
         sort_order=sort_order,
         page=page,
@@ -52,6 +58,38 @@ async def get_product_by_slug(slug: str = Path(..., description="The slug of the
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
+
+@router.get("/products/facets")
+async def get_product_facets(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    brand: Optional[str] = Query(None, description="Filter by brand"),
+    sub_category: Optional[str] = Query(None, description="Filter by subcategory"),
+    search: Optional[str] = Query(None, description="Search query string"),
+    min_price: Optional[float] = Query(None, description="Minimum price"),
+    max_price: Optional[float] = Query(None, description="Maximum price"),
+    min_discount: Optional[int] = Query(None, description="Minimum discount percent"),
+    min_rating: Optional[float] = Query(None, description="Minimum average rating"),
+    is_featured: Optional[bool] = Query(None, description="Filter featured products"),
+    in_stock: Optional[bool] = Query(None, description="Only show in-stock products")
+):
+    """
+    Returns available filter values with counts for the sidebar (brands, sub_categories,
+    price_range, rating_distribution, total_count). Accepts the same filter params as
+    GET /products so the sidebar updates dynamically as filters change.
+    """
+    return await ProductService.get_product_facets(
+        category=category,
+        brand=brand,
+        sub_category=sub_category,
+        search=search,
+        min_price=min_price,
+        max_price=max_price,
+        min_discount=min_discount,
+        min_rating=min_rating,
+        is_featured=is_featured,
+        in_stock=in_stock
+    )
+
 @router.get("/products/{product_id}", response_model=ProductResponse)
 async def get_product_details(product_id: str = Path(..., description="The ID of the product to view")):
     product = await ProductService.get_product_by_id(product_id)
@@ -61,8 +99,8 @@ async def get_product_details(product_id: str = Path(..., description="The ID of
 
 @router.get("/categories")
 async def get_categories():
-    """Get all available product categories"""
-    return await ProductService.get_categories()
+    """Get all categories with subcategories, product counts, and representative images."""
+    return await ProductService.get_categories_with_subcategories()
 
 @router.get("/categories/{category}", response_model=PaginatedProductResponse)
 async def get_products_by_category(
