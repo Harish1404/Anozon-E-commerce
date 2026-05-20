@@ -1,78 +1,116 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
-import { useProducts } from "@/hooks/useProducts"
-import { useAddToCart } from "@/hooks/useCart"
-import { ProductGrid } from "@/components/product/ProductGrid"
-import { Button } from "@/components/ui/button"
+import { useEffect } from "react"
+import { useLanding } from "@/hooks/useLanding"
+import { HeroBannerCarousel } from "@/components/landing/HeroBannerCarousel"
+import { CategoryRow } from "@/components/landing/CategoryRow"
+import { ProductSection } from "@/components/landing/ProductSection"
+import { Zap, TrendingUp, Sparkles, Award } from "lucide-react"
 
 export default function HomePage() {
-  const [page, setPage] = useState(1)
-  
   useEffect(() => {
     document.title = "Anozon - Home"
   }, [])
 
-  const productsQuery = useProducts({ page, limit: 12 })
-  const addToCart = useAddToCart()
+  const { data: landing, isLoading, isError } = useLanding()
 
-  const totalPages = useMemo(() => {
-    if (!productsQuery.data) return 1
-    return Math.max(1, productsQuery.data.pages)
-  }, [productsQuery.data])
+  if (isError) {
+    return (
+      <main className="min-h-screen bg-background">
+        <section className="mx-auto max-w-7xl px-4 py-10">
+          <div className="rounded-3xl border border-destructive/30 bg-destructive/10 p-8 text-destructive">
+            Unable to load the store. Please try again later.
+          </div>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <main className="min-h-screen bg-background">
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.3em] text-muted-foreground">Shop</p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">Browse today's best offers</h1>
-          </div>
-        </div>
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-10">
+        {/* Hero Banner */}
+        {isLoading ? (
+          <div className="aspect-[2.5/1] md:aspect-[3/1] w-full animate-pulse rounded-2xl bg-muted" />
+        ) : (
+          <HeroBannerCarousel banners={landing?.banners ?? []} />
+        )}
 
-        {productsQuery.isLoading ? (
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="h-80 rounded-3xl border border-border bg-card p-4 shadow-sm animate-pulse" />
-            ))}
-          </div>
-        ) : productsQuery.isError ? (
-          <div className="rounded-3xl border border-destructive/30 bg-destructive/10 p-8 text-destructive">
-            Unable to load products. Please try again.
+        {/* Categories */}
+        {isLoading ? (
+          <div className="space-y-4">
+            <div className="h-6 w-48 animate-pulse rounded bg-muted" />
+            <div className="flex gap-4 overflow-hidden">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-52 w-36 md:w-44 flex-shrink-0 animate-pulse rounded-2xl bg-muted" />
+              ))}
+            </div>
           </div>
         ) : (
-          <ProductGrid
-            products={productsQuery.data?.items ?? []}
-            onAddToCart={(product_id) => addToCart.mutate({ product_id, quantity: 1 })}
+          <CategoryRow categories={landing?.categories ?? []} />
+        )}
+
+        {/* Flash Deals */}
+        {isLoading ? (
+          <SectionSkeleton />
+        ) : (
+          <ProductSection
+            title="Flash Deals"
+            icon={<Zap className="size-5 text-amber-500" />}
+            items={landing?.flash_deals ?? []}
+            layout="scroll"
           />
         )}
 
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {productsQuery.data?.items.length ?? 0} of {productsQuery.data?.total ?? 0} products
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={page <= 1 || productsQuery.isLoading}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-foreground">Page {page} / {totalPages}</span>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={page >= totalPages || productsQuery.isLoading}
-              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        {/* Top Rated */}
+        {isLoading ? (
+          <SectionSkeleton />
+        ) : (
+          <ProductSection
+            title="Top Rated"
+            icon={<TrendingUp className="size-5 text-emerald-500" />}
+            items={landing?.top_products ?? []}
+            layout="scroll"
+          />
+        )}
+
+        {/* New Arrivals */}
+        {isLoading ? (
+          <SectionSkeleton />
+        ) : (
+          <ProductSection
+            title="New Arrivals"
+            icon={<Sparkles className="size-5 text-blue-500" />}
+            items={landing?.new_arrivals ?? []}
+            layout="scroll"
+          />
+        )}
+
+        {/* Featured */}
+        {isLoading ? (
+          <SectionSkeleton count={8} />
+        ) : (
+          <ProductSection
+            title="Featured"
+            icon={<Award className="size-5 text-purple-500" />}
+            items={landing?.featured ?? []}
+            layout="grid"
+          />
+        )}
       </section>
     </main>
+  )
+}
+
+function SectionSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="space-y-4">
+      <div className="h-6 w-40 animate-pulse rounded bg-muted" />
+      <div className="flex gap-4 overflow-hidden">
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} className="h-72 w-56 md:w-64 flex-shrink-0 animate-pulse rounded-2xl bg-muted" />
+        ))}
+      </div>
+    </div>
   )
 }
