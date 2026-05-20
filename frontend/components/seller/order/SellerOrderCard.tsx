@@ -59,7 +59,7 @@ export function SellerOrderCard({ order }: SellerOrderCardProps) {
       {/* Amount */}
       <div className="shrink-0 text-right">
         <p className="text-base font-bold text-foreground">₹{sellerTotal.toFixed(0)}</p>
-        <p className="text-xs text-muted-foreground capitalize">{order.payment_method}</p>
+        <p className="text-xs text-muted-foreground capitalize">pay method - {order.payment_method}</p>
       </div>
     </Link>
   )

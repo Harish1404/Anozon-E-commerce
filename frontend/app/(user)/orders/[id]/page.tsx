@@ -16,6 +16,16 @@ interface OrderDetailsPageProps {
   params: Promise<{ id: string }>
 }
 
+const statusBadgeStyles: Record<string, string> = {
+  pending:             "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400 border-slate-200/50 dark:border-slate-500/30",
+  confirmed:           "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 border-blue-200/50 dark:border-blue-500/30",
+  partially_shipped:   "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200/50 dark:border-amber-500/30",
+  shipped:             "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400 border-violet-200/50 dark:border-violet-500/30",
+  partially_delivered: "bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-400 border-teal-200/50 dark:border-teal-500/30",
+  delivered:           "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-500/30",
+  cancelled:           "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 border-rose-200/50 dark:border-rose-500/30",
+}
+
 export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   const { id } = React.use(params)
   const { data: order, isLoading, isError } = useOrder(id)
@@ -85,11 +95,11 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "pending": return <Clock className="size-5 text-amber-600 dark:text-amber-500" />
+      case "pending": return <Clock className="size-5 text-slate-500" />
       case "confirmed": return <CheckCircle2 className="size-5 text-blue-500" />
-      case "partially_shipped": return <Truck className="size-5 text-indigo-400" />
-      case "shipped": return <Truck className="size-5 text-indigo-500" />
-      case "partially_delivered": return <CheckCircle2 className="size-5 text-emerald-400" />
+      case "partially_shipped": return <Truck className="size-5 text-amber-500" />
+      case "shipped": return <Truck className="size-5 text-violet-500" />
+      case "partially_delivered": return <CheckCircle2 className="size-5 text-teal-500" />
       case "delivered": return <CheckCircle2 className="size-5 text-emerald-500" />
       case "cancelled": return <XCircle className="size-5 text-rose-500" />
       default: return <Clock className="size-5 text-muted-foreground" />
@@ -116,11 +126,11 @@ export default function OrderDetailsPage({ params }: OrderDetailsPageProps) {
           <p className="mt-1 text-muted-foreground font-mono text-sm">ID: {order._id}</p>
         </div>
         <div className={cn(
-          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold",
-          isCancelled ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-secondary text-secondary-foreground"
+          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border shadow-xs capitalize",
+          statusBadgeStyles[order.order_status] || "bg-secondary text-secondary-foreground"
         )}>
           {getStatusIcon(order.order_status)}
-          <span className="capitalize">{order.order_status.replace('_', ' ')}</span>
+          <span>{order.order_status.replace('_', ' ')}</span>
         </div>
       </div>
 
