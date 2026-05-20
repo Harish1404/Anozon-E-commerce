@@ -10,7 +10,7 @@ interface ProductGridProps {
 
 export function ProductGrid({ products, onAddToCart }: ProductGridProps) {
   return (
-    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-2 gap-2 xs:gap-3.5 sm:gap-6 xl:grid-cols-3">
       {products.map((product) => (
         <ProductCard key={product._id} product={product} onAddToCart={onAddToCart} />
       ))}

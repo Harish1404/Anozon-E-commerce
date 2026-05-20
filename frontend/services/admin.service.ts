@@ -4,6 +4,7 @@
  * Handles dashboard, users, sellers, products, reviews management.
  */
 import api from '@/lib/axios';
+import { BannerCreate, BannerUpdate } from '@/types';
 
 export const adminService = {
   // ── Dashboard ──────────────────────────────────────────────────────────────
@@ -72,4 +73,17 @@ export const adminService = {
   // ── Categories (public) ────────────────────────────────────────────────────
   getCategories: () =>
     api.get("/categories"),
+
+  // ── Banners ─────────────────────────────────────────────────────────────
+  getBanners: () =>
+    api.get("/admin/banners"),
+
+  createBanner: (data: BannerCreate) =>
+    api.post("/admin/banners", data),
+
+  updateBanner: (id: string, data: BannerUpdate) =>
+    api.put(`/admin/banners/${id}`, data),
+
+  deleteBanner: (id: string) =>
+    api.delete(`/admin/banners/${id}`),
 }

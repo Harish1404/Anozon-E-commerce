@@ -18,6 +18,7 @@ import {
   User,
   LogOut,
   Activity,
+  ImageIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -37,6 +38,7 @@ const COMMON_NAV_ITEMS: NavItem[] = [
   { label: "Sellers",   href: "/admin/sellers",   icon: Store },
   { label: "Products",  href: "/admin/products",  icon: Package },
   { label: "Reviews",   href: "/admin/reviews",   icon: Star },
+  { label: "Banners",   href: "/admin/banners",   icon: ImageIcon },
 ]
 
 const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [

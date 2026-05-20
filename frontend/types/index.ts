@@ -109,6 +109,88 @@ export interface PaginatedProductResponse {
   pages: number
 }
 
+// ── Landing Page ─────────────────────────────────────────────────────────
+
+export interface ProductCard {
+  _id: string
+  name: string
+  slug: string
+  image_url: string | null
+  price: number
+  actual_price: number
+  discount_percent: number
+  avg_rating: number
+  review_count: number
+  brand: string
+  category: string
+  sub_category?: string
+  is_featured: boolean
+  in_stock: boolean
+}
+
+export interface CategoryGroup {
+  category: string
+  sub_categories: string[]
+  product_count: number
+  image_url: string | null
+}
+
+export interface Banner {
+  _id: string
+  title: string
+  subtitle?: string
+  image_url: string
+  link_url?: string
+  priority: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface LandingPageResponse {
+  banners: Banner[]
+  categories: CategoryGroup[]
+  flash_deals: ProductCard[]
+  top_products: ProductCard[]
+  new_arrivals: ProductCard[]
+  featured: ProductCard[]
+}
+
+// ── Product Facets ───────────────────────────────────────────────────────
+
+export interface FacetValue {
+  value: string
+  count: number
+}
+
+export interface ProductFacets {
+  brands: FacetValue[]
+  sub_categories: FacetValue[]
+  price_range: { min: number; max: number }
+  rating_distribution: { _id: number; count: number }[]
+  total_count: number
+}
+
+// ── Banner CRUD ──────────────────────────────────────────────────────────
+
+export interface BannerCreate {
+  title: string
+  subtitle?: string
+  image_url: string
+  link_url?: string
+  priority?: number
+  is_active?: boolean
+}
+
+export interface BannerUpdate {
+  title?: string
+  subtitle?: string
+  image_url?: string
+  link_url?: string
+  priority?: number
+  is_active?: boolean
+}
+
 // ── Reviews ───────────────────────────────────────────────────────────────
 
 export interface Review {
