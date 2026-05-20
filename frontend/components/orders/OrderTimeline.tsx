@@ -19,7 +19,7 @@ export function OrderTimeline({ status }: OrderTimelineProps) {
       case "confirmed": return 1
       case "partially_shipped": return 2
       case "shipped": return 2
-      case "partially_delivered": return 3
+      case "partially_delivered": return 2 // Keep progress at Shipped stage since not all items are delivered
       case "delivered": return 3
       default: return 0
     }
