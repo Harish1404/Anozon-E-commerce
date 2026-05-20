@@ -80,6 +80,23 @@ export interface Product {
     business_type?: string
     rating?: number
   }
+  brand?: string
+  sub_category?: string
+  tags?: string[]
+  specifications?: Record<string, unknown>
+  weight?: number
+  dimensions?: {
+    length: number
+    width: number
+    height: number
+  }
+  sku?: string
+  variants?: string[]
+  meta_title?: string
+  meta_desc?: string
+  is_featured?: boolean
+  view_count?: number
+  search_keywords?: string[]
   created_at: string
   updated_at: string
 }
