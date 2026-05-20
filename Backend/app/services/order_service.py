@@ -134,7 +134,7 @@ class OrderService:
             "shipping_address": shipping_address,
             "order_status": OrderStatus.pending.value,
             "summary": order_summary,
-            "payment_status": PaymentStatus.pending.value,
+            "payment_status": PaymentStatus.paid.value if payment_method == PaymentMethod.online else PaymentStatus.pending.value,
             "payment_method": payment_method.value
         }
 
@@ -233,7 +233,7 @@ class OrderService:
             "shipping_address": shipping_address,
             "order_status": OrderStatus.pending.value,
             "summary": order_summary,
-            "payment_status": PaymentStatus.pending.value,
+            "payment_status": PaymentStatus.paid.value if payment_method == PaymentMethod.online else PaymentStatus.pending.value,
             "payment_method": payment_method.value
         }
 
@@ -302,6 +302,15 @@ class OrderService:
             for item in order.get("items", []):
                 item["product_id"] = str(item["product_id"])
                 item["seller_id"] = str(item["seller_id"])
+            
+            # Dynamically compute user payment_status
+            if order.get("payment_method") == PaymentMethod.online.value:
+                order["payment_status"] = PaymentStatus.paid.value
+            elif order.get("payment_method") == PaymentMethod.cod.value:
+                if order.get("order_status") == OrderStatus.delivered.value:
+                    order["payment_status"] = PaymentStatus.paid.value
+                else:
+                    order["payment_status"] = PaymentStatus.pending.value
                 
         return {
             "items": orders,
@@ -325,6 +334,15 @@ class OrderService:
         for item in order.get("items", []):
             item["product_id"] = str(item["product_id"])
             item["seller_id"] = str(item["seller_id"])
+            
+        # Dynamically compute user payment_status
+        if order.get("payment_method") == PaymentMethod.online.value:
+            order["payment_status"] = PaymentStatus.paid.value
+        elif order.get("payment_method") == PaymentMethod.cod.value:
+            if order.get("order_status") == OrderStatus.delivered.value:
+                order["payment_status"] = PaymentStatus.paid.value
+            else:
+                order["payment_status"] = PaymentStatus.pending.value
             
         return order
 

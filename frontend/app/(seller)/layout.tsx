@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/useAuthStore"
 import { authService } from "@/services/auth"
 import api from "@/lib/axios"
 import { SellerSidebar } from "@/components/seller/SellerSidebar"
+import Loading from "@/app/loading"
 
 export default function SellerLayout({ children }: { children: ReactNode }) {
   return <SellerShell>{children}</SellerShell>
@@ -52,14 +53,7 @@ function SellerShell({ children }: { children: ReactNode }) {
   }, [collapsed])
 
   if (!ready) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading dashboard…</p>
-        </div>
-      </div>
-    )
+    return <Loading message="Loading dashboard..." />
   }
 
   return (

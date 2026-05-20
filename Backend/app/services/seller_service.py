@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from app.models.product_model import ProductCreate, ProductUpdate, ProductStockUpdate, ProductToggleRequest
 from app.utils.discount import calculate_discount_price
 from app.utils.serializer import serialize_mongo
-from app.models.orders_model import OrderItemStatusUpdate, OrderStatus, ItemStatus
+from app.models.orders_model import OrderItemStatusUpdate, OrderStatus, ItemStatus, PaymentStatus, PaymentMethod
 from app.models.seller_model import SellerProfileUpdate
 from app.repo import seller_helpers
 from app.repo.seller_helpers import (
@@ -186,12 +186,24 @@ class SellerService:
 
         items = serialize_mongo(items)
 
-        # Compute seller_total for each order in the list
+        # Compute seller_total and dynamic seller-specific status for each order in the list
         for order in items:
             order["seller_total"] = sum(
                 item.get("price", 0) * item.get("quantity", 1)
                 for item in order.get("items", [])
             )
+            local_status = compute_order_status(order.get("items", []))
+            local_status_val = local_status.value if hasattr(local_status, "value") else local_status
+            order["order_status"] = local_status_val
+            
+            # Dynamically compute seller payment_status
+            if order.get("payment_method") == PaymentMethod.online.value:
+                order["payment_status"] = PaymentStatus.paid.value
+            elif order.get("payment_method") == PaymentMethod.cod.value:
+                if local_status_val == OrderStatus.delivered.value:
+                    order["payment_status"] = PaymentStatus.paid.value
+                else:
+                    order["payment_status"] = PaymentStatus.pending.value
 
         return {"items": items, "total": total, "page": page, "limit": limit}
 
@@ -212,6 +224,19 @@ class SellerService:
             
         seller_total = sum(item.get("price", 0) * item.get("quantity", 1) for item in order.get("items", []))
         order["seller_total"] = seller_total
+        
+        local_status = compute_order_status(order.get("items", []))
+        local_status_val = local_status.value if hasattr(local_status, "value") else local_status
+        order["order_status"] = local_status_val
+        
+        # Dynamically compute seller payment_status
+        if order.get("payment_method") == PaymentMethod.online.value:
+            order["payment_status"] = PaymentStatus.paid.value
+        elif order.get("payment_method") == PaymentMethod.cod.value:
+            if local_status_val == OrderStatus.delivered.value:
+                order["payment_status"] = PaymentStatus.paid.value
+            else:
+                order["payment_status"] = PaymentStatus.pending.value
         
         return order
 
@@ -267,7 +292,19 @@ class SellerService:
         full_order = await get_full_order_by_id(orders_collection(), order_id)
         if full_order:
             new_order_status = compute_order_status(full_order.get("items", []))
-            await db_update_order_status(orders_collection(), order_id, new_order_status.value if hasattr(new_order_status, "value") else new_order_status)
+            new_status_val = new_order_status.value if hasattr(new_order_status, "value") else new_order_status
+            
+            update_fields = {
+                "order_status": new_status_val,
+                "updated_at": utc_now()
+            }
+            if full_order.get("payment_method") == PaymentMethod.cod.value and new_status_val == OrderStatus.delivered.value:
+                update_fields["payment_status"] = PaymentStatus.paid.value
+                
+            await orders_collection().update_one(
+                {"_id": ObjectId(order_id)},
+                {"$set": update_fields}
+            )
 
         return {
             "message": f"Item status updated to '{new_status}'",

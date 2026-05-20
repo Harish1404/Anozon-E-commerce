@@ -4,6 +4,7 @@ from pymongo.errors import PyMongoError
 from fastapi import HTTPException
 from datetime import datetime, timedelta, timezone
 from app.core.time_utils import utc_now
+from app.utils.order_utils import compute_order_status
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -356,12 +357,15 @@ async def get_seller_dashboard_stats(product_collection, order_collection, selle
             buyer_name = row.get("shipping_address", {}).get("full_name", "")
             first_name = buyer_name.split()[0] if buyer_name else "—"
             
+            local_status = compute_order_status(items)
+            order_status_str = local_status.value if hasattr(local_status, "value") else local_status
+            
             recent_orders_list.append({
                 "order_id": str(row["_id"]),
                 "created_at": row.get("created_at"),
                 "item_count": len(items),
                 "seller_total": round(seller_total, 2),
-                "order_status": row.get("order_status", ""),
+                "order_status": order_status_str,
                 "buyer_first_name": first_name,
             })
 

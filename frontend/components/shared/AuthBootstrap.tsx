@@ -5,10 +5,23 @@ import { useAuthStore } from "@/store/useAuthStore"
 import { authService } from "@/services/auth"
 import api from "@/lib/axios"
 import { useQueryClient } from "@tanstack/react-query"
+import { usePathname } from "next/navigation"
 
 export function AuthBootstrap() {
     const { setAuth, logout } = useAuthStore()
     const queryClient = useQueryClient()
+    const pathname = usePathname()
+
+    useEffect(() => {
+        let portal = "user"
+        if (pathname.startsWith("/seller")) {
+            portal = "seller"
+        } else if (pathname.startsWith("/admin")) {
+            portal = "admin"
+        }
+        
+        document.documentElement.setAttribute("data-theme", portal)
+    }, [pathname])
 
     useEffect(() => {
         // Apply saved theme before first paint to prevent flash
