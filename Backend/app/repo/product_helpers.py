@@ -17,7 +17,6 @@ def build_product_query(
     search: Optional[str] = None,
     brand: Optional[str] = None,
     sub_category: Optional[str] = None,
-    tags: Optional[str] = None,
     is_featured: Optional[bool] = None,
     include_unapproved: bool = False
 ) -> dict:
@@ -61,15 +60,6 @@ def build_product_query(
         elif len(sub_categories) > 1:
             # Match any of the subcategories
             query["sub_category"] = {"$in": [re.compile(f"^{re.escape(s)}$", re.IGNORECASE) for s in sub_categories]}
-
-    # 2.7. Tags (supports comma separated, matches any tag)
-    if tags:
-        tags_list = [t.strip() for t in tags.split(",") if t.strip()]
-        if len(tags_list) == 1:
-            query["tags"] = {"$regex": f"^{re.escape(tags_list[0])}$", "$options": "i"}
-        elif len(tags_list) > 1:
-            # Match any of the tags
-            query["tags"] = {"$in": [re.compile(f"^{re.escape(t)}$", re.IGNORECASE) for t in tags_list]}
 
     # 3. Price Filter
     if min_price is not None or max_price is not None:

@@ -38,7 +38,6 @@ class ProductService:
         search: str = None,
         brand: str = None,
         sub_category: str = None,
-        tags: str = None,
         is_featured: bool = None,
         sort_by: str = "created_at",
         sort_order: int = -1,
@@ -57,7 +56,6 @@ class ProductService:
             search=search,
             brand=brand,
             sub_category=sub_category,
-            tags=tags,
             is_featured=is_featured
         )
 
