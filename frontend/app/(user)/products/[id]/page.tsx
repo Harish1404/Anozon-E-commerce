@@ -15,15 +15,6 @@ export default function ProductPage({ params }: ProductPageProps) {
   const { id } = React.use(params)
   const productQuery = useProduct(id)
   const addToCart = useAddToCart()
-
-  React.useEffect(() => {
-    if (productQuery.data?.name) {
-      document.title = `Anozon - ${productQuery.data.name}`
-    } else {
-      document.title = "Anozon - Product"
-    }
-  }, [productQuery.data?.name])
-
   if (productQuery.isLoading) {
     return <div className="min-h-screen p-8">Loading product...</div>
   }

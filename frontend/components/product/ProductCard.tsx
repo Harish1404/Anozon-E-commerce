@@ -20,6 +20,13 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
   return (
     <div className="card group relative rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg overflow-hidden">
+      {/* Featured Offer badge */}
+      {product.is_featured && (
+        <span className="absolute top-3 left-3 z-10 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-md select-none animate-pulse">
+          ★ Featured Offer
+        </span>
+      )}
+
       {/* Heart button */}
       <button
         type="button"
@@ -57,14 +64,24 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <Link
               href={`/products/${product._id}`}
               className="block truncate text-sm font-semibold text-foreground hover:text-primary transition-colors"
             >
               {product.name}
             </Link>
-            <p className="mt-0.5 text-xs text-muted-foreground">{product.category}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              <span className="text-xs text-muted-foreground">{product.category}</span>
+              {product.brand && product.brand !== "Generic" && (
+                <>
+                  <span className="text-[10px] text-muted-foreground/60">•</span>
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/80">
+                    {product.brand}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
           {discountLabel && (
             <span className="shrink-0 rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-[10px] font-semibold">

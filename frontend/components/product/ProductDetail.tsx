@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Product } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -28,7 +28,9 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
 
   const isWishlisted = useIsWishlisted(product._id)
   const toggleWishlist = useToggleWishlist()
-
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(
+    product.variants && product.variants.length > 0 ? product.variants[0] : null
+  )
   const imageUrl = product.image_urls?.[selectedIndex] ?? "/placeholder.png"
   const savings = product.actual_price - product.price
 
@@ -38,6 +40,9 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
 
   return (
     <div className="font-sans pb-16">
+      {/* Next.js hoists title and meta elements in Client Components to the document head automatically */}
+      <title>{product.meta_title || `Anozon - ${product.name}`}</title>
+      <meta name="description" content={product.meta_desc || product.description} />
 
       {/* ── Breadcrumb ── */}
       <nav className="flex items-center gap-1.5 px-4 py-3 text-xs text-muted-foreground sm:px-6">
@@ -143,6 +148,45 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
           <p className="text-sm leading-relaxed text-muted-foreground">
             {product.description}
           </p>
+
+          {/* Tag Pills */}
+          {product.tags && product.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {product.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="cursor-pointer rounded-full bg-secondary/80 hover:bg-secondary border border-border px-2.5 py-0.5 text-[11px] text-secondary-foreground font-semibold transition-colors"
+                  onClick={() => router.push(`/search?q=${tag}`)}
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Variants descriptive choice pills */}
+          {product.variants && product.variants.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Select Style / Size</p>
+              <div className="flex flex-wrap gap-2">
+                {product.variants.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setSelectedVariant(v)}
+                    className={cn(
+                      "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all duration-200",
+                      selectedVariant === v
+                        ? "border-foreground bg-foreground text-background shadow-sm ring-1 ring-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    )}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="h-px bg-border" />
 
@@ -283,6 +327,21 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
                   { label: "Reviews", value: product.review_count },
                   { label: "Likes", value: formatCompactNumber(product.product_likes) },
                   { label: "Discount", value: product.discount_percent > 0 ? `${product.discount_percent}%` : "None" },
+                  ...(product.brand && product.brand !== "Generic" ? [{ label: "Brand", value: product.brand }] : []),
+                  ...(product.sub_category && product.sub_category !== "General" ? [{ label: "Sub-Category", value: product.sub_category }] : []),
+                  ...(product.sku ? [{ label: "SKU / Code", value: product.sku }] : []),
+                  ...(product.weight && product.weight > 0 ? [{ label: "Shipping Weight", value: `${product.weight} kg` }] : []),
+                  ...(product.dimensions &&
+                    typeof product.dimensions.length === "number" && product.dimensions.length > 0 &&
+                    typeof product.dimensions.width === "number" && product.dimensions.width > 0 &&
+                    typeof product.dimensions.height === "number" && product.dimensions.height > 0
+                    ? [
+                        {
+                          label: "Dimensions (L × W × H)",
+                          value: `${product.dimensions.length} × ${product.dimensions.width} × ${product.dimensions.height} cm`,
+                        },
+                      ]
+                    : []),
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-muted rounded-md px-4 py-3 border border-border">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{label}</p>
@@ -290,6 +349,23 @@ export function ProductDetail({ product, onAddToCart }: ProductDetailProps) {
                   </div>
                 ))}
               </div>
+
+              {/* Technical Specifications structured table */}
+              {product.specifications && Object.keys(product.specifications).length > 0 && (
+                <div className="rounded-xl border border-border bg-card overflow-hidden mt-6">
+                  <div className="bg-muted px-4 py-3 border-b border-border">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-foreground">Technical Specifications</h3>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {Object.entries(product.specifications).map(([key, val]) => (
+                      <div key={key} className="grid grid-cols-3 px-4 py-3 text-sm">
+                        <span className="font-semibold text-muted-foreground">{key}</span>
+                        <span className="col-span-2 text-foreground font-medium">{String(val)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Seller Details Block */}
               {product.seller_details && (

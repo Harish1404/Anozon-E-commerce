@@ -24,7 +24,11 @@ def build_product_query(
         escaped_search = re.escape(search)
         query["$or"] = [
             {"name": {"$regex": escaped_search, "$options": "i"}},
-            {"description": {"$regex": escaped_search, "$options": "i"}}
+            {"description": {"$regex": escaped_search, "$options": "i"}},
+            {"brand": {"$regex": escaped_search, "$options": "i"}},
+            {"sub_category": {"$regex": escaped_search, "$options": "i"}},
+            {"search_keywords": {"$regex": escaped_search, "$options": "i"}},
+            {"tags": {"$regex": escaped_search, "$options": "i"}}
         ]
 
     # 2. Category (supports comma separated)

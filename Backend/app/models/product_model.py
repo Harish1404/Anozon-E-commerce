@@ -18,6 +18,19 @@ class ProductBase(BaseModel):
     actual_price: int = Field(..., gt=0) # User enters this
     stock: int = Field(..., ge=0)
     image_urls: Optional[list[str]] = Field(default_factory=list)
+    brand: str = Field(default="Generic")
+    sub_category: Optional[str] = Field(default="General")
+    tags: Optional[list[str]] = Field(default_factory=list)
+    specifications: Optional[dict[str, Any]] = Field(default_factory=dict)
+    weight: Optional[float] = Field(default=0.0)
+    dimensions: Optional[dict[str, float]] = Field(default_factory=lambda: {"length": 0.0, "width": 0.0, "height": 0.0})
+    sku: Optional[str] = Field(default=None)
+    variants: Optional[list[str]] = Field(default_factory=list)
+    meta_title: Optional[str] = Field(default=None)
+    meta_desc: Optional[str] = Field(default=None)
+    is_featured: Optional[bool] = Field(default=False)
+    view_count: Optional[int] = Field(default=0)
+    search_keywords: Optional[list[str]] = Field(default_factory=list)
 
 # --- CREATE MODEL (Input) ---
 class ProductCreate(ProductBase):
@@ -33,6 +46,19 @@ class ProductUpdate(BaseModel):
     discount_percent: Optional[int] = Field(default=None, ge=0, le=100)
     stock: Optional[int] = Field(default=None, ge=0)
     image_urls: Optional[list[str]] = None
+    brand: Optional[str] = None
+    sub_category: Optional[str] = None
+    tags: Optional[list[str]] = None
+    specifications: Optional[dict[str, Any]] = None
+    weight: Optional[float] = None
+    dimensions: Optional[dict[str, float]] = None
+    sku: Optional[str] = None
+    variants: Optional[list[str]] = None
+    meta_title: Optional[str] = None
+    meta_desc: Optional[str] = None
+    is_featured: Optional[bool] = None
+    view_count: Optional[int] = None
+    search_keywords: Optional[list[str]] = None
     
     model_config = {
         "from_attributes": True,
