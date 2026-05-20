@@ -11,6 +11,16 @@ interface OrderCardProps {
   order: Order
 }
 
+const statusStyles: Record<string, { bg: string, text: string, label: string }> = {
+  pending:             { bg: "bg-slate-100 dark:bg-slate-500/20", text: "text-slate-700 dark:text-slate-400", label: "Pending" },
+  confirmed:           { bg: "bg-blue-100 dark:bg-blue-500/20", text: "text-blue-700 dark:text-blue-400", label: "Confirmed" },
+  partially_shipped:   { bg: "bg-amber-100 dark:bg-amber-500/20", text: "text-amber-700 dark:text-amber-400", label: "Partially Shipped" },
+  shipped:             { bg: "bg-violet-100 dark:bg-violet-500/20", text: "text-violet-700 dark:text-violet-400", label: "Shipped" },
+  partially_delivered: { bg: "bg-teal-100 dark:bg-teal-500/20", text: "text-teal-700 dark:text-teal-400", label: "Partially Delivered" },
+  delivered:           { bg: "bg-emerald-100 dark:bg-emerald-500/20", text: "text-emerald-700 dark:text-emerald-400", label: "Delivered" },
+  cancelled:           { bg: "bg-rose-100 dark:bg-rose-500/20", text: "text-rose-700 dark:text-rose-400", label: "Cancelled" },
+}
+
 export function OrderCard({ order }: OrderCardProps) {
   // Ensure the date is parsed as UTC if it doesn't have a timezone indicator
   const dateStr = order.created_at.endsWith("Z") || order.created_at.includes("+")
@@ -18,6 +28,12 @@ export function OrderCard({ order }: OrderCardProps) {
     : `${order.created_at}Z`
   const date = new Date(dateStr)
   
+  const statusInfo = statusStyles[order.order_status] ?? {
+    bg: "bg-slate-100 dark:bg-slate-500/20",
+    text: "text-slate-700 dark:text-slate-400",
+    label: order.order_status
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md">
       {/* Header */}
@@ -50,10 +66,14 @@ export function OrderCard({ order }: OrderCardProps) {
 
       {/* Body */}
       <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-foreground capitalize">
-            {order.order_status === "delivered" ? "Delivered" : order.order_status.replace('_', ' ')}
-          </h3>
+        <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-3">
+          <span className={cn(
+            "rounded-full px-3 py-1 text-xs font-semibold tracking-wide border border-transparent shadow-xs capitalize",
+            statusInfo.bg,
+            statusInfo.text
+          )}>
+            {statusInfo.label.replace('_', ' ')}
+          </span>
         </div>
 
         <div className="space-y-6">
@@ -74,9 +94,31 @@ export function OrderCard({ order }: OrderCardProps) {
                   >
                     {item.name}
                   </Link>
-                  <p className="mt-1 text-xs text-muted-foreground">Quantity: {item.quantity}</p>
+                  
+                  {/* Item-level Details & Status Badge */}
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <span>Quantity: {item.quantity}</span>
+                    <span className="text-border">|</span>
+                    <span className={cn(
+                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-transparent",
+                      item.item_status === "cancelled" ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" :
+                      item.item_status === "delivered" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                      item.item_status === "shipped" ? "bg-violet-500/10 text-violet-600 dark:text-violet-400" :
+                      item.item_status === "confirmed" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                      "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400"
+                    )}>
+                      <span className={cn("size-1.5 rounded-full",
+                        item.item_status === "cancelled" ? "bg-rose-500" :
+                        item.item_status === "delivered" ? "bg-emerald-500" :
+                        item.item_status === "shipped" ? "bg-violet-500" :
+                        item.item_status === "confirmed" ? "bg-blue-500" :
+                        "bg-slate-400 dark:bg-slate-500"
+                      )} />
+                      <span className="capitalize">{item.item_status}</span>
+                    </span>
+                  </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-2">
                   <Link 
                     href={`/products/${item.product_id}`}
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 text-xs px-3 rounded-full")}
