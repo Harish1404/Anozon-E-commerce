@@ -5,29 +5,21 @@ import { useProducts } from "@/hooks/useProducts"
 import { useAddToCart } from "@/hooks/useCart"
 import { ProductGrid } from "@/components/product/ProductGrid"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 
 export default function HomePage() {
-  const [search, setSearch] = useState("")
-  const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
   
   useEffect(() => {
     document.title = "Anozon - Home"
   }, [])
 
-  const productsQuery = useProducts({ search: query, page, limit: 12 })
+  const productsQuery = useProducts({ page, limit: 12 })
   const addToCart = useAddToCart()
 
   const totalPages = useMemo(() => {
     if (!productsQuery.data) return 1
     return Math.max(1, productsQuery.data.pages)
   }, [productsQuery.data])
-
-  const applySearch = () => {
-    setQuery(search)
-    setPage(1)
-  }
 
   return (
     <main className="min-h-screen bg-background">
@@ -36,14 +28,6 @@ export default function HomePage() {
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.3em] text-muted-foreground">Shop</p>
             <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">Browse today's best offers</h1>
-          </div>
-          <div className="flex w-full max-w-md items-center gap-2">
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search products"
-            />
-            <Button onClick={applySearch}>Search</Button>
           </div>
         </div>
 

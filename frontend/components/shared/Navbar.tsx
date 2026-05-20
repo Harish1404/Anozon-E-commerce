@@ -14,6 +14,7 @@ import { useWishlist } from "@/hooks/useWishlist"
 import { useProfile } from "@/hooks/useProfile"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { LogoutDialog } from "@/components/shared/LogoutDialog"
+import { SearchBar } from "@/components/shared/SearchBar"
 
 export function Navbar() {
   const { user } = useAuthStore()
@@ -34,10 +35,15 @@ export function Navbar() {
     <>
     <header className="hidden md:block sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
+        <Link href="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground shrink-0 select-none">
           <ShoppingBag className="size-5 text-primary" />
           Anozon
         </Link>
+
+        {/* Global Desktop SearchBar */}
+        <div className="flex-1 max-w-md mx-8 relative">
+          <SearchBar />
+        </div>
 
         <nav className="flex items-center gap-1">
           <Link href="/" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
